@@ -68,41 +68,45 @@ const PRESETS = {
   ]
 };
 
-// DOM References
-const elements = {
-  cardContainer: document.getElementById('card-display-container'),
-  cardTiltBox: document.getElementById('card-tilt-container'),
-  specularGlare: document.getElementById('specular-glare'),
-  cardStyleTabs: document.querySelectorAll('.seg-btn'),
-  timeRangePills: document.querySelectorAll('.time-btn'),
-  btnExportStory: document.getElementById('btn-export-story'),
-  btnExportSquare: document.getElementById('btn-export-square'),
-  btnCopyClip: document.getElementById('btn-copy-clip'),
-  btnConnectSpotify: document.getElementById('btn-connect-spotify'),
-  btnCustomMix: document.getElementById('btn-custom-mix'),
-  btnLogout: document.getElementById('btn-logout'),
-  authStatusBadge: document.getElementById('auth-status-badge'),
-  customMixModal: document.getElementById('custom-mix-modal'),
-  btnCustomCancel: document.getElementById('btn-custom-cancel'),
-  btnCustomCancelAlt: document.getElementById('btn-custom-cancel-alt'),
-  btnCustomGenerate: document.getElementById('btn-custom-generate'),
-  presetChips: document.querySelectorAll('.preset-chip'),
-  toastContainer: document.getElementById('toast-container'),
-  nowPlayingBar: document.getElementById('now-playing-bar'),
-  dockThumb: document.getElementById('dock-thumb'),
-  npTrackName: document.getElementById('np-track-name'),
-  npArtistName: document.getElementById('np-artist-name'),
-  npStopBtn: document.getElementById('np-stop-btn')
-};
+// DOM References (Queried on DOM ready)
+const elements = {};
+
+function initElements() {
+  elements.cardContainer = document.getElementById('card-display-container');
+  elements.cardTiltBox = document.getElementById('card-tilt-container');
+  elements.specularGlare = document.getElementById('specular-glare');
+  elements.cardStyleTabs = document.querySelectorAll('.seg-btn');
+  elements.timeRangePills = document.querySelectorAll('.time-btn');
+  elements.btnExportStory = document.getElementById('btn-export-story');
+  elements.btnExportSquare = document.getElementById('btn-export-square');
+  elements.btnCopyClip = document.getElementById('btn-copy-clip');
+  elements.btnConnectSpotify = document.getElementById('btn-connect-spotify');
+  elements.btnCustomMix = document.getElementById('btn-custom-mix');
+  elements.btnLogout = document.getElementById('btn-logout');
+  elements.authStatusBadge = document.getElementById('auth-status-badge');
+  elements.customMixModal = document.getElementById('custom-mix-modal');
+  elements.btnCustomCancel = document.getElementById('btn-custom-cancel');
+  elements.btnCustomCancelAlt = document.getElementById('btn-custom-cancel-alt');
+  elements.btnCustomGenerate = document.getElementById('btn-custom-generate');
+  elements.presetChips = document.querySelectorAll('.preset-chip');
+  elements.toastContainer = document.getElementById('toast-container');
+  elements.nowPlayingBar = document.getElementById('now-playing-bar');
+  elements.dockThumb = document.getElementById('dock-thumb');
+  elements.npTrackName = document.getElementById('np-track-name');
+  elements.npArtistName = document.getElementById('np-artist-name');
+  elements.npStopBtn = document.getElementById('np-stop-btn');
+}
 
 /**
  * Toast Notification System
  */
 export function showToast(message, type = 'info', duration = 2800) {
+  const container = elements.toastContainer || document.getElementById('toast-container');
+  if (!container) return;
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   toast.innerHTML = `<span>${message}</span>`;
-  elements.toastContainer.appendChild(toast);
+  container.appendChild(toast);
 
   requestAnimationFrame(() => {
     toast.classList.add('toast-visible');
@@ -262,9 +266,7 @@ soundEngine.onStateChange(({ isPlaying, isLoading, currentTrackId }) => {
   renderCurrentCard();
 });
 
-elements.npStopBtn.addEventListener('click', () => {
-  soundEngine.stop();
-});
+
 
 /**
  * Motion-Primitives: Interactive 3D Card Tilt & Specular Glare
@@ -293,211 +295,204 @@ function init3DCardTilt() {
   });
 }
 
-/**
- * Segmented Control Style Tabs
- */
-elements.cardStyleTabs.forEach(btn => {
-  btn.addEventListener('click', () => {
-    elements.cardStyleTabs.forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state.cardStyle = btn.getAttribute('data-style');
-    renderCurrentCard();
+function setupEventListeners() {
+  elements.npStopBtn?.addEventListener('click', () => {
+    soundEngine.stop();
   });
-});
 
-/**
- * Time Range Segmented Buttons
- */
-elements.timeRangePills.forEach(pill => {
-  pill.addEventListener('click', () => {
-    if (!state.spotifyToken && state.timeRange !== 'custom') {
-      showToast('Connect Spotify to explore different timeframes', 'info');
+  elements.cardStyleTabs?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      elements.cardStyleTabs.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.cardStyle = btn.getAttribute('data-style');
+      renderCurrentCard();
+    });
+  });
+
+  elements.timeRangePills?.forEach(pill => {
+    pill.addEventListener('click', () => {
+      if (!state.spotifyToken && state.timeRange !== 'custom') {
+        showToast('Connect Spotify to explore different timeframes', 'info');
+        startSpotifyAuth();
+        return;
+      }
+      elements.timeRangePills.forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      state.timeRange = pill.getAttribute('data-range');
+      loadData();
+    });
+  });
+
+  elements.btnExportStory?.addEventListener('click', async () => {
+    if (!state.currentData) {
+      showToast('Connect Spotify or generate a custom mix first!', 'warning');
       startSpotifyAuth();
       return;
     }
-    elements.timeRangePills.forEach(p => p.classList.remove('active'));
-    pill.classList.add('active');
-    state.timeRange = pill.getAttribute('data-range');
-    loadData();
-  });
-});
-
-/**
- * Setup High-DPI Export Actions
- */
-elements.btnExportStory.addEventListener('click', async () => {
-  if (!state.currentData) {
-    showToast('Connect Spotify or generate a custom mix first!', 'warning');
-    startSpotifyAuth();
-    return;
-  }
-  try {
-    showToast('Generating 9:16 Story card...', 'info', 2000);
-    const dataUrl = await exportCardAsImage('story');
-    downloadDataUrl(dataUrl, `soundwrapped-${state.cardStyle}-story.png`);
-    showToast('Downloaded Story image!', 'success');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-});
-
-elements.btnExportSquare.addEventListener('click', async () => {
-  if (!state.currentData) {
-    showToast('Connect Spotify or generate a custom mix first!', 'warning');
-    startSpotifyAuth();
-    return;
-  }
-  try {
-    showToast('Generating Square card...', 'info', 2000);
-    const dataUrl = await exportCardAsImage('square');
-    downloadDataUrl(dataUrl, `soundwrapped-${state.cardStyle}-square.png`);
-    showToast('Downloaded Square image!', 'success');
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-});
-
-elements.btnCopyClip.addEventListener('click', async () => {
-  if (!state.currentData) {
-    showToast('Connect Spotify or generate a custom mix first!', 'warning');
-    startSpotifyAuth();
-    return;
-  }
-  try {
-    await copyCardToClipboard();
-    showToast('Copied card snapshot to clipboard!', 'success');
-  } catch (err) {
-    showToast('Clipboard copy: Please click Download Image instead.', 'error');
-  }
-});
-
-/**
- * Spotify Auth Trigger (1-Click Direct Redirect)
- */
-elements.btnConnectSpotify.addEventListener('click', startSpotifyAuth);
-
-
-
-elements.btnLogout.addEventListener('click', () => {
-  logoutSpotify();
-  state.spotifyToken = null;
-  state.currentData = null;
-  state.cachedRealData = {};
-  showToast('Logged out of Spotify', 'info');
-  loadData();
-});
-
-/**
- * Custom Mix Modal & Presets
- */
-elements.btnCustomMix.addEventListener('click', () => elements.customMixModal.classList.add('modal-open'));
-elements.btnCustomCancel.addEventListener('click', () => elements.customMixModal.classList.remove('modal-open'));
-elements.btnCustomCancelAlt?.addEventListener('click', () => elements.customMixModal.classList.remove('modal-open'));
-
-elements.presetChips.forEach(chip => {
-  chip.addEventListener('click', () => {
-    const presetKey = chip.getAttribute('data-preset');
-    const songs = PRESETS[presetKey];
-    if (!songs) return;
-
-    const rowInputs = document.querySelectorAll('.custom-input-row');
-    songs.forEach((s, i) => {
-      if (rowInputs[i]) {
-        rowInputs[i].querySelector('.c-song').value = s.name;
-        rowInputs[i].querySelector('.c-artist').value = s.artist;
-      }
-    });
-    showToast(`Loaded "${chip.textContent}" preset`, 'info', 1500);
-  });
-});
-
-elements.btnCustomGenerate.addEventListener('click', async () => {
-  const rowInputs = document.querySelectorAll('.custom-input-row');
-  const tracksToFetch = [];
-
-  rowInputs.forEach((row) => {
-    const name = row.querySelector('.c-song').value.trim();
-    const artist = row.querySelector('.c-artist').value.trim();
-    if (name) {
-      tracksToFetch.push({ name, artist: artist || 'Various Artists' });
+    try {
+      showToast('Generating 9:16 Story card...', 'info', 2000);
+      const dataUrl = await exportCardAsImage('story');
+      downloadDataUrl(dataUrl, `soundwrapped-${state.cardStyle}-story.png`);
+      showToast('Downloaded Story image!', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
     }
   });
 
-  if (tracksToFetch.length < 3) {
-    showToast('Please enter at least 3 tracks.', 'error');
-    return;
-  }
+  elements.btnExportSquare?.addEventListener('click', async () => {
+    if (!state.currentData) {
+      showToast('Connect Spotify or generate a custom mix first!', 'warning');
+      startSpotifyAuth();
+      return;
+    }
+    try {
+      showToast('Generating Square card...', 'info', 2000);
+      const dataUrl = await exportCardAsImage('square');
+      downloadDataUrl(dataUrl, `soundwrapped-${state.cardStyle}-square.png`);
+      showToast('Downloaded Square image!', 'success');
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
 
-  elements.customMixModal.classList.remove('modal-open');
-  showToast('Resolving real studio previews & artwork...', 'info', 3000);
+  elements.btnCopyClip?.addEventListener('click', async () => {
+    if (!state.currentData) {
+      showToast('Connect Spotify or generate a custom mix first!', 'warning');
+      startSpotifyAuth();
+      return;
+    }
+    try {
+      await copyCardToClipboard();
+      showToast('Copied card snapshot to clipboard!', 'success');
+    } catch (err) {
+      showToast('Clipboard copy: Please click Download Image instead.', 'error');
+    }
+  });
 
-  try {
-    elements.cardContainer.innerHTML = `
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 6rem 2rem; color: #a1a1aa; gap: 1rem;">
-        <div class="loading-spinner"></div>
-        <p style="font-size:0.875rem;">Fetching studio master audio & covers...</p>
-      </div>
-    `;
+  elements.btnConnectSpotify?.addEventListener('click', startSpotifyAuth);
 
-    const resolvedTracks = await Promise.all(tracksToFetch.map(async (item, idx) => {
-      const q = `${item.artist} ${item.name}`.trim();
-      const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=1`);
-      const json = await res.json();
-      const hit = json.results && json.results[0];
-
-      return {
-        id: `custom_t_${idx + 1}`,
-        name: hit?.trackName || item.name,
-        artists: [{ name: hit?.artistName || item.artist }],
-        album: {
-          name: hit?.collectionName || 'Custom Collection',
-          images: [{ url: hit?.artworkUrl100?.replace('100x100bb', '600x600bb') || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=500&q=80' }]
-        },
-        duration_ms: hit?.trackTimeMillis || 215000,
-        preview_url: hit?.previewUrl || null,
-        energy: 0.85,
-        danceability: 0.76
-      };
-    }));
-
-    const topArtists = [...new Set(resolvedTracks.map(t => t.artists[0].name))].map((name, i) => ({
-      id: `custom_a_${i}`,
-      name: name,
-      genres: ['curated collection']
-    }));
-
-    state.currentData = {
-      user: {
-        display_name: 'Custom Curator',
-        images: [{ url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80' }]
-      },
-      topTracks: resolvedTracks,
-      topArtists: topArtists,
-      stats: {
-        dominantGenre: 'Handcrafted Sonic Palette',
-        vibeLabel: 'Master Curator',
-        energyScore: 88,
-        danceScore: 79,
-        obscurityScore: 72,
-        tempoBpm: 124
-      }
-    };
-
-    state.timeRange = 'custom';
-    updateAuthBadge('CUSTOM MIX', 'custom');
-    renderCurrentCard();
-    showToast('Physical artifacts generated with real studio previews!', 'success');
-  } catch (err) {
-    console.error('Custom mix error:', err);
-    showToast('Could not load track data: ' + err.message, 'error');
+  elements.btnLogout?.addEventListener('click', () => {
+    logoutSpotify();
+    state.spotifyToken = null;
+    state.currentData = null;
+    state.cachedRealData = {};
+    showToast('Logged out of Spotify', 'info');
     loadData();
-  }
-});
+  });
+
+  elements.btnCustomMix?.addEventListener('click', () => elements.customMixModal?.classList.add('modal-open'));
+  elements.btnCustomCancel?.addEventListener('click', () => elements.customMixModal?.classList.remove('modal-open'));
+  elements.btnCustomCancelAlt?.addEventListener('click', () => elements.customMixModal?.classList.remove('modal-open'));
+
+  elements.presetChips?.forEach(chip => {
+    chip.addEventListener('click', () => {
+      const presetKey = chip.getAttribute('data-preset');
+      const songs = PRESETS[presetKey];
+      if (!songs) return;
+
+      const rowInputs = document.querySelectorAll('.custom-input-row');
+      songs.forEach((s, i) => {
+        if (rowInputs[i]) {
+          rowInputs[i].querySelector('.c-song').value = s.name;
+          rowInputs[i].querySelector('.c-artist').value = s.artist;
+        }
+      });
+      showToast(`Loaded "${chip.textContent}" preset`, 'info', 1500);
+    });
+  });
+
+  elements.btnCustomGenerate?.addEventListener('click', async () => {
+    const rowInputs = document.querySelectorAll('.custom-input-row');
+    const tracksToFetch = [];
+
+    rowInputs.forEach((row) => {
+      const name = row.querySelector('.c-song').value.trim();
+      const artist = row.querySelector('.c-artist').value.trim();
+      if (name) {
+        tracksToFetch.push({ name, artist: artist || 'Various Artists' });
+      }
+    });
+
+    if (tracksToFetch.length < 3) {
+      showToast('Please enter at least 3 tracks.', 'error');
+      return;
+    }
+
+    elements.customMixModal?.classList.remove('modal-open');
+    showToast('Resolving real studio previews & artwork...', 'info', 3000);
+
+    try {
+      if (elements.cardContainer) {
+        elements.cardContainer.innerHTML = `
+          <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 6rem 2rem; color: #a1a1aa; gap: 1rem;">
+            <div class="loading-spinner"></div>
+            <p style="font-size:0.875rem;">Fetching studio master audio & covers...</p>
+          </div>
+        `;
+      }
+
+      const resolvedTracks = await Promise.all(tracksToFetch.map(async (item, idx) => {
+        const q = `${item.artist} ${item.name}`.trim();
+        const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=1`);
+        const json = await res.json();
+        const hit = json.results && json.results[0];
+
+        return {
+          id: `custom_t_${idx + 1}`,
+          name: hit?.trackName || item.name,
+          artists: [{ name: hit?.artistName || item.artist }],
+          album: {
+            name: hit?.collectionName || 'Custom Collection',
+            images: [{ url: hit?.artworkUrl100?.replace('100x100bb', '600x600bb') || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=500&q=80' }]
+          },
+          duration_ms: hit?.trackTimeMillis || 215000,
+          preview_url: hit?.previewUrl || null,
+          energy: 0.85,
+          danceability: 0.76
+        };
+      }));
+
+      const topArtists = [...new Set(resolvedTracks.map(t => t.artists[0].name))].map((name, i) => ({
+        id: `custom_a_${i}`,
+        name: name,
+        genres: ['curated collection']
+      }));
+
+      state.currentData = {
+        user: {
+          display_name: 'Custom Curator',
+          images: [{ url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80' }]
+        },
+        topTracks: resolvedTracks,
+        topArtists: topArtists,
+        stats: {
+          dominantGenre: 'Handcrafted Sonic Palette',
+          vibeLabel: 'Master Curator',
+          energyScore: 88,
+          danceScore: 79,
+          obscurityScore: 72,
+          tempoBpm: 124
+        }
+      };
+
+      state.timeRange = 'custom';
+      updateAuthBadge('CUSTOM MIX', 'custom');
+      renderCurrentCard();
+      showToast('Physical artifacts generated with real studio previews!', 'success');
+    } catch (err) {
+      console.error('Custom mix error:', err);
+      showToast('Could not load track data: ' + err.message, 'error');
+      loadData();
+    }
+  });
+}
 
 /**
  * Application Bootstrap
  */
 async function initApp() {
+  initElements();
+  setupEventListeners();
   init3DCardTilt();
 
   const hasAuthCode = new URLSearchParams(window.location.search).has('code');
@@ -523,4 +518,8 @@ async function initApp() {
   await loadData();
 }
 
-window.addEventListener('DOMContentLoaded', initApp);
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initApp);
+} else {
+  initApp();
+}
