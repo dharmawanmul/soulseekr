@@ -7,7 +7,7 @@ export const SPOTIFY_CONFIG = {
   authEndpoint: 'https://accounts.spotify.com/authorize',
   tokenEndpoint: 'https://accounts.spotify.com/api/token',
   apiEndpoint: 'https://api.spotify.com/v1',
-  defaultClientId: '', // Optional default Spotify Client ID
+  defaultClientId: 'e18f7dc60aba4b8dbd5566b5108fdef3',
   scopes: [
     'user-top-read',
     'user-read-private',
@@ -67,9 +67,9 @@ export function getStandardRedirectUri() {
  * Initiate Spotify OAuth flow with PKCE
  */
 export async function initiateSpotifyLogin(customClientId = null) {
-  const clientId = customClientId || localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId) || SPOTIFY_CONFIG.defaultClientId;
+  const clientId = SPOTIFY_CONFIG.defaultClientId || customClientId || localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
   if (!clientId) {
-    throw new Error('Please enter a Spotify Client ID.');
+    throw new Error('Please configure a Spotify Client ID.');
   }
 
   // Save client ID for reuse
@@ -113,7 +113,7 @@ export async function handleAuthCallback() {
   if (!code) return null;
 
   const verifier = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.verifier);
-  const clientId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId) || SPOTIFY_CONFIG.defaultClientId;
+  const clientId = SPOTIFY_CONFIG.defaultClientId || localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
   // Retrieve the exact redirect URI stored before redirect
   const redirectUri = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.redirectUri) || getStandardRedirectUri();
 

@@ -176,55 +176,6 @@
     <button id="np-stop-btn" class="btn-dock-close" title="Stop Audio">✕</button>
   </aside>
 
-  <!-- Spotify Client ID Config Dialog (shadcn inspired) -->
-  <div id="client-id-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal-card">
-      <div class="modal-header-row">
-        <h2 id="modal-title">Connect Spotify</h2>
-        <button id="btn-modal-cancel" class="btn-dock-close" title="Close">✕</button>
-      </div>
-      <p>
-        SoundWrapped is <strong>100% serverless</strong> and runs directly in your browser using official <strong>Spotify PKCE OAuth</strong> (safe for public GitHub Pages).
-      </p>
-
-      <label for="client-id-input" style="display:block; font-size: 0.75rem; font-weight:600; margin-bottom: 0.4rem; color: #a1a1aa;">
-        YOUR SPOTIFY CLIENT ID:
-      </label>
-      <input 
-        type="text" 
-        id="client-id-input" 
-        class="modal-input-field" 
-        placeholder="Paste your Client ID from developer.spotify.com" 
-        autocomplete="off"
-      />
-
-      <div class="modal-btn-row">
-        <button id="btn-modal-close-alt" class="btn btn-secondary">Cancel</button>
-        <button id="btn-modal-submit" class="btn btn-spotify">Authorize with Spotify</button>
-      </div>
-
-      <div class="setup-note mt-4 p-3 bg-zinc-900/80 rounded-lg border border-zinc-800 text-xs text-zinc-400">
-        <strong class="text-zinc-200">Spotify Developer Redirect URIs:</strong><br>
-        Add these into your app settings on <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" class="text-emerald-400 underline">developer.spotify.com</a>:
-        
-        <div class="uri-list-box my-2">
-          <div class="uri-item">
-            <code>http://127.0.0.1:5173/</code>
-            <button class="btn-copy-mini" id="copy-uri-ip">Copy</button>
-          </div>
-          <div class="uri-item">
-            <code>http://localhost:5173/</code>
-            <button class="btn-copy-mini" id="copy-uri-local">Copy</button>
-          </div>
-          <div class="uri-item">
-            <code>https://dharmawanmul.github.io/soulseekr/</code>
-            <button class="btn-copy-mini" id="copy-uri-gh">Copy</button>
-          </div>
-        </div>
-        Tip: Adding all 3 allows you to log in smoothly from 127.0.0.1, localhost, and live GitHub Pages!
-      </div>
-    </div>
-  </div>
 
   <!-- Custom Top 5 Mix Dialog -->
   <div id="custom-mix-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="custom-modal-title">
@@ -280,25 +231,5 @@
 
   <!-- App Main Orchestrator (ES Module) -->
   <script type="module" src="js/app.js"></script>
-
-  <script>
-    // Copy URI Helper handlers
-    document.addEventListener('DOMContentLoaded', () => {
-      const bindCopy = (id, text) => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.addEventListener('click', () => {
-            navigator.clipboard.writeText(text);
-            const orig = el.textContent;
-            el.textContent = 'Copied!';
-            setTimeout(() => el.textContent = orig, 1400);
-          });
-        }
-      };
-      bindCopy('copy-uri-ip', 'http://127.0.0.1:5173/');
-      bindCopy('copy-uri-local', 'http://localhost:5173/');
-      bindCopy('copy-uri-gh', 'https://dharmawanmul.github.io/soulseekr/');
-    });
-  </script>
 </body>
 </html>

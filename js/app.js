@@ -82,11 +82,6 @@ const elements = {
   btnCustomMix: document.getElementById('btn-custom-mix'),
   btnLogout: document.getElementById('btn-logout'),
   authStatusBadge: document.getElementById('auth-status-badge'),
-  clientIdModal: document.getElementById('client-id-modal'),
-  clientIdInput: document.getElementById('client-id-input'),
-  btnModalSubmit: document.getElementById('btn-modal-submit'),
-  btnModalCancel: document.getElementById('btn-modal-cancel'),
-  btnModalCloseAlt: document.getElementById('btn-modal-close-alt'),
   customMixModal: document.getElementById('custom-mix-modal'),
   btnCustomCancel: document.getElementById('btn-custom-cancel'),
   btnCustomCancelAlt: document.getElementById('btn-custom-cancel-alt'),
@@ -178,13 +173,14 @@ function updateAuthBadge(text, status) {
   }
 }
 
-function openAuthModal() {
-  const savedId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId) || SPOTIFY_CONFIG.defaultClientId || '';
-  if (savedId) {
-    elements.clientIdInput.value = savedId;
+async function startSpotifyAuth() {
+  showToast('Redirecting to Spotify...', 'info', 2000);
+  try {
+    await initiateSpotifyLogin();
+  } catch (err) {
+    console.error('Spotify login error:', err);
+    showToast(err.message, 'error', 4500);
   }
-  elements.clientIdModal.classList.add('modal-open');
-  elements.clientIdInput.focus();
 }
 
 /**
@@ -193,7 +189,7 @@ function openAuthModal() {
 function renderCurrentCard() {
   if (!state.currentData) {
     elements.cardContainer.innerHTML = renderGatewayCard();
-    document.getElementById('btn-gateway-auth')?.addEventListener('click', openAuthModal);
+    document.getElementById('btn-gateway-auth')?.addEventListener('click', startSpotifyAuth);
     document.getElementById('btn-gateway-custom')?.addEventListener('click', () => {
       elements.customMixModal.classList.add('modal-open');
     });
@@ -316,7 +312,7 @@ elements.timeRangePills.forEach(pill => {
   pill.addEventListener('click', () => {
     if (!state.spotifyToken && state.timeRange !== 'custom') {
       showToast('Connect Spotify to explore different timeframes', 'info');
-      openAuthModal();
+      startSpotifyAuth();
       return;
     }
     elements.timeRangePills.forEach(p => p.classList.remove('active'));
@@ -332,7 +328,7 @@ elements.timeRangePills.forEach(pill => {
 elements.btnExportStory.addEventListener('click', async () => {
   if (!state.currentData) {
     showToast('Connect Spotify or generate a custom mix first!', 'warning');
-    openAuthModal();
+    startSpotifyAuth();
     return;
   }
   try {
@@ -348,7 +344,7 @@ elements.btnExportStory.addEventListener('click', async () => {
 elements.btnExportSquare.addEventListener('click', async () => {
   if (!state.currentData) {
     showToast('Connect Spotify or generate a custom mix first!', 'warning');
-    openAuthModal();
+    startSpotifyAuth();
     return;
   }
   try {
@@ -364,7 +360,7 @@ elements.btnExportSquare.addEventListener('click', async () => {
 elements.btnCopyClip.addEventListener('click', async () => {
   if (!state.currentData) {
     showToast('Connect Spotify or generate a custom mix first!', 'warning');
-    openAuthModal();
+    startSpotifyAuth();
     return;
   }
   try {
@@ -376,29 +372,11 @@ elements.btnCopyClip.addEventListener('click', async () => {
 });
 
 /**
- * Spotify Auth Modal Controls
+ * Spotify Auth Trigger (1-Click Direct Redirect)
  */
-elements.btnConnectSpotify.addEventListener('click', openAuthModal);
+elements.btnConnectSpotify.addEventListener('click', startSpotifyAuth);
 
-elements.btnModalCancel.addEventListener('click', () => elements.clientIdModal.classList.remove('modal-open'));
-elements.btnModalCloseAlt?.addEventListener('click', () => elements.clientIdModal.classList.remove('modal-open'));
 
-elements.btnModalSubmit.addEventListener('click', async () => {
-  const clientId = elements.clientIdInput.value.trim();
-  if (!clientId) {
-    showToast('Please enter your Spotify Client ID.', 'error');
-    return;
-  }
-
-  elements.clientIdModal.classList.remove('modal-open');
-  showToast('Redirecting to Spotify Login...', 'info', 2000);
-
-  try {
-    await initiateSpotifyLogin(clientId);
-  } catch (err) {
-    showToast(err.message, 'error');
-  }
-});
 
 elements.btnLogout.addEventListener('click', () => {
   logoutSpotify();
@@ -539,11 +517,6 @@ async function initApp() {
     const existingToken = await getValidAccessToken();
     if (existingToken) {
       state.spotifyToken = existingToken;
-    } else {
-      // First-time visitor: open the Spotify authorization modal automatically!
-      setTimeout(() => {
-        openAuthModal();
-      }, 400);
     }
   }
 
