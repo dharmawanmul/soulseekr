@@ -1,0 +1,976 @@
+/* ==========================================================================
+   SoundWrapped - 5 High-Impact Experiential Card Archetypes
+   ========================================================================== */
+
+/* Base Card Wrapper Dimensions (Optimized for Instagram / Mobile & Desktop) */
+.card-inner {
+  width: 420px;
+  max-width: 92vw;
+  border-radius: 20px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: var(--shadow-card);
+  transition: transform 220ms var(--ease-snappy);
+  user-select: none;
+}
+
+/* Micro Equalizer Animation inside tracks */
+.mini-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  width: 14px;
+  margin-left: auto;
+}
+
+.mini-eq .bar {
+  width: 3px;
+  background: currentColor;
+  border-radius: 1px;
+  animation: eqBounce 0.8s infinite ease-in-out alternate;
+}
+
+.mini-eq .bar:nth-child(1) { height: 40%; animation-delay: 0.1s; }
+.mini-eq .bar:nth-child(2) { height: 90%; animation-delay: 0.3s; }
+.mini-eq .bar:nth-child(3) { height: 60%; animation-delay: 0.2s; }
+
+@keyframes eqBounce {
+  0% { height: 20%; }
+  100% { height: 100%; }
+}
+
+/* --------------------------------------------------------------------------
+   1. THE FESTIVAL LINEUP POSTER (Coachella / Glastonbury Style)
+   -------------------------------------------------------------------------- */
+.card-festival {
+  background: linear-gradient(165deg, #18110b 0%, #2a1608 40%, #0d0a08 100%);
+  color: #fff4eb;
+  padding: 2.25rem 1.75rem 1.5rem;
+  border: 1px solid rgba(251, 146, 60, 0.25);
+  font-family: 'Space Grotesk', sans-serif;
+  text-align: center;
+}
+
+.fest-top-badge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.25em;
+  color: #fb923c;
+  margin-bottom: 0.4rem;
+}
+
+.fest-title {
+  font-family: 'Outfit', sans-serif;
+  font-size: 2.75rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-transform: uppercase;
+  background: linear-gradient(180deg, #fff 20%, #fdba74 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.65rem;
+}
+
+.fest-meta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: rgba(255, 244, 235, 0.7);
+  border-top: 1px solid rgba(251, 146, 60, 0.3);
+  border-bottom: 1px solid rgba(251, 146, 60, 0.3);
+  padding: 0.45rem 0;
+  margin-bottom: 1.5rem;
+}
+
+.fest-billing {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.75rem;
+}
+
+.billing-tier.tier-headliner .act-name {
+  font-size: 2.1rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #fff;
+  text-shadow: 0 0 20px rgba(251, 146, 60, 0.4);
+}
+
+.billing-tier.tier-sub .act-name {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  color: #fed7aa;
+}
+
+.billing-tier.tier-support .act-name {
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: rgba(255, 244, 235, 0.8);
+}
+
+.billing-tier.tier-genres {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #ea580c;
+  margin-top: 0.2rem;
+}
+
+.fest-setlist-box {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px dashed rgba(251, 146, 60, 0.3);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 1.5rem;
+  text-align: left;
+}
+
+.fest-setlist-title {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  color: #fb923c;
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.fest-tracks-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.fest-track-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.03);
+  transition: background 140ms ease;
+}
+
+.fest-track-item:hover {
+  background: rgba(251, 146, 60, 0.15);
+}
+
+.fest-track-item.playing {
+  background: rgba(251, 146, 60, 0.25);
+  color: #fed7aa;
+}
+
+.fest-track-idx {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #ea580c;
+}
+
+.fest-track-name {
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.fest-track-artist {
+  font-size: 0.7rem;
+  color: rgba(255, 244, 235, 0.6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.play-hint {
+  margin-left: auto;
+  font-size: 0.65rem;
+  opacity: 0.4;
+  transition: opacity 140ms ease;
+}
+
+.fest-track-item:hover .play-hint {
+  opacity: 1;
+}
+
+.fest-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(251, 146, 60, 0.3);
+  padding-top: 1rem;
+}
+
+.fest-barcode {
+  font-family: monospace;
+  font-size: 1.15rem;
+  letter-spacing: 0.15em;
+  color: #fb923c;
+  line-height: 1;
+}
+
+.fest-serial {
+  font-size: 0.55rem;
+  color: rgba(255, 244, 235, 0.5);
+  letter-spacing: 0.08em;
+  margin-top: 0.25rem;
+}
+
+.fest-stamp {
+  border: 2px solid #ea580c;
+  color: #ea580c;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.15em;
+  transform: rotate(-6deg);
+  border-radius: 4px;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. SOUND DNA AURORA (Glassmorphism + Vibe Matrix)
+   -------------------------------------------------------------------------- */
+.card-dna {
+  background: #0f1019;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 1.75rem;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+
+.dna-aurora-bg {
+  position: absolute;
+  top: -20%;
+  left: -20%;
+  width: 140%;
+  height: 140%;
+  background: radial-gradient(circle at 30% 20%, rgba(139, 92, 246, 0.4), transparent 50%),
+              radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.35), transparent 50%),
+              radial-gradient(circle at 10% 90%, rgba(244, 63, 94, 0.25), transparent 50%);
+  filter: blur(50px);
+  z-index: 0;
+  pointer-events: none;
+}
+
+.dna-header, .dna-metrics-grid, .dna-genre-highlight, .dna-track-list, .dna-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.dna-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.dna-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.dna-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--accent-cyan);
+}
+
+.dna-user-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.dna-username {
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.dna-subtitle {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+  letter-spacing: 0.05em;
+}
+
+.dna-vibe-pill {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.35rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: var(--radius-full);
+  backdrop-filter: blur(10px);
+  color: #fff;
+}
+
+.dna-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+}
+
+.dna-metric-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.75rem;
+  backdrop-filter: blur(12px);
+}
+
+.metric-label {
+  display: block;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
+}
+
+.metric-bar-wrap {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 0.35rem;
+}
+
+.metric-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-purple), var(--accent-cyan));
+  border-radius: 10px;
+  transition: width 0.6s var(--ease-snappy);
+}
+
+.metric-val {
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.dna-genre-highlight {
+  background: rgba(139, 92, 246, 0.12);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  padding: 0.65rem 0.95rem;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.25rem;
+}
+
+.genre-tag {
+  font-size: 0.6rem;
+  font-weight: 800;
+  color: #c4b5fd;
+  letter-spacing: 0.05em;
+}
+
+.genre-title {
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dna-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-bottom: 1.25rem;
+}
+
+.dna-tracks-heading {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-bottom: 0.25rem;
+}
+
+.dna-track-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.4rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.dna-track-row:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dna-track-row.playing {
+  background: rgba(139, 92, 246, 0.25);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+}
+
+.dna-idx {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+.dna-album-art {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.dna-track-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.dna-tname {
+  font-size: 0.775rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dna-tartist {
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dna-tdur {
+  font-size: 0.675rem;
+  color: var(--text-muted);
+  font-family: monospace;
+}
+
+.play-btn-ghost {
+  font-size: 0.65rem;
+  opacity: 0.35;
+  transition: opacity 140ms ease;
+}
+.dna-track-row:hover .play-btn-ghost { opacity: 1; color: var(--accent-cyan); }
+
+.dna-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 0.75rem;
+}
+
+
+/* --------------------------------------------------------------------------
+   3. RETRO CASSETTE MIXTAPE (Spinning Spools + J-Card)
+   -------------------------------------------------------------------------- */
+.card-retro {
+  background: #1e1e24;
+  border: 2px solid #33333d;
+  color: #e5e5ea;
+  padding: 1.25rem;
+  font-family: 'Courier Prime', monospace;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.8);
+}
+
+.cassette-body {
+  background: #141418;
+  border: 2px solid #282830;
+  border-radius: 14px;
+  padding: 1rem;
+  position: relative;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+  margin-bottom: 1.25rem;
+}
+
+.cassette-screws {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #4a4a58;
+}
+.top-screws { margin-bottom: 0.5rem; }
+.bottom-screws { margin-top: 0.5rem; }
+
+.cassette-label {
+  background: #fdf6e2;
+  color: #1a1a24;
+  border-radius: 8px;
+  padding: 0.75rem;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
+}
+
+.label-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.side-badge {
+  background: #c53030;
+  color: #fff;
+  font-weight: 900;
+  font-size: 1.1rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+}
+
+.tape-title-handwritten {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+}
+
+.tape-sub {
+  font-size: 0.6rem;
+  color: #666;
+}
+
+.tape-format {
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: #777;
+}
+
+.tape-window-area {
+  background: #111;
+  border: 2px solid #2e2e38;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.spool {
+  width: 36px;
+  height: 36px;
+  background: #222;
+  border: 2px solid #666;
+  border-radius: 50%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.spool .teeth {
+  width: 14px;
+  height: 14px;
+  background: #fff;
+  border-radius: 3px;
+}
+
+.spool.spinning {
+  animation: spinSpool 2.5s linear infinite;
+}
+
+@keyframes spinSpool {
+  to { transform: rotate(360deg); }
+}
+
+.tape-glass {
+  flex: 1;
+  margin: 0 0.75rem;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tape-film {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 55%;
+  background: #4a2810;
+  opacity: 0.8;
+}
+
+.tape-ruler {
+  font-size: 0.55rem;
+  color: rgba(255, 255, 255, 0.3);
+  letter-spacing: 0.15em;
+  z-index: 1;
+}
+
+.jcard-inlay {
+  background: #16161b;
+  border: 1px solid #2d2d38;
+  border-radius: 10px;
+  padding: 0.85rem;
+  margin-bottom: 0.75rem;
+}
+
+.jcard-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: #f59e0b;
+  margin-bottom: 0.65rem;
+  border-bottom: 1px dashed #333;
+  padding-bottom: 0.35rem;
+}
+
+.jcard-tracks {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.jcard-track-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  padding: 0.25rem 0.4rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.jcard-track-item:hover {
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.jcard-track-item.playing {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+
+.j-num { color: #f59e0b; font-weight: 700; }
+.j-title { font-weight: 700; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.j-artist { color: #888; max-width: 110px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.j-time { margin-left: auto; color: #666; font-size: 0.65rem; }
+
+.cassette-meta-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.55rem;
+  color: #555;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. 8-BIT ARCADE HIGH-SCORE SCREEN (Pixel Art + CRT Scanlines)
+   -------------------------------------------------------------------------- */
+.card-arcade {
+  background: #000;
+  color: #39ff14;
+  border: 3px solid #ff007f;
+  padding: 1.5rem;
+  font-family: 'Press Start 2P', monospace;
+  position: relative;
+  box-shadow: 0 0 30px rgba(255, 0, 127, 0.35);
+}
+
+.arcade-scanlines {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.4) 50%);
+  background-size: 100% 4px;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.arcade-top-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.55rem;
+  color: #ff007f;
+  margin-bottom: 0.75rem;
+}
+
+.blink-text {
+  animation: blink 1s step-start infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.arcade-title {
+  font-size: 1.35rem;
+  color: #ffe600;
+  text-shadow: 2px 2px #ff007f;
+  text-align: center;
+  margin-bottom: 0.5rem;
+}
+
+.arcade-player-tag {
+  font-size: 0.55rem;
+  color: #00f0ff;
+  text-align: center;
+  margin-bottom: 1.25rem;
+}
+
+.arcade-board {
+  border: 2px dashed #00f0ff;
+  padding: 0.75rem 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.board-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.55rem;
+  color: #ffe600;
+  margin-bottom: 0.75rem;
+  border-bottom: 1px solid #333;
+  padding-bottom: 0.35rem;
+}
+
+.board-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.arcade-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.525rem;
+  cursor: pointer;
+  padding: 0.3rem;
+  border-radius: 4px;
+  transition: background 140ms ease;
+}
+
+.arcade-row:hover {
+  background: rgba(0, 240, 255, 0.15);
+}
+
+.arcade-row.playing {
+  background: rgba(57, 255, 20, 0.25);
+  color: #ffe600;
+}
+
+.a-rank { color: #ff007f; width: 30px; }
+.a-info { flex: 1; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.a-song { color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-artist { color: #aaa; font-size: 0.45rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-score { color: #39ff14; }
+
+.arcade-stats-bar {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.5rem;
+  color: #00f0ff;
+  margin-bottom: 1.25rem;
+}
+
+.arcade-stats-bar strong { color: #fff; }
+
+.arcade-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.55rem;
+  color: #ff007f;
+  border-top: 1px solid #333;
+  padding-top: 0.75rem;
+}
+
+.arcade-cred { color: #ffe600; }
+
+
+/* --------------------------------------------------------------------------
+   5. THERMAL RECEIPT 2.0 (Authentic Paper + Barcode + Vibe Tax)
+   -------------------------------------------------------------------------- */
+.card-receipt {
+  background: #fdfbf7;
+  color: #171717;
+  padding: 2.25rem 1.6rem 2rem;
+  font-family: 'Space Mono', 'Courier New', monospace;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.45);
+  position: relative;
+  filter: drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+}
+
+/* Jagged Paper Tear Clip Effect */
+.receipt-tear {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 10px;
+  background: var(--bg-core);
+}
+
+.top-tear {
+  top: 0;
+  clip-path: polygon(
+    0% 0%, 5% 100%, 10% 0%, 15% 100%, 20% 0%, 25% 100%, 30% 0%, 35% 100%, 
+    40% 0%, 45% 100%, 50% 0%, 55% 100%, 60% 0%, 65% 100%, 70% 0%, 75% 100%, 
+    80% 0%, 85% 100%, 90% 0%, 95% 100%, 100% 0%
+  );
+}
+
+.bottom-tear {
+  bottom: 0;
+  clip-path: polygon(
+    0% 100%, 5% 0%, 10% 100%, 15% 0%, 20% 100%, 25% 0%, 30% 100%, 35% 0%, 
+    40% 100%, 45% 0%, 50% 100%, 55% 0%, 60% 100%, 65% 0%, 70% 100%, 75% 0%, 
+    80% 100%, 85% 0%, 90% 100%, 95% 0%, 100% 100%
+  );
+}
+
+.receipt-header {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+
+.receipt-brand {
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin-bottom: 0.5rem;
+}
+
+.receipt-meta {
+  font-size: 0.65rem;
+  color: #444;
+  line-height: 1.4;
+}
+
+.receipt-divider {
+  text-align: center;
+  font-size: 0.75rem;
+  letter-spacing: 2px;
+  color: #777;
+  margin: 0.5rem 0;
+  overflow: hidden;
+}
+
+.receipt-item-head {
+  display: flex;
+  font-size: 0.7rem;
+  font-weight: 700;
+  margin-bottom: 0.6rem;
+  color: #222;
+}
+
+.qty { width: 34px; }
+.desc { flex: 1; }
+.amt { width: 50px; text-align: right; }
+
+.receipt-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.receipt-row {
+  display: flex;
+  align-items: center;
+  font-size: 0.725rem;
+  padding: 0.25rem 0.35rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 140ms ease;
+}
+
+.receipt-row:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.receipt-row.playing {
+  background: rgba(0, 0, 0, 0.1);
+  font-weight: 700;
+}
+
+.r-track {
+  display: block;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.r-artist {
+  display: block;
+  font-size: 0.65rem;
+  color: #666;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+.receipt-calc {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.7rem;
+  margin: 0.5rem 0;
+}
+
+.calc-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.calc-row.total-bold {
+  font-weight: 800;
+  font-size: 0.85rem;
+  border-top: 1px dashed #777;
+  padding-top: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.receipt-barcode-wrap {
+  text-align: center;
+  margin-top: 0.75rem;
+}
+
+.r-barcode {
+  font-size: 1.5rem;
+  letter-spacing: 0.2em;
+  line-height: 1;
+  font-weight: 900;
+  margin-bottom: 0.4rem;
+}
+
+.r-cardnum, .r-thankyou, .r-website {
+  font-size: 0.6rem;
+  color: #666;
+  margin-bottom: 0.2rem;
+}
+
+.r-website {
+  font-weight: 700;
+  color: #000;
+}

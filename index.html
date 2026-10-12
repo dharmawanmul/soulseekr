@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SoundWrapped — Experiential Spotify Wrapped & Aesthetic Cards</title>
+  <meta name="description" content="Beyond receipts. Transform your Spotify top tracks & artists into festival lineup posters, cosmic sound DNA, 90s cassettes, and 8-bit arcade cards. Free and hosted on GitHub Pages.">
+  <meta name="theme-color" content="#090a0f">
+
+  <!-- OpenGraph / Social Sharing -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="SoundWrapped — Aesthetic Music Wrapped Experience">
+  <meta property="og:description" content="Turn your music into aesthetic cultural artifacts. Instant interactive preview, sound synthesis, and high-res export.">
+
+  <!-- Google Fonts: Curated Typography Pairing -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Outfit:wght@600;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Press+Start+2P&family=Space+Grotesk:wght@500;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+
+  <!-- Core & Card Stylesheets -->
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/cards.css">
+
+  <!-- html2canvas for high-res instant card snapshot export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
+</head>
+<body>
+
+  <!-- Ambient Fluid Glow Orbs -->
+  <div class="ambient-glow-bg" aria-hidden="true">
+    <div class="glow-orb orb-1"></div>
+    <div class="glow-orb orb-2"></div>
+  </div>
+
+  <!-- Application Header -->
+  <header class="app-header">
+    <div class="brand-wrapper">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
+        </svg>
+      </div>
+      <div>
+        <h1 class="brand-title">SoundWrapped</h1>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <span id="auth-status-badge" class="auth-badge badge-demo">DEMO MODE</span>
+      
+      <button id="btn-toggle-demo" class="btn btn-secondary" title="Switch to sample Spotify catalog">
+        Demo Mode
+      </button>
+
+      <button id="btn-connect-spotify" class="btn btn-spotify">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
+        </svg>
+        Connect Spotify
+      </button>
+
+      <button id="btn-logout" class="btn btn-secondary" style="display: none;">
+        Log Out
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Experience Hub -->
+  <main class="main-layout">
+    
+    <!-- Controls Toolbar -->
+    <section class="controls-hub" aria-label="Card Controls">
+      <div class="control-bar">
+        <!-- Archetype Tabs -->
+        <div class="style-tabs-group" role="tablist">
+          <button class="card-style-btn active" data-style="festival" role="tab" aria-selected="true">
+            🎪 Festival Poster
+          </button>
+          <button class="card-style-btn" data-style="dna" role="tab" aria-selected="false">
+            🌌 Sound DNA
+          </button>
+          <button class="card-style-btn" data-style="retro" role="tab" aria-selected="false">
+            📼 90s Cassette
+          </button>
+          <button class="card-style-btn" data-style="arcade" role="tab" aria-selected="false">
+            👾 8-Bit Arcade
+          </button>
+          <button class="card-style-btn" data-style="receipt" role="tab" aria-selected="false">
+            🧾 Thermal Receipt
+          </button>
+        </div>
+
+        <!-- Time Range Selector -->
+        <div class="time-pills-group" aria-label="Timeframe Selection">
+          <button class="time-pill active" data-range="short_term">4 Weeks</button>
+          <button class="time-pill" data-range="medium_term">6 Months</button>
+          <button class="time-pill" data-range="long_term">All Time</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Card Display Stage -->
+    <section class="card-stage" aria-label="Visual Card Preview">
+      <div id="card-display-container">
+        <!-- Rendered dynamically by js/app.js -->
+      </div>
+    </section>
+
+    <!-- Export & Social Sharing Action Bar -->
+    <section class="export-dock" aria-label="Export Actions">
+      <button id="btn-export-story" class="btn btn-export btn-export-primary" title="Download formatted for Instagram / TikTok Stories">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="5" y="2" width="14" height="20" rx="3" ry="3"/>
+          <line x1="12" y1="18" x2="12.01" y2="18"/>
+        </svg>
+        Download Story (9:16)
+      </button>
+
+      <button id="btn-export-square" class="btn btn-export" title="Download square post for feed">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+        </svg>
+        Download Square (1:1)
+      </button>
+
+      <button id="btn-copy-clip" class="btn btn-export" title="Copy high-res snapshot to clipboard">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+        </svg>
+        Copy to Clipboard
+      </button>
+    </section>
+
+  </main>
+
+  <!-- Now Playing Persistent Bottom Dock -->
+  <aside id="now-playing-bar" class="now-playing-dock" aria-live="polite">
+    <div class="mini-eq" style="color: var(--spotify-green);">
+      <span class="bar"></span><span class="bar"></span><span class="bar"></span>
+    </div>
+    <div class="np-info">
+      <span id="np-track-name" class="np-title">Track Name</span>
+      <span id="np-artist-name" class="np-sub">Artist Name</span>
+    </div>
+    <button id="np-stop-btn" class="btn-np-stop" title="Stop Audio">✕</button>
+  </aside>
+
+  <!-- Spotify Client ID Config Modal -->
+  <div id="client-id-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <h2 id="modal-title">Connect Your Spotify</h2>
+      <p>
+        Because this app is <strong>100% serverless</strong> and hosted on <strong>GitHub Pages</strong>, it uses official <strong>Spotify PKCE OAuth</strong> (no client secret or backend server required!).
+      </p>
+
+      <label for="client-id-input" style="display:block; font-size: 0.8rem; font-weight:700; margin-bottom: 0.5rem; color: var(--text-secondary);">
+        YOUR SPOTIFY CLIENT ID:
+      </label>
+      <input 
+        type="text" 
+        id="client-id-input" 
+        class="modal-input-field" 
+        placeholder="e.g. 7f8a92b3c4d5e6..." 
+        autocomplete="off"
+      />
+
+      <div class="modal-btn-row">
+        <button id="btn-modal-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-modal-submit" class="btn btn-spotify">Authorize with Spotify</button>
+      </div>
+
+      <div class="setup-note">
+        <strong>Need a free Client ID?</strong><br>
+        1. Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" style="color: var(--spotify-green-hover);">Spotify Developer Dashboard</a>.<br>
+        2. Create an App and add this exact Redirect URI:<br>
+        <code id="redirect-uri-display">window.location.origin + window.location.pathname</code><br>
+        3. Paste your Client ID above and click Authorize!
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast Anchor -->
+  <div id="toast-container" aria-live="polite"></div>
+
+  <!-- Main JavaScript App Entrypoint (ES Module) -->
+  <script type="module" src="js/app.js"></script>
+
+  <script>
+    // Set dynamic current redirect URI in modal instructions
+    window.addEventListener('DOMContentLoaded', () => {
+      const codeEl = document.getElementById('redirect-uri-display');
+      if (codeEl) {
+        codeEl.textContent = window.location.origin + window.location.pathname;
+      }
+    });
+  </script>
+</body>
+</html>
