@@ -1,34 +1,27 @@
-# 🎧 SoundWrapped — Experiential Spotify Wrapped Web App
+# 🎧 SoundWrapped — Aesthetic Physical Music Artifacts
 
-> **Beyond flat receipts.** Turn your Spotify listening history into dynamic, aesthetic cultural artifacts: **Festival Lineup Posters**, **Cosmic Sound DNA**, **90s Cassette Mixtapes**, **8-Bit Retro Arcade Leaderboards**, and **Thermal Receipts 2.0**.
+> **Beyond flat receipts.** Turn your Spotify listening history into tangible, museum-grade cultural artifacts with interactive **3D tilt**, **specular lighting**, and **real 30-second studio audio**.
 
-Built with modern Vanilla HTML/CSS/JavaScript and **Spotify PKCE OAuth 2.0**.  
+Built with modern **Tailwind CSS**, **shadcn / tweakcn tokens**, **motion-primitives**, and **Spotify PKCE OAuth 2.0**.  
 Designed to run **100% serverless** and deploy effortlessly to **GitHub Pages** for free!
 
 ---
 
-## ✨ Features That Make It Unique
+## ✨ 5 Physical Artifacts (Crafted from Scratch)
 
-| Experience Card | Aesthetic & Archetype | Unique Interaction |
+| Artifact | Design World & Vernacular | Interactive Signature |
 | :--- | :--- | :--- |
-| 🎪 **Festival Lineup** | Coachella / Glastonbury massive festival poster billing | Headliner font sizing, VIP access badge, and live setlist |
-| 🌌 **Sound DNA Aurora** | Ethereal cosmic glassmorphism & vibe matrix | Energy %, Danceability %, Underground score, and BPM meter |
-| 📼 **90s Cassette Mixtape** | Skeuomorphic retro cassette shell with J-card inlay | **Spinning cassette spools** when audio previews play |
-| 👾 **8-Bit Arcade Boss** | CRT phosphor scanlines & retro pixel arcade screen | High-score leaderboard with points and retro 1UP badge |
-| 🧾 **Thermal Receipt 2.0** | Perforated crinkled thermal paper with barcode | Itemized minutes, genre tax calculation, and QR code |
+| 💿 **Vinyl Master Sleeve** | Japanese Obi-strip (`帯`), catalog codes, and peeking vinyl disc | Concentric vinyl grooves and holographic foil seal |
+| 📐 **Swiss Typographic Poster** | International Typographic Style (Josef Müller-Brockmann) | Monumental grid hierarchy, coordinates, and VIP timetable |
+| 🔮 **Spatial Sound Prism** | Apple VisionOS frosted glass refraction & acoustic matrix | Live bouncing frequency bars and 4-quadrant vibe dials |
+| 📼 **Industrial Cassette** | Teenage Engineering Scandinavian hardware aesthetic | Precision machine screws & **spinning mechanical tape reels** |
+| 🧾 **Tokyo Record Bar Slip** | Minimalist Japanese vinyl lounge thermal archive | Authentic paper tear edges, itemized durations, and barcode |
 
-### 🔊 Interactive Audio Engine
-- **Click any track** in any card to listen to a 30-second preview snippet!
-- **Generative Web Audio Synthesizer Fallback**: If a song doesn't have a 30s preview URL from Spotify (due to regional licensing), SoundWrapped automatically synthesizes an atmospheric lo-fi synth chord progression keyed to the song title so the interface is **never silent**!
-- Real-time animated **mini equalizer bars** and **Now Playing dock**.
-
-### 📸 High-Resolution Export
-- **Instagram / TikTok Stories (9:16)**: 1080x1920 high-DPI export with radiant ambient glow backdrop.
-- **Square Feed Post (1:1)**: 1200x1200 crisp export for Instagram feed, Twitter/X, and Discord.
-- **Copy to Clipboard**: One-click instant snapshot copying.
-
-### ⚡ Instant Demo Mode
-- Test all cards, timeframes (4 Weeks, 6 Months, All Time), themes, and audio previews immediately **without needing a Spotify Client ID**.
+### 🕹️ Motion-Primitives & Design Engineering
+- **Interactive 3D Card Tilt & Specular Glare**: The card physically tilts in 3D perspective as your cursor moves, casting a realistic radial light glare across the surface.
+- **Apple Music Dynamic Island**: A floating pill player dock with an animated vinyl disc, track information, and audio equalizer.
+- **Real 30-Second Studio Audio**: Automatically streams genuine studio recordings for every track (via Apple Music / iTunes preview catalog).
+- **Custom Top 5 Mix**: Pick presets (*Synthwave Drive, 2000s Indie, Pop Chart Toppers, Vinyl Classics*) or type any 5 songs to generate cards instantly!
 
 ---
 

@@ -1,5 +1,6 @@
 /**
  * SoundWrapped Main Application Orchestrator
+ * Physical Music Artifacts with 3D Tilt & Studio Audio
  */
 
 import { mockData } from './mock-data.js';
@@ -12,10 +13,10 @@ import {
   SPOTIFY_CONFIG 
 } from './spotify-api.js';
 import { 
-  renderFestivalCard, 
-  renderDnaCard, 
-  renderRetroCard, 
-  renderArcadeCard, 
+  renderVinylCard, 
+  renderSwissCard, 
+  renderPrismCard, 
+  renderCassetteCard, 
   renderReceiptCard 
 } from './card-renderer.js';
 import { soundEngine } from './audio-player.js';
@@ -23,7 +24,7 @@ import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './expor
 
 // Application State
 const state = {
-  cardStyle: 'festival', // 'festival' | 'dna' | 'retro' | 'arcade' | 'receipt'
+  cardStyle: 'vinyl', // 'vinyl' | 'swiss' | 'prism' | 'cassette' | 'receipt'
   timeRange: 'short_term', // 'short_term' | 'medium_term' | 'long_term' | 'custom'
   isDemoMode: true,
   spotifyToken: null,
@@ -71,9 +72,10 @@ const PRESETS = {
 // DOM References
 const elements = {
   cardContainer: document.getElementById('card-display-container'),
-  cardStyleTabs: document.querySelectorAll('.card-style-btn'),
-  timeRangePills: document.querySelectorAll('.time-pill'),
-  timePillsWrapper: document.getElementById('time-pills-wrapper'),
+  cardTiltBox: document.getElementById('card-tilt-container'),
+  specularGlare: document.getElementById('specular-glare'),
+  cardStyleTabs: document.querySelectorAll('.seg-btn'),
+  timeRangePills: document.querySelectorAll('.time-btn'),
   btnExportStory: document.getElementById('btn-export-story'),
   btnExportSquare: document.getElementById('btn-export-square'),
   btnCopyClip: document.getElementById('btn-copy-clip'),
@@ -86,12 +88,15 @@ const elements = {
   clientIdInput: document.getElementById('client-id-input'),
   btnModalSubmit: document.getElementById('btn-modal-submit'),
   btnModalCancel: document.getElementById('btn-modal-cancel'),
+  btnModalCloseAlt: document.getElementById('btn-modal-close-alt'),
   customMixModal: document.getElementById('custom-mix-modal'),
   btnCustomCancel: document.getElementById('btn-custom-cancel'),
+  btnCustomCancelAlt: document.getElementById('btn-custom-cancel-alt'),
   btnCustomGenerate: document.getElementById('btn-custom-generate'),
   presetChips: document.querySelectorAll('.preset-chip'),
   toastContainer: document.getElementById('toast-container'),
   nowPlayingBar: document.getElementById('now-playing-bar'),
+  dockThumb: document.getElementById('dock-thumb'),
   npTrackName: document.getElementById('np-track-name'),
   npArtistName: document.getElementById('np-artist-name'),
   npStopBtn: document.getElementById('np-stop-btn')
@@ -100,7 +105,7 @@ const elements = {
 /**
  * Toast Notification System
  */
-export function showToast(message, type = 'info', duration = 3000) {
+export function showToast(message, type = 'info', duration = 2800) {
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   toast.innerHTML = `<span>${message}</span>`;
@@ -112,7 +117,7 @@ export function showToast(message, type = 'info', duration = 3000) {
 
   setTimeout(() => {
     toast.classList.remove('toast-visible');
-    setTimeout(() => toast.remove(), 250);
+    setTimeout(() => toast.remove(), 200);
   }, duration);
 }
 
@@ -121,7 +126,7 @@ export function showToast(message, type = 'info', duration = 3000) {
  */
 async function loadData() {
   if (state.timeRange === 'custom' && state.currentData) {
-    updateAuthBadge('CUSTOM MIX', 'demo');
+    updateAuthBadge('CUSTOM ARTIFACT', 'demo');
     renderCurrentCard();
     return;
   }
@@ -143,19 +148,18 @@ async function loadData() {
     return;
   }
 
-  // Check cache
   if (state.cachedRealData[state.timeRange]) {
     state.currentData = state.cachedRealData[state.timeRange];
-    updateAuthBadge('CONNECTED', 'active');
+    updateAuthBadge('SPOTIFY CONNECTED', 'active');
     renderCurrentCard();
     return;
   }
 
   try {
     elements.cardContainer.innerHTML = `
-      <div class="card-loading-state">
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 6rem 2rem; color: #a1a1aa; gap: 1rem;">
         <div class="loading-spinner"></div>
-        <p>Crunching your Spotify acoustic profile...</p>
+        <p style="font-size:0.875rem;">Crafting your Spotify physical artifact...</p>
       </div>
     `;
     const wrapped = await fetchCompleteUserWrapped(token, state.timeRange);
@@ -186,24 +190,24 @@ function updateAuthBadge(text, status) {
 }
 
 /**
- * Render the currently selected card
+ * Render the currently selected physical card
  */
 function renderCurrentCard() {
   if (!state.currentData) return;
 
   let html = '';
   switch (state.cardStyle) {
-    case 'festival':
-      html = renderFestivalCard(state.currentData, state.timeRange, state.playbackState);
+    case 'vinyl':
+      html = renderVinylCard(state.currentData, state.timeRange, state.playbackState);
       break;
-    case 'dna':
-      html = renderDnaCard(state.currentData, state.timeRange, state.playbackState);
+    case 'swiss':
+      html = renderSwissCard(state.currentData, state.timeRange, state.playbackState);
       break;
-    case 'retro':
-      html = renderRetroCard(state.currentData, state.timeRange, state.playbackState);
+    case 'prism':
+      html = renderPrismCard(state.currentData, state.timeRange, state.playbackState);
       break;
-    case 'arcade':
-      html = renderArcadeCard(state.currentData, state.timeRange, state.playbackState);
+    case 'cassette':
+      html = renderCassetteCard(state.currentData, state.timeRange, state.playbackState);
       break;
     case 'receipt':
       html = renderReceiptCard(state.currentData, state.timeRange, state.playbackState);
@@ -231,7 +235,7 @@ function attachTrackListeners() {
 }
 
 /**
- * Setup Sound Engine Notifications
+ * Setup Sound Engine Notifications & Dynamic Island updates
  */
 soundEngine.onStateChange(({ isPlaying, isLoading, currentTrackId }) => {
   state.playbackState = { isPlaying, isLoading, trackId: currentTrackId };
@@ -242,6 +246,10 @@ soundEngine.onStateChange(({ isPlaying, isLoading, currentTrackId }) => {
       elements.nowPlayingBar.classList.add('active');
       elements.npTrackName.textContent = track.name;
       elements.npArtistName.textContent = track.artists.map(a => a.name).join(', ');
+      
+      const imgUrl = (track.album && track.album.images && track.album.images[0]?.url) || '';
+      if (imgUrl) elements.dockThumb.src = imgUrl;
+
       if (isPlaying) {
         showToast(`Playing Studio Preview: ${track.name}`, 'info', 2000);
       }
@@ -258,7 +266,34 @@ elements.npStopBtn.addEventListener('click', () => {
 });
 
 /**
- * Setup Card Style Switcher Tabs
+ * Motion-Primitives: Interactive 3D Card Tilt & Specular Glare
+ */
+function init3DCardTilt() {
+  const box = elements.cardTiltBox;
+  if (!box) return;
+
+  box.addEventListener('mousemove', (e) => {
+    const rect = box.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const centerX = rect.width / 2;
+    const centerY = rect.height / 2;
+
+    const rotateX = ((y - centerY) / centerY) * -9; // max 9 deg
+    const rotateY = ((x - centerX) / centerX) * 9;
+
+    box.style.transform = `rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg)`;
+    box.style.setProperty('--glare-x', `${(x / rect.width) * 100}%`);
+    box.style.setProperty('--glare-y', `${(y / rect.height) * 100}%`);
+  });
+
+  box.addEventListener('mouseleave', () => {
+    box.style.transform = `rotateX(0deg) rotateY(0deg)`;
+  });
+}
+
+/**
+ * Segmented Control Style Tabs
  */
 elements.cardStyleTabs.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -270,7 +305,7 @@ elements.cardStyleTabs.forEach(btn => {
 });
 
 /**
- * Setup Time Range Pills
+ * Time Range Segmented Buttons
  */
 elements.timeRangePills.forEach(pill => {
   pill.addEventListener('click', () => {
@@ -282,7 +317,7 @@ elements.timeRangePills.forEach(pill => {
 });
 
 /**
- * Setup Export Actions
+ * Setup High-DPI Export Actions
  */
 elements.btnExportStory.addEventListener('click', async () => {
   try {
@@ -316,7 +351,7 @@ elements.btnCopyClip.addEventListener('click', async () => {
 });
 
 /**
- * Setup Spotify Auth Modal
+ * Spotify Auth Modal Controls
  */
 elements.btnConnectSpotify.addEventListener('click', () => {
   const savedId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
@@ -326,9 +361,8 @@ elements.btnConnectSpotify.addEventListener('click', () => {
   elements.clientIdModal.classList.add('modal-open');
 });
 
-elements.btnModalCancel.addEventListener('click', () => {
-  elements.clientIdModal.classList.remove('modal-open');
-});
+elements.btnModalCancel.addEventListener('click', () => elements.clientIdModal.classList.remove('modal-open'));
+elements.btnModalCloseAlt?.addEventListener('click', () => elements.clientIdModal.classList.remove('modal-open'));
 
 elements.btnModalSubmit.addEventListener('click', async () => {
   const clientId = elements.clientIdInput.value.trim();
@@ -350,7 +384,7 @@ elements.btnModalSubmit.addEventListener('click', async () => {
 elements.btnToggleDemo.addEventListener('click', () => {
   state.isDemoMode = true;
   state.cachedRealData = {};
-  showToast('Switched to Demo preview mode', 'info');
+  showToast('Switched to Demo catalog', 'info');
   loadData();
 });
 
@@ -364,15 +398,11 @@ elements.btnLogout.addEventListener('click', () => {
 });
 
 /**
- * Setup Custom Mix Modal & Presets
+ * Custom Mix Modal & Presets
  */
-elements.btnCustomMix.addEventListener('click', () => {
-  elements.customMixModal.classList.add('modal-open');
-});
-
-elements.btnCustomCancel.addEventListener('click', () => {
-  elements.customMixModal.classList.remove('modal-open');
-});
+elements.btnCustomMix.addEventListener('click', () => elements.customMixModal.classList.add('modal-open'));
+elements.btnCustomCancel.addEventListener('click', () => elements.customMixModal.classList.remove('modal-open'));
+elements.btnCustomCancelAlt?.addEventListener('click', () => elements.customMixModal.classList.remove('modal-open'));
 
 elements.presetChips.forEach(chip => {
   chip.addEventListener('click', () => {
@@ -395,7 +425,7 @@ elements.btnCustomGenerate.addEventListener('click', async () => {
   const rowInputs = document.querySelectorAll('.custom-input-row');
   const tracksToFetch = [];
 
-  rowInputs.forEach((row, i) => {
+  rowInputs.forEach((row) => {
     const name = row.querySelector('.c-song').value.trim();
     const artist = row.querySelector('.c-artist').value.trim();
     if (name) {
@@ -413,13 +443,12 @@ elements.btnCustomGenerate.addEventListener('click', async () => {
 
   try {
     elements.cardContainer.innerHTML = `
-      <div class="card-loading-state">
+      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 6rem 2rem; color: #a1a1aa; gap: 1rem;">
         <div class="loading-spinner"></div>
-        <p>Fetching studio audio and cover art...</p>
+        <p style="font-size:0.875rem;">Fetching studio master audio & covers...</p>
       </div>
     `;
 
-    // Query iTunes API for real metadata and previews for each song
     const resolvedTracks = await Promise.all(tracksToFetch.map(async (item, idx) => {
       const q = `${item.artist} ${item.name}`.trim();
       const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=1`);
@@ -436,16 +465,15 @@ elements.btnCustomGenerate.addEventListener('click', async () => {
         },
         duration_ms: hit?.trackTimeMillis || 215000,
         preview_url: hit?.previewUrl || null,
-        energy: 0.82,
-        danceability: 0.74
+        energy: 0.85,
+        danceability: 0.76
       };
     }));
 
-    // Build custom wrapped data structure
     const topArtists = [...new Set(resolvedTracks.map(t => t.artists[0].name))].map((name, i) => ({
       id: `custom_a_${i}`,
       name: name,
-      genres: ['custom selection']
+      genres: ['curated collection']
     }));
 
     state.currentData = {
@@ -466,9 +494,9 @@ elements.btnCustomGenerate.addEventListener('click', async () => {
     };
 
     state.timeRange = 'custom';
-    updateAuthBadge('CUSTOM MIX', 'demo');
+    updateAuthBadge('CUSTOM ARTIFACT', 'demo');
     renderCurrentCard();
-    showToast('Custom cards generated with real studio previews!', 'success');
+    showToast('Physical artifacts generated with real studio previews!', 'success');
   } catch (err) {
     console.error('Custom mix error:', err);
     showToast('Could not load track data: ' + err.message, 'error');
@@ -480,6 +508,8 @@ elements.btnCustomGenerate.addEventListener('click', async () => {
  * Application Bootstrap
  */
 async function initApp() {
+  init3DCardTilt();
+
   const hasAuthCode = new URLSearchParams(window.location.search).has('code');
   if (hasAuthCode) {
     try {
@@ -488,7 +518,7 @@ async function initApp() {
       if (token) {
         state.spotifyToken = token;
         state.isDemoMode = false;
-        showToast('Successfully connected to Spotify!', 'success');
+        showToast('Connected to Spotify!', 'success');
       }
     } catch (err) {
       console.error('Auth error:', err);

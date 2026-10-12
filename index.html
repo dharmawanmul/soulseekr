@@ -1,63 +1,86 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SoundWrapped — Experiential Spotify Wrapped & Aesthetic Cards</title>
-  <meta name="description" content="Beyond receipts. Transform your Spotify top tracks & artists into festival lineup posters, cosmic sound DNA, 90s cassettes, and 8-bit arcade cards. Free and hosted on GitHub Pages.">
-  <meta name="theme-color" content="#090a0f">
+  <title>SoundWrapped — Aesthetic Music Artifacts</title>
+  <meta name="description" content="Beyond flat receipts. Turn your Spotify top tracks into museum-grade physical artifacts: Vinyl master sleeves, Swiss posters, spatial sound prisms, and teenage engineering cassettes.">
+  <meta name="theme-color" content="#09090b">
 
-  <!-- OpenGraph / Social Sharing -->
+  <!-- OpenGraph Metadata -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="SoundWrapped — Aesthetic Music Wrapped Experience">
-  <meta property="og:description" content="Turn your music into aesthetic cultural artifacts. Instant interactive preview, real 30s studio audio, and high-res export.">
+  <meta property="og:title" content="SoundWrapped — Aesthetic Music Wrapped Artifacts">
+  <meta property="og:description" content="Turn your music into tangible design artifacts with 3D tilt, real 30s studio audio previews, and high-DPI export.">
 
-  <!-- Google Fonts: Curated Typography Pairing -->
+  <!-- Tailwind CSS via CDN with customized configuration -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            background: '#09090b',
+            foreground: '#fafafa',
+            card: '#121215',
+            border: 'rgba(255, 255, 255, 0.08)',
+            spotify: '#10b981'
+          },
+          fontFamily: {
+            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            display: ['Outfit', 'Syne', 'sans-serif'],
+            mono: ['Space Mono', 'Courier Prime', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Editorial & Physical Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Outfit:wght@600;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Press+Start+2P&family=Space+Grotesk:wght@500;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Core & Card Stylesheets -->
+  <!-- Design System & Artifact Stylesheets -->
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/cards.css">
 
-  <!-- html2canvas for high-res instant card snapshot export -->
+  <!-- html2canvas for High-DPI Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 </head>
-<body>
+<body class="bg-[#09090b] text-[#fafafa]">
 
-  <!-- Ambient Fluid Glow Orbs -->
-  <div class="ambient-glow-bg" aria-hidden="true">
-    <div class="glow-orb orb-1"></div>
-    <div class="glow-orb orb-2"></div>
-  </div>
+  <!-- Architectural Background Grid & Vignette Texture -->
+  <div class="bg-canvas-texture" aria-hidden="true"></div>
+  <div class="bg-vignette" aria-hidden="true"></div>
 
-  <!-- Application Header -->
+  <!-- Apple-Style Translucent Navigation Bar -->
   <header class="app-header">
     <div class="brand-wrapper">
-      <div class="brand-icon">
+      <div class="brand-badge-icon">
         <svg viewBox="0 0 24 24">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
         </svg>
       </div>
-      <div>
+      <div class="brand-meta">
         <h1 class="brand-title">SoundWrapped</h1>
+        <span class="brand-tagline">Physical Music Artifacts</span>
       </div>
     </div>
 
     <div class="header-actions">
       <span id="auth-status-badge" class="auth-badge badge-demo">DEMO MODE</span>
-      
+
       <button id="btn-toggle-demo" class="btn btn-secondary" title="View sample Spotify cards">
         Demo
       </button>
 
-      <button id="btn-custom-mix" class="btn btn-secondary" title="Pick any 5 songs & artists to render custom cards">
-        Custom Top 5
+      <button id="btn-custom-mix" class="btn btn-secondary" title="Pick any 5 songs & artists">
+        Custom Mix
       </button>
 
-      <button id="btn-connect-spotify" class="btn btn-spotify" title="Connect your real Spotify account">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+      <button id="btn-connect-spotify" class="btn btn-spotify" title="Connect your Spotify account via PKCE">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
         </svg>
         Connect Spotify
@@ -69,51 +92,55 @@
     </div>
   </header>
 
-  <!-- Main Experience Hub -->
+  <!-- Main Experience Studio -->
   <main class="main-layout">
     
-    <!-- Controls Toolbar -->
-    <section class="controls-hub" aria-label="Card Controls">
-      <div class="control-bar">
-        <!-- Archetype Tabs -->
-        <div class="style-tabs-group" role="tablist">
-          <button class="card-style-btn active" data-style="festival" role="tab" aria-selected="true">
-            🎪 Festival Poster
+    <!-- Segmented Inspector & Archetype Switcher -->
+    <section class="controls-hub" aria-label="Controls">
+      <div class="segmented-toolbar">
+        
+        <!-- Physical Card Archetype Segmented Control -->
+        <div class="segmented-group" role="tablist">
+          <button class="seg-btn active" data-style="vinyl" role="tab" aria-selected="true">
+            💿 Vinyl Obi
           </button>
-          <button class="card-style-btn" data-style="dna" role="tab" aria-selected="false">
-            🌌 Sound DNA
+          <button class="seg-btn" data-style="swiss" role="tab" aria-selected="false">
+            📐 Swiss Poster
           </button>
-          <button class="card-style-btn" data-style="retro" role="tab" aria-selected="false">
-            📼 90s Cassette
+          <button class="seg-btn" data-style="prism" role="tab" aria-selected="false">
+            🔮 Sound Prism
           </button>
-          <button class="card-style-btn" data-style="arcade" role="tab" aria-selected="false">
-            👾 8-Bit Arcade
+          <button class="seg-btn" data-style="cassette" role="tab" aria-selected="false">
+            📼 Industrial Tape
           </button>
-          <button class="card-style-btn" data-style="receipt" role="tab" aria-selected="false">
-            🧾 Thermal Receipt
+          <button class="seg-btn" data-style="receipt" role="tab" aria-selected="false">
+            🧾 Thermal Slip
           </button>
         </div>
 
-        <!-- Time Range Selector -->
-        <div class="time-pills-group" id="time-pills-wrapper" aria-label="Timeframe Selection">
-          <button class="time-pill active" data-range="short_term">4 Weeks</button>
-          <button class="time-pill" data-range="medium_term">6 Months</button>
-          <button class="time-pill" data-range="long_term">All Time</button>
+        <!-- Timeframe Segmented Control -->
+        <div class="time-segmented-group" aria-label="Timeframe">
+          <button class="time-btn active" data-range="short_term">4 Weeks</button>
+          <button class="time-btn" data-range="medium_term">6 Months</button>
+          <button class="time-btn" data-range="long_term">All Time</button>
         </div>
+
       </div>
     </section>
 
-    <!-- Card Display Stage -->
-    <section class="card-stage" aria-label="Visual Card Preview">
-      <div id="card-display-container">
+    <!-- 3D Interactive Card Stage with Specular Glare (motion-primitives) -->
+    <section class="card-stage-wrapper" aria-label="Interactive Card Stage">
+      <div id="card-tilt-container">
         <!-- Rendered dynamically by js/app.js -->
+        <div id="card-display-container"></div>
+        <div class="card-specular-glare" id="specular-glare"></div>
       </div>
     </section>
 
-    <!-- Export & Social Sharing Action Bar -->
+    <!-- Export & Social Action Dock -->
     <section class="export-dock" aria-label="Export Actions">
       <button id="btn-export-story" class="btn btn-export btn-export-primary" title="Download formatted for Instagram / TikTok Stories">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <rect x="5" y="2" width="14" height="20" rx="3" ry="3"/>
           <line x1="12" y1="18" x2="12.01" y2="18"/>
         </svg>
@@ -121,93 +148,100 @@
       </button>
 
       <button id="btn-export-square" class="btn btn-export" title="Download square post for feed">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
         </svg>
         Download Square (1:1)
       </button>
 
       <button id="btn-copy-clip" class="btn btn-export" title="Copy high-res snapshot to clipboard">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
           <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
         </svg>
-        Copy to Clipboard
+        Copy Image
       </button>
     </section>
 
   </main>
 
-  <!-- Now Playing Persistent Bottom Dock -->
-  <aside id="now-playing-bar" class="now-playing-dock" aria-live="polite">
-    <div class="mini-eq" style="color: var(--spotify-green);">
+  <!-- Apple Music Style Dynamic Island Floating Audio Dock -->
+  <aside id="now-playing-bar" class="dynamic-audio-dock" aria-live="polite">
+    <div class="dock-disc-art">
+      <img id="dock-thumb" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=100&q=80" alt="art" />
+    </div>
+    <div class="mini-eq" style="color: #10b981;">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </div>
-    <div class="np-info">
-      <span id="np-track-name" class="np-title">Track Name</span>
-      <span id="np-artist-name" class="np-sub">Artist Name</span>
+    <div class="dock-meta">
+      <span id="np-track-name" class="dock-title">Track Name</span>
+      <span id="np-artist-name" class="dock-artist">Artist Name</span>
     </div>
-    <button id="np-stop-btn" class="btn-np-stop" title="Stop Audio">✕</button>
+    <button id="np-stop-btn" class="btn-dock-close" title="Stop Audio">✕</button>
   </aside>
 
-  <!-- Spotify Client ID Config Modal -->
+  <!-- Spotify Client ID Config Dialog (shadcn inspired) -->
   <div id="client-id-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal-card">
-      <h2 id="modal-title">Connect Your Spotify</h2>
+      <div class="modal-header-row">
+        <h2 id="modal-title">Connect Spotify</h2>
+        <button id="btn-modal-cancel" class="btn-dock-close" title="Close">✕</button>
+      </div>
       <p>
-        Because this app is <strong>100% serverless</strong> and hosted on <strong>GitHub Pages</strong>, it uses official <strong>Spotify PKCE OAuth</strong> (no client secret or backend server required!).
+        SoundWrapped is <strong>100% serverless</strong> and runs directly in your browser using official <strong>Spotify PKCE OAuth</strong> (safe for public GitHub Pages).
       </p>
 
-      <label for="client-id-input" style="display:block; font-size: 0.8rem; font-weight:700; margin-bottom: 0.5rem; color: var(--text-secondary);">
+      <label for="client-id-input" style="display:block; font-size: 0.75rem; font-weight:600; margin-bottom: 0.4rem; color: #a1a1aa;">
         YOUR SPOTIFY CLIENT ID:
       </label>
       <input 
         type="text" 
         id="client-id-input" 
         class="modal-input-field" 
-        placeholder="Paste your 32-character Client ID from developer.spotify.com" 
+        placeholder="Paste your Client ID from developer.spotify.com" 
         autocomplete="off"
       />
 
       <div class="modal-btn-row">
-        <button id="btn-modal-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-modal-close-alt" class="btn btn-secondary">Cancel</button>
         <button id="btn-modal-submit" class="btn btn-spotify">Authorize with Spotify</button>
       </div>
 
-      <div class="setup-note">
-        <strong>Need a free Client ID?</strong><br>
-        1. Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" style="color: var(--spotify-green-hover);">Spotify Developer Dashboard</a> and click <strong>Create an App</strong>.<br>
-        2. In your app settings, add these <strong>Redirect URIs</strong> (tip: add all 3 so you can log in anywhere!):
+      <div class="setup-note mt-4 p-3 bg-zinc-900/80 rounded-lg border border-zinc-800 text-xs text-zinc-400">
+        <strong class="text-zinc-200">Spotify Developer Redirect URIs:</strong><br>
+        Add these into your app settings on <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" class="text-emerald-400 underline">developer.spotify.com</a>:
         
-        <div class="uri-list-box">
+        <div class="uri-list-box my-2">
           <div class="uri-item">
-            <code id="uri-ip">http://127.0.0.1:5173/</code>
+            <code>http://127.0.0.1:5173/</code>
             <button class="btn-copy-mini" id="copy-uri-ip">Copy</button>
           </div>
           <div class="uri-item">
-            <code id="uri-local">http://localhost:5173/</code>
+            <code>http://localhost:5173/</code>
             <button class="btn-copy-mini" id="copy-uri-local">Copy</button>
           </div>
           <div class="uri-item">
-            <code id="uri-gh">https://dharmawanmul.github.io/soulseekr/</code>
+            <code>https://dharmawanmul.github.io/soulseekr/</code>
             <button class="btn-copy-mini" id="copy-uri-gh">Copy</button>
           </div>
         </div>
-
-        3. Select <strong>Web API</strong> under APIs, click Save, then paste your Client ID above!
+        Tip: Adding all 3 allows you to log in smoothly from 127.0.0.1, localhost, and live GitHub Pages!
       </div>
     </div>
   </div>
 
-  <!-- Custom Top 5 Mix Modal -->
+  <!-- Custom Top 5 Mix Dialog -->
   <div id="custom-mix-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="custom-modal-title">
-    <div class="modal-card" style="max-width: 580px;">
-      <h2 id="custom-modal-title">Create Your Custom Top 5</h2>
+    <div class="modal-card" style="max-width: 540px;">
+      <div class="modal-header-row">
+        <h2 id="custom-modal-title">Custom Top 5 Mix</h2>
+        <button id="btn-custom-cancel" class="btn-dock-close" title="Close">✕</button>
+      </div>
       <p>
-        Pick a preset or type any 5 songs and artists. Real 30-second studio audio and album covers will be fetched automatically!
+        Select a preset or type any 5 songs and artists. Real 30-second studio audio and high-resolution album artwork will be fetched automatically!
       </p>
 
-      <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem;">QUICK PRESETS:</div>
+      <div style="font-size: 0.7rem; font-weight: 700; color: #71717a; margin-bottom: 0.4rem; letter-spacing:0.05em;">PRESETS:</div>
       <div class="preset-chips-row">
         <button class="preset-chip" data-preset="synthwave">🌆 Synthwave Drive</button>
         <button class="preset-chip" data-preset="indie">🎸 2000s Indie Rock</button>
@@ -239,36 +273,35 @@
       </div>
 
       <div class="modal-btn-row">
-        <button id="btn-custom-cancel" class="btn btn-secondary">Cancel</button>
-        <button id="btn-custom-generate" class="btn btn-export-primary">Generate My Cards</button>
+        <button id="btn-custom-cancel-alt" class="btn btn-secondary">Cancel</button>
+        <button id="btn-custom-generate" class="btn btn-export-primary">Generate Artifacts</button>
       </div>
     </div>
   </div>
 
-  <!-- Notification Toast Anchor -->
+  <!-- Notification Toast Container -->
   <div id="toast-container" aria-live="polite"></div>
 
-  <!-- Main JavaScript App Entrypoint (ES Module) -->
+  <!-- App Main Orchestrator (ES Module) -->
   <script type="module" src="js/app.js"></script>
 
   <script>
-    // Copy buttons for Redirect URIs
+    // Copy URI Helper handlers
     document.addEventListener('DOMContentLoaded', () => {
-      const setupCopyBtn = (btnId, text) => {
-        const btn = document.getElementById(btnId);
-        if (btn) {
-          btn.addEventListener('click', () => {
+      const bindCopy = (id, text) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.addEventListener('click', () => {
             navigator.clipboard.writeText(text);
-            const original = btn.textContent;
-            btn.textContent = 'Copied!';
-            setTimeout(() => { btn.textContent = original; }, 1500);
+            const orig = el.textContent;
+            el.textContent = 'Copied!';
+            setTimeout(() => el.textContent = orig, 1400);
           });
         }
       };
-
-      setupCopyBtn('copy-uri-ip', 'http://127.0.0.1:5173/');
-      setupCopyBtn('copy-uri-local', 'http://localhost:5173/');
-      setupCopyBtn('copy-uri-gh', 'https://dharmawanmul.github.io/soulseekr/');
+      bindCopy('copy-uri-ip', 'http://127.0.0.1:5173/');
+      bindCopy('copy-uri-local', 'http://localhost:5173/');
+      bindCopy('copy-uri-gh', 'https://dharmawanmul.github.io/soulseekr/');
     });
   </script>
 </body>
