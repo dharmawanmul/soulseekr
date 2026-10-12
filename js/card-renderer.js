@@ -61,9 +61,8 @@ function isTrackActive(trackId, playbackState) {
 export function renderGatewayCard() {
   return `
     <div class="card-inner card-gateway" id="exportable-card">
-      <div class="gateway-halo"></div>
       <div class="gateway-icon-wrap">
-        <svg width="36" height="36" viewBox="0 0 24 24" fill="#10b981">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="#fafafa">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
         </svg>
       </div>
@@ -375,6 +374,11 @@ export function renderReceiptCard(data, timeRange, playbackState) {
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
   const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
+  // Derive a stable slip number from the user's display_name so it doesn't
+  // re-roll every time the card re-renders due to playback state changes.
+  const slipSeed = (user.display_name || 'Customer').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const slipNumber = String(100 + (slipSeed % 900)).padStart(3, '0');
+
   let totalMs = 0;
   tracks.slice(0, 5).forEach(t => totalMs += (t.duration_ms || 0));
 
@@ -385,7 +389,7 @@ export function renderReceiptCard(data, timeRange, playbackState) {
       <div class="receipt-head">
         <h2 class="receipt-logo">RECORD BAR ARCHIVE</h2>
         <div class="receipt-sub">
-          <div>SLIP #00${Math.floor(100 + Math.random() * 900)} // SPOTIFY TERMINAL</div>
+          <div>SLIP #${slipNumber} // SPOTIFY TERMINAL</div>
           <div>CUSTOMER: ${escapeHtml(user.display_name).toUpperCase()}</div>
           <div>TIMESTAMP: ${dateStr} ${timeStr}</div>
           <div>TIMEFRAME: ${rangeLabel}</div>
@@ -443,7 +447,7 @@ export function renderReceiptCard(data, timeRange, playbackState) {
       <div class="receipt-barcode-box">
         <div class="r-barcode-visual">||| |||| || | ||||| ||| || |||| ||</div>
         <div class="r-barcode-note">AUTHENTICATED CLIENT-SIDE VIA SPOTIFY PKCE</div>
-        <div class="r-barcode-note" style="font-weight:700; color:#000; margin-top:2px;">SOULSEEKR.APP</div>
+        <div class="r-barcode-note" style="font-weight:700; margin-top:2px;">SOULSEEKR.APP</div>
       </div>
 
       <div class="receipt-tear bottom-tear"></div>

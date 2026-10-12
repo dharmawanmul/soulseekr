@@ -74,8 +74,8 @@ export async function exportCardAsImage(format = 'card') {
     sqCanvas.height = 1200;
     const ctx = sqCanvas.getContext('2d');
 
-    // Dark gradient
-    const grad = ctx.createLinearGradient(0, 1200, 1200, 1200);
+    // Dark gradient — correct direction: top-to-bottom
+    const grad = ctx.createLinearGradient(0, 0, 0, 1200);
     grad.addColorStop(0, '#0c0d14');
     grad.addColorStop(1, '#050608');
     ctx.fillStyle = grad;

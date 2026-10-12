@@ -8,12 +8,10 @@ import {
   handleAuthCallback, 
   getValidAccessToken, 
   fetchCompleteUserWrapped, 
-  computeSonicAura,
   logoutSpotify,
   SPOTIFY_CONFIG 
 } from './spotify-api.js';
 import { 
-  renderGatewayCard,
   renderVinylCard, 
   renderSwissCard, 
   renderPrismCard, 
@@ -25,13 +23,101 @@ import {
 import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 
+// Curated default preview data allowing instant, responsive exploration across all 7 card archetypes
+export const DEFAULT_CURATED_DATA = {
+  user: {
+    display_name: 'Soulseekr Archivist',
+    images: [{ url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80' }]
+  },
+  timeRange: 'short_term',
+  topTracks: [
+    {
+      id: 'preview_1',
+      name: 'Starboy',
+      artists: [{ name: 'The Weeknd', id: 'art_1' }, { name: 'Daft Punk', id: 'art_2' }],
+      album: {
+        name: 'Starboy',
+        images: [{ url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80' }]
+      },
+      duration_ms: 230453,
+      preview_url: null
+    },
+    {
+      id: 'preview_2',
+      name: 'Midnight City',
+      artists: [{ name: 'M83', id: 'art_3' }],
+      album: {
+        name: "Hurry Up, We're Dreaming",
+        images: [{ url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80' }]
+      },
+      duration_ms: 243266,
+      preview_url: null
+    },
+    {
+      id: 'preview_3',
+      name: 'The Less I Know The Better',
+      artists: [{ name: 'Tame Impala', id: 'art_4' }],
+      album: {
+        name: 'Currents',
+        images: [{ url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=300&q=80' }]
+      },
+      duration_ms: 216320,
+      preview_url: null
+    },
+    {
+      id: 'preview_4',
+      name: '505',
+      artists: [{ name: 'Arctic Monkeys', id: 'art_5' }],
+      album: {
+        name: 'Favourite Worst Nightmare',
+        images: [{ url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=300&q=80' }]
+      },
+      duration_ms: 253586,
+      preview_url: null
+    },
+    {
+      id: 'preview_5',
+      name: 'Dreams',
+      artists: [{ name: 'Fleetwood Mac', id: 'art_6' }],
+      album: {
+        name: 'Rumours',
+        images: [{ url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80' }]
+      },
+      duration_ms: 257800,
+      preview_url: null
+    }
+  ],
+  topArtists: [
+    { name: 'The Weeknd', genres: ['canadian pop', 'r&b'], images: [{ url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'M83', genres: ['indie rock', 'synthpop'], images: [{ url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Tame Impala', genres: ['neo-psychedelia'], images: [{ url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Arctic Monkeys', genres: ['garage rock', 'indie rock'], images: [{ url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Fleetwood Mac', genres: ['classic rock', 'soft rock'], images: [{ url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80' }] }
+  ],
+  stats: {
+    dominantGenre: 'Neo-Psychedelia / Synthpop',
+    topGenre: 'Neo-Psychedelia / Synthpop',
+    obscurityScore: 78,
+    obscurityTier: 'Underground Crate Digger',
+    totalMinutes: 198,
+    acousticEnergy: '74%',
+    energyScore: 78,
+    danceScore: 72,
+    acousticScore: 54,
+    tempoBpm: 122,
+    vibeLabel: 'Cinematic Dreamer',
+    auraTitle: 'Subterranean Velvet',
+    auraColors: ['#8b5cf6', '#38bdf8', '#c084fc']
+  }
+};
+
 // Application State
 const state = {
   cardStyle: 'vinyl', // 'vinyl' | 'swiss' | 'prism' | 'cassette' | 'receipt' | 'gameboy' | 'vippass'
   timeRange: 'short_term', // 'short_term' | 'medium_term' | 'long_term'
   spotifyToken: null,
   cachedRealData: {},
-  currentData: null,
+  currentData: DEFAULT_CURATED_DATA,
   playbackState: {
     isPlaying: false,
     isLoading: false,
@@ -55,26 +141,11 @@ function initElements() {
   elements.btnLogout = document.getElementById('btn-logout');
   elements.authStatusBadge = document.getElementById('auth-status-badge');
   elements.toastContainer = document.getElementById('toast-container');
-  elements.sonicAuraMesh = document.getElementById('sonic-aura-mesh');
   elements.nowPlayingBar = document.getElementById('now-playing-bar');
   elements.dockThumb = document.getElementById('dock-thumb');
   elements.npTrackName = document.getElementById('np-track-name');
   elements.npArtistName = document.getElementById('np-artist-name');
   elements.npStopBtn = document.getElementById('np-stop-btn');
-}
-
-/**
- * Dynamic Synesthetic Sonic Aura Mesh Updater
- */
-function updateSonicAura(stats) {
-  if (!elements.sonicAuraMesh) return;
-  if (stats && stats.auraGradient) {
-    elements.sonicAuraMesh.style.background = stats.auraGradient;
-    elements.sonicAuraMesh.style.opacity = '0.85';
-  } else {
-    elements.sonicAuraMesh.style.background = 'radial-gradient(circle at 45% 45%, rgba(139, 92, 246, 0.28) 0%, rgba(16, 185, 129, 0.2) 40%, rgba(6, 182, 212, 0.12) 70%, transparent 85%)';
-    elements.sonicAuraMesh.style.opacity = '0.5';
-  }
 }
 
 /**
@@ -102,19 +173,16 @@ export function showToast(message, type = 'info', duration = 2800) {
  * Update UI Data based on mode & range
  */
 async function loadData() {
-  // Real Spotify data mode
   const token = state.spotifyToken || (await getValidAccessToken());
   if (!token) {
-    state.currentData = null;
-    updateSonicAura(null);
-    updateAuthBadge('NOT CONNECTED', 'unauth');
+    state.currentData = DEFAULT_CURATED_DATA;
+    updateAuthBadge('PREVIEW • CONNECT SPOTIFY', 'unauth');
     renderCurrentCard();
     return;
   }
 
   if (state.cachedRealData[state.timeRange]) {
     state.currentData = state.cachedRealData[state.timeRange];
-    updateSonicAura(state.currentData.stats);
     updateAuthBadge((state.currentData.user?.display_name || 'SPOTIFY CONNECTED').toUpperCase(), 'active');
     renderCurrentCard();
     return;
@@ -130,15 +198,13 @@ async function loadData() {
     const wrapped = await fetchCompleteUserWrapped(token, state.timeRange);
     state.cachedRealData[state.timeRange] = wrapped;
     state.currentData = wrapped;
-    updateSonicAura(wrapped.stats);
     updateAuthBadge((wrapped.user?.display_name || 'SPOTIFY CONNECTED').toUpperCase(), 'active');
     renderCurrentCard();
   } catch (err) {
     console.error('Fetch wrapped error:', err);
     showToast(`Spotify API: ${err.message}`, 'error', 4500);
-    state.currentData = null;
-    updateSonicAura(null);
-    updateAuthBadge('NOT CONNECTED', 'unauth');
+    state.currentData = DEFAULT_CURATED_DATA;
+    updateAuthBadge('PREVIEW • CONNECT SPOTIFY', 'unauth');
     renderCurrentCard();
   }
 }
@@ -166,37 +232,36 @@ async function startSpotifyAuth() {
 }
 
 /**
- * Render the currently selected physical card or Gateway Prompt
+ * Render the currently selected physical card directly
  */
 function renderCurrentCard() {
-  if (!state.currentData) {
-    elements.cardContainer.innerHTML = renderGatewayCard();
-    document.getElementById('btn-gateway-auth')?.addEventListener('click', startSpotifyAuth);
-    return;
-  }
-
+  const data = state.currentData || DEFAULT_CURATED_DATA;
   let html = '';
+
   switch (state.cardStyle) {
     case 'vinyl':
-      html = renderVinylCard(state.currentData, state.timeRange, state.playbackState);
+      html = renderVinylCard(data, state.timeRange, state.playbackState);
       break;
     case 'swiss':
-      html = renderSwissCard(state.currentData, state.timeRange, state.playbackState);
+      html = renderSwissCard(data, state.timeRange, state.playbackState);
       break;
     case 'prism':
-      html = renderPrismCard(state.currentData, state.timeRange, state.playbackState);
+      html = renderPrismCard(data, state.timeRange, state.playbackState);
       break;
     case 'cassette':
-      html = renderCassetteCard(state.currentData, state.timeRange, state.playbackState);
+      html = renderCassetteCard(data, state.timeRange, state.playbackState);
       break;
     case 'receipt':
-      html = renderReceiptCard(state.currentData, state.timeRange, state.playbackState);
+      html = renderReceiptCard(data, state.timeRange, state.playbackState);
       break;
     case 'gameboy':
-      html = renderGameboyCard(state.currentData, state.timeRange, state.playbackState);
+      html = renderGameboyCard(data, state.timeRange, state.playbackState);
       break;
     case 'vippass':
-      html = renderVipPassCard(state.currentData, state.timeRange, state.playbackState);
+      html = renderVipPassCard(data, state.timeRange, state.playbackState);
+      break;
+    default:
+      html = renderReceiptCard(data, state.timeRange, state.playbackState);
       break;
   }
 
@@ -209,10 +274,11 @@ function renderCurrentCard() {
  */
 function attachTrackListeners() {
   const triggerElements = elements.cardContainer.querySelectorAll('.track-play-trigger');
+  const data = state.currentData || DEFAULT_CURATED_DATA;
   triggerElements.forEach(el => {
     el.addEventListener('click', async () => {
       const trackId = el.getAttribute('data-track-id');
-      const track = state.currentData.topTracks.find(t => t.id === trackId);
+      const track = data.topTracks.find(t => t.id === trackId);
       if (track) {
         await soundEngine.playTrack(track);
       }
@@ -225,9 +291,10 @@ function attachTrackListeners() {
  */
 soundEngine.onStateChange(({ isPlaying, isLoading, currentTrackId }) => {
   state.playbackState = { isPlaying, isLoading, trackId: currentTrackId };
+  const data = state.currentData || DEFAULT_CURATED_DATA;
 
-  if ((isPlaying || isLoading) && currentTrackId && state.currentData) {
-    const track = state.currentData.topTracks.find(t => t.id === currentTrackId);
+  if ((isPlaying || isLoading) && currentTrackId && data) {
+    const track = data.topTracks.find(t => t.id === currentTrackId);
     if (track) {
       elements.nowPlayingBar.classList.add('active');
       elements.npTrackName.textContent = track.name;
@@ -266,13 +333,17 @@ function init3DCardTilt() {
     const rotateX = ((y - centerY) / centerY) * -9; // max 9 deg
     const rotateY = ((x - centerX) / centerX) * 9;
 
+    // Disable transition during active tracking for zero-lag feel
+    box.style.transition = 'none';
     box.style.transform = `rotateX(${rotateX.toFixed(2)}deg) rotateY(${rotateY.toFixed(2)}deg)`;
     box.style.setProperty('--glare-x', `${(x / rect.width) * 100}%`);
     box.style.setProperty('--glare-y', `${(y / rect.height) * 100}%`);
   });
 
   box.addEventListener('mouseleave', () => {
-    box.style.transform = `rotateX(0deg) rotateY(0deg)`;
+    // Re-enable transition so the spring-back is smooth
+    box.style.transition = 'transform 400ms cubic-bezier(0.23, 1, 0.32, 1)';
+    box.style.transform = 'rotateX(0deg) rotateY(0deg)';
   });
 }
 
@@ -283,8 +354,12 @@ function setupEventListeners() {
 
   elements.cardStyleTabs?.forEach(btn => {
     btn.addEventListener('click', () => {
-      elements.cardStyleTabs.forEach(b => b.classList.remove('active'));
+      elements.cardStyleTabs.forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-selected', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
       state.cardStyle = btn.getAttribute('data-style');
       renderCurrentCard();
     });
@@ -355,7 +430,7 @@ function setupEventListeners() {
   elements.btnLogout?.addEventListener('click', () => {
     logoutSpotify();
     state.spotifyToken = null;
-    state.currentData = null;
+    state.currentData = DEFAULT_CURATED_DATA; // keep preview rather than flashing blank
     state.cachedRealData = {};
     showToast('Logged out of Spotify', 'info');
     loadData();

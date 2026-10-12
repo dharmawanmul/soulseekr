@@ -15,6 +15,13 @@
   transition: transform 160ms var(--ease-snappy);
 }
 
+/* Receipt overrides card-inner's border-radius — paper has no rounded corners */
+.card-inner.card-receipt {
+  border-radius: 2px;
+  overflow: visible; /* allow torn-edge clip-path to extend outside */
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
 /* Micro Equalizer & Spinner */
 .mini-eq {
   display: inline-flex;
@@ -775,8 +782,12 @@
   color: #18181b;
   padding: 2.25rem 1.6rem 2rem;
   font-family: var(--font-mono);
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
   position: relative;
+}
+
+/* Matte Paper: Disable glossy 3D glare overlay for thermal receipt */
+#card-tilt-container:has(.card-receipt) .card-specular-glare {
+  display: none !important;
 }
 
 .receipt-tear {
@@ -838,9 +849,21 @@
   margin-bottom: 0.5rem;
 }
 
-.r-col-qty { width: 32px; }
-.r-col-desc { flex: 1; }
-.r-col-amt { width: 50px; text-align: right; }
+.r-col-qty { width: 32px; flex-shrink: 0; }
+.r-col-desc { flex: 1; min-width: 0; }
+.r-col-amt { width: 44px; text-align: right; flex-shrink: 0; }
+
+/* Play indicator pinned to the right so it never displaces the layout */
+.receipt-line .play-hint,
+.receipt-line .mini-eq,
+.receipt-line .mini-spinner {
+  flex-shrink: 0;
+  margin-left: 6px;
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 
 .receipt-rows {
   display: flex;
@@ -945,26 +968,14 @@
   overflow: hidden;
 }
 
-.gateway-halo {
-  position: absolute;
-  top: -120px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 320px;
-  height: 240px;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.22) 0%, rgba(6, 182, 212, 0.1) 45%, transparent 70%);
-  filter: blur(40px);
-  pointer-events: none;
-}
-
 .gateway-badge {
   font-family: var(--font-mono);
   font-size: 0.65rem;
   font-weight: 700;
   letter-spacing: 0.14em;
-  color: #10b981;
-  background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  color: #e4e4e7;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   padding: 0.25rem 0.65rem;
   border-radius: 999px;
   text-transform: uppercase;
@@ -973,15 +984,15 @@
 }
 
 .gateway-icon-wrap {
-  width: 68px;
-  height: 68px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.18));
-  border: 1px solid rgba(16, 185, 129, 0.45);
+  width: 64px;
+  height: 64px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 28px rgba(16, 185, 129, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   position: relative;
   z-index: 2;
   margin-bottom: 0.1rem;
@@ -1400,7 +1411,7 @@
 }
 
 .vip-hologram-band::after {
-  content: "GENUINE AUTHENTIC PASS • SOULSEEKR 2024 • SECURE ACCESS";
+  content: "GENUINE AUTHENTIC PASS • SOULSEEKR 2026 • SECURE ACCESS";
   position: absolute;
   inset: 0;
   display: flex;
