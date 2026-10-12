@@ -113,7 +113,7 @@ class SoundEngine {
 
     let previewUrl = track.preview_url;
 
-    // If Spotify didn't provide a preview_url (or in demo mode), resolve genuine 30s audio
+    // If Spotify didn't provide a preview_url, resolve genuine 30s studio audio from Apple/iTunes
     if (!previewUrl) {
       const artist = (track.artists && track.artists[0]) ? track.artists[0].name : '';
       previewUrl = await this.resolveRealAudioPreview(track.name, artist);

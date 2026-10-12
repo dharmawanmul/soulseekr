@@ -3,7 +3,6 @@
  * Physical Music Artifacts with 3D Tilt & Studio Audio
  */
 
-import { mockData } from './mock-data.js';
 import { 
   initiateSpotifyLogin, 
   handleAuthCallback, 
@@ -13,6 +12,7 @@ import {
   SPOTIFY_CONFIG 
 } from './spotify-api.js';
 import { 
+  renderGatewayCard,
   renderVinylCard, 
   renderSwissCard, 
   renderPrismCard, 
@@ -26,7 +26,6 @@ import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './expor
 const state = {
   cardStyle: 'vinyl', // 'vinyl' | 'swiss' | 'prism' | 'cassette' | 'receipt'
   timeRange: 'short_term', // 'short_term' | 'medium_term' | 'long_term' | 'custom'
-  isDemoMode: true,
   spotifyToken: null,
   cachedRealData: {},
   currentData: null,
@@ -37,7 +36,7 @@ const state = {
   }
 };
 
-// Preset Mixes
+// Preset Mixes for Custom Mix creation
 const PRESETS = {
   synthwave: [
     { name: "Starboy", artist: "The Weeknd" },
@@ -80,7 +79,6 @@ const elements = {
   btnExportSquare: document.getElementById('btn-export-square'),
   btnCopyClip: document.getElementById('btn-copy-clip'),
   btnConnectSpotify: document.getElementById('btn-connect-spotify'),
-  btnToggleDemo: document.getElementById('btn-toggle-demo'),
   btnCustomMix: document.getElementById('btn-custom-mix'),
   btnLogout: document.getElementById('btn-logout'),
   authStatusBadge: document.getElementById('auth-status-badge'),
@@ -126,14 +124,7 @@ export function showToast(message, type = 'info', duration = 2800) {
  */
 async function loadData() {
   if (state.timeRange === 'custom' && state.currentData) {
-    updateAuthBadge('CUSTOM ARTIFACT', 'demo');
-    renderCurrentCard();
-    return;
-  }
-
-  if (state.isDemoMode) {
-    state.currentData = mockData[state.timeRange] || mockData.short_term;
-    updateAuthBadge('DEMO MODE', 'demo');
+    updateAuthBadge('CUSTOM MIX', 'custom');
     renderCurrentCard();
     return;
   }
@@ -141,16 +132,15 @@ async function loadData() {
   // Real Spotify data mode
   const token = state.spotifyToken || (await getValidAccessToken());
   if (!token) {
-    state.isDemoMode = true;
-    state.currentData = mockData[state.timeRange] || mockData.short_term;
-    updateAuthBadge('DEMO MODE', 'demo');
+    state.currentData = null;
+    updateAuthBadge('NOT CONNECTED', 'unauth');
     renderCurrentCard();
     return;
   }
 
   if (state.cachedRealData[state.timeRange]) {
     state.currentData = state.cachedRealData[state.timeRange];
-    updateAuthBadge('SPOTIFY CONNECTED', 'active');
+    updateAuthBadge((state.currentData.user?.display_name || 'SPOTIFY CONNECTED').toUpperCase(), 'active');
     renderCurrentCard();
     return;
   }
@@ -165,14 +155,13 @@ async function loadData() {
     const wrapped = await fetchCompleteUserWrapped(token, state.timeRange);
     state.cachedRealData[state.timeRange] = wrapped;
     state.currentData = wrapped;
-    updateAuthBadge((wrapped.user.display_name || 'SPOTIFY').toUpperCase(), 'active');
+    updateAuthBadge((wrapped.user?.display_name || 'SPOTIFY CONNECTED').toUpperCase(), 'active');
     renderCurrentCard();
   } catch (err) {
     console.error('Fetch wrapped error:', err);
     showToast(`Spotify API: ${err.message}`, 'error', 4500);
-    state.isDemoMode = true;
-    state.currentData = mockData[state.timeRange] || mockData.short_term;
-    updateAuthBadge('DEMO MODE', 'demo');
+    state.currentData = null;
+    updateAuthBadge('NOT CONNECTED', 'unauth');
     renderCurrentCard();
   }
 }
@@ -189,11 +178,27 @@ function updateAuthBadge(text, status) {
   }
 }
 
+function openAuthModal() {
+  const savedId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId) || SPOTIFY_CONFIG.defaultClientId || '';
+  if (savedId) {
+    elements.clientIdInput.value = savedId;
+  }
+  elements.clientIdModal.classList.add('modal-open');
+  elements.clientIdInput.focus();
+}
+
 /**
- * Render the currently selected physical card
+ * Render the currently selected physical card or Gateway Prompt
  */
 function renderCurrentCard() {
-  if (!state.currentData) return;
+  if (!state.currentData) {
+    elements.cardContainer.innerHTML = renderGatewayCard();
+    document.getElementById('btn-gateway-auth')?.addEventListener('click', openAuthModal);
+    document.getElementById('btn-gateway-custom')?.addEventListener('click', () => {
+      elements.customMixModal.classList.add('modal-open');
+    });
+    return;
+  }
 
   let html = '';
   switch (state.cardStyle) {
@@ -309,6 +314,11 @@ elements.cardStyleTabs.forEach(btn => {
  */
 elements.timeRangePills.forEach(pill => {
   pill.addEventListener('click', () => {
+    if (!state.spotifyToken && state.timeRange !== 'custom') {
+      showToast('Connect Spotify to explore different timeframes', 'info');
+      openAuthModal();
+      return;
+    }
     elements.timeRangePills.forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
     state.timeRange = pill.getAttribute('data-range');
@@ -320,6 +330,11 @@ elements.timeRangePills.forEach(pill => {
  * Setup High-DPI Export Actions
  */
 elements.btnExportStory.addEventListener('click', async () => {
+  if (!state.currentData) {
+    showToast('Connect Spotify or generate a custom mix first!', 'warning');
+    openAuthModal();
+    return;
+  }
   try {
     showToast('Generating 9:16 Story card...', 'info', 2000);
     const dataUrl = await exportCardAsImage('story');
@@ -331,6 +346,11 @@ elements.btnExportStory.addEventListener('click', async () => {
 });
 
 elements.btnExportSquare.addEventListener('click', async () => {
+  if (!state.currentData) {
+    showToast('Connect Spotify or generate a custom mix first!', 'warning');
+    openAuthModal();
+    return;
+  }
   try {
     showToast('Generating Square card...', 'info', 2000);
     const dataUrl = await exportCardAsImage('square');
@@ -342,6 +362,11 @@ elements.btnExportSquare.addEventListener('click', async () => {
 });
 
 elements.btnCopyClip.addEventListener('click', async () => {
+  if (!state.currentData) {
+    showToast('Connect Spotify or generate a custom mix first!', 'warning');
+    openAuthModal();
+    return;
+  }
   try {
     await copyCardToClipboard();
     showToast('Copied card snapshot to clipboard!', 'success');
@@ -353,13 +378,7 @@ elements.btnCopyClip.addEventListener('click', async () => {
 /**
  * Spotify Auth Modal Controls
  */
-elements.btnConnectSpotify.addEventListener('click', () => {
-  const savedId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
-  if (savedId) {
-    elements.clientIdInput.value = savedId;
-  }
-  elements.clientIdModal.classList.add('modal-open');
-});
+elements.btnConnectSpotify.addEventListener('click', openAuthModal);
 
 elements.btnModalCancel.addEventListener('click', () => elements.clientIdModal.classList.remove('modal-open'));
 elements.btnModalCloseAlt?.addEventListener('click', () => elements.clientIdModal.classList.remove('modal-open'));
@@ -381,17 +400,10 @@ elements.btnModalSubmit.addEventListener('click', async () => {
   }
 });
 
-elements.btnToggleDemo.addEventListener('click', () => {
-  state.isDemoMode = true;
-  state.cachedRealData = {};
-  showToast('Switched to Demo catalog', 'info');
-  loadData();
-});
-
 elements.btnLogout.addEventListener('click', () => {
   logoutSpotify();
   state.spotifyToken = null;
-  state.isDemoMode = true;
+  state.currentData = null;
   state.cachedRealData = {};
   showToast('Logged out of Spotify', 'info');
   loadData();
@@ -494,7 +506,7 @@ elements.btnCustomGenerate.addEventListener('click', async () => {
     };
 
     state.timeRange = 'custom';
-    updateAuthBadge('CUSTOM ARTIFACT', 'demo');
+    updateAuthBadge('CUSTOM MIX', 'custom');
     renderCurrentCard();
     showToast('Physical artifacts generated with real studio previews!', 'success');
   } catch (err) {
@@ -517,8 +529,7 @@ async function initApp() {
       const token = await handleAuthCallback();
       if (token) {
         state.spotifyToken = token;
-        state.isDemoMode = false;
-        showToast('Connected to Spotify!', 'success');
+        showToast('Connected to Spotify! Generating artifacts...', 'success');
       }
     } catch (err) {
       console.error('Auth error:', err);
@@ -528,7 +539,11 @@ async function initApp() {
     const existingToken = await getValidAccessToken();
     if (existingToken) {
       state.spotifyToken = existingToken;
-      state.isDemoMode = false;
+    } else {
+      // First-time visitor: open the Spotify authorization modal automatically!
+      setTimeout(() => {
+        openAuthModal();
+      }, 400);
     }
   }
 

@@ -140,7 +140,6 @@ To allow visitors or yourself to log in with real Spotify data:
 │   ├── audio-player.js       # Preview playback & Web Audio synth engine
 │   ├── card-renderer.js      # Card HTML templates & formatters
 │   ├── exporter.js           # html2canvas Instagram Story (9:16) & Square (1:1) PNG engine
-│   ├── mock-data.js          # Realistic demo dataset for instant zero-config testing
 │   └── spotify-api.js        # Spotify PKCE OAuth 2.0 client-side authentication
 ├── index.html                # Semantic HTML5 entrypoint
 ├── package.json              # Local development scripts

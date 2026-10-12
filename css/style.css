@@ -170,14 +170,14 @@ body {
   border-radius: 50%;
 }
 
-.badge-demo {
-  background: rgba(245, 158, 11, 0.1);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.25);
+.badge-custom {
+  background: rgba(168, 85, 247, 0.1);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.25);
 }
-.badge-demo::before {
-  background: #fbbf24;
-  box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+.badge-custom::before {
+  background: #a855f7;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.5);
 }
 
 .badge-active {
@@ -188,6 +188,15 @@ body {
 .badge-active::before {
   background: #10b981;
   box-shadow: 0 0 6px var(--spotify-emerald-glow);
+}
+
+.badge-unauth {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--muted-foreground);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.badge-unauth::before {
+  background: #71717a;
 }
 
 /* Tactile Buttons (tweakcn / shadcn / Apple feedback) */
