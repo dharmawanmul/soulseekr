@@ -55,12 +55,12 @@ function base64UrlEncode(buffer) {
  * Get the standardized redirect URI for current page
  */
 export function getStandardRedirectUri() {
-  // Removes query parameters and hash, ensures clean trailing slash if root
-  let uri = window.location.origin + window.location.pathname;
-  if (!uri.endsWith('/') && !uri.includes('.')) {
-    uri += '/';
+  const origin = window.location.origin;
+  let pathname = window.location.pathname.replace(/\/index\.html$/i, '');
+  if (!pathname.endsWith('/')) {
+    pathname += '/';
   }
-  return uri;
+  return origin + pathname;
 }
 
 /**
@@ -83,6 +83,7 @@ export async function initiateSpotifyLogin(customClientId = null) {
 
   // Save the EXACT redirect URI used during authorization to guarantee token exchange match
   const redirectUri = getStandardRedirectUri();
+  console.log('[Spotify OAuth] Redirect URI sent to Spotify:', redirectUri);
   localStorage.setItem(SPOTIFY_CONFIG.storageKeys.redirectUri, redirectUri);
 
   const params = new URLSearchParams({
