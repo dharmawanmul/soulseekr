@@ -1,4 +1,4 @@
-# 🎧 SoundWrapped — Aesthetic Physical Music Artifacts
+# 🎧 Soulseekr — Aesthetic Physical Music Artifacts
 
 > **Beyond flat receipts.** Turn your Spotify listening history into tangible, museum-grade cultural artifacts with interactive **3D tilt**, **specular lighting**, and **real 30-second studio audio**.
 
@@ -27,7 +27,7 @@ Designed to run **100% serverless** and deploy effortlessly to **GitHub Pages** 
 
 ## 🛠️ Architecture: How Spotify Auth Works on GitHub Pages
 
-Traditional Spotify apps require a backend server to hide a `CLIENT_SECRET`. Because GitHub Pages only hosts static client-side files, SoundWrapped uses **Spotify PKCE OAuth (Proof Key for Code Exchange)**:
+Traditional Spotify apps require a backend server to hide a `CLIENT_SECRET`. Because GitHub Pages only hosts static client-side files, Soulseekr uses **Spotify PKCE OAuth (Proof Key for Code Exchange)**:
 
 ```
 ┌─────────────────────┐                               ┌──────────────────────┐
@@ -60,8 +60,8 @@ Traditional Spotify apps require a backend server to hide a `CLIENT_SECRET`. Bec
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/<your-username>/spotify-soundwrapped.git
-   cd spotify-soundwrapped
+   git clone https://github.com/dharmawanmul/soulseekr.git
+   cd soulseekr
    ```
 
 2. **Start the local dev server**:
@@ -85,7 +85,7 @@ This repository already includes `.github/workflows/deploy.yml`:
 1. Push your code to your GitHub repository:
    ```bash
    git add .
-   git commit -m "Initial release of SoundWrapped"
+   git commit -m "Initial release of Soulseekr"
    git push origin main
    ```
 2. In your GitHub repository:
@@ -110,7 +110,7 @@ To allow visitors or yourself to log in with real Spotify data:
 
 1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and sign in.
 2. Click **Create an App**:
-   - **App name**: `SoundWrapped` (or any name you like).
+   - **App name**: `Soulseekr` (or any name you like).
    - **App description**: `Experiential music wrapped cards`.
    - **Redirect URIs**: Add **all 3** of these URIs into your Spotify App settings:
      - `http://127.0.0.1:5173/` (for local IP testing)
@@ -118,7 +118,7 @@ To allow visitors or yourself to log in with real Spotify data:
      - `https://dharmawanmul.github.io/soulseekr/` (for live GitHub Pages!)
    - Under **Which API/SDKs are you planning to use?**, check **Web API**.
 3. Save the app and copy your **Client ID**.
-4. Open your SoundWrapped site, click **Connect Spotify**, paste your **Client ID**, and click **Authorize**!
+4. Open your Soulseekr site, click **Authorize with Spotify**, and that's it! 1-click login!
 
 > **Why did 127.0.0.1 work while localhost needed adding?** Spotify's security treats `localhost` and `127.0.0.1` as two completely separate domains. Registering all 3 URIs above guarantees you can log in from any URL without `INVALID_REDIRECT_URI` errors!
 >

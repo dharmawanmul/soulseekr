@@ -64,7 +64,7 @@ export async function exportCardAsImage(format = 'card') {
     ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
     ctx.textAlign = 'center';
-    ctx.fillText('SOUNDWRAPPED // SPOTIFY EXPERIENCE', 540, 1850);
+    ctx.fillText('SOULSEEKR // SPOTIFY EXPERIENCE', 540, 1850);
 
     return storyCanvas.toDataURL('image/png');
   } else if (format === 'square') {
@@ -75,7 +75,7 @@ export async function exportCardAsImage(format = 'card') {
     const ctx = sqCanvas.getContext('2d');
 
     // Dark gradient
-    const grad = ctx.createLinearGradient(0, 0, 1200, 1200);
+    const grad = ctx.createLinearGradient(0, 1200, 1200, 1200);
     grad.addColorStop(0, '#0c0d14');
     grad.addColorStop(1, '#050608');
     ctx.fillStyle = grad;
@@ -100,7 +100,7 @@ export async function exportCardAsImage(format = 'card') {
 /**
  * Trigger download of generated image
  */
-export function downloadDataUrl(dataUrl, filename = 'soundwrapped-card.png') {
+export function downloadDataUrl(dataUrl, filename = 'soulseekr-card.png') {
   const link = document.createElement('a');
   link.href = dataUrl;
   link.download = filename;

@@ -1,5 +1,5 @@
 /**
- * SoundWrapped Card Rendering Engine
+ * Soulseekr Card Rendering Engine
  * Renders 5 physical, museum-grade music artifacts:
  * 1. The Vinyl Master Sleeve (Japanese Obi-Strip + Peeking Disc)
  * 2. The Swiss Typographic Poster (International Typographic Style)
@@ -296,7 +296,7 @@ export function renderPrismCard(data, timeRange, playbackState) {
 
       <div class="prism-footer">
         <span>PRIMARY FREQ: ${escapeHtml(stats.dominantGenre).toUpperCase()}</span>
-        <span>SOUNDWRAPPED OS</span>
+        <span>SOULSEEKR OS</span>
       </div>
     </div>
   `;

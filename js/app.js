@@ -1,5 +1,5 @@
 /**
- * SoundWrapped Main Application Orchestrator
+ * Soulseekr Main Application Orchestrator
  * Physical Music Artifacts with 3D Tilt & Studio Audio
  */
 
@@ -332,7 +332,7 @@ function setupEventListeners() {
     try {
       showToast('Generating 9:16 Story card...', 'info', 2000);
       const dataUrl = await exportCardAsImage('story');
-      downloadDataUrl(dataUrl, `soundwrapped-${state.cardStyle}-story.png`);
+      downloadDataUrl(dataUrl, `soulseekr-${state.cardStyle}-story.png`);
       showToast('Downloaded Story image!', 'success');
     } catch (err) {
       showToast(err.message, 'error');
@@ -348,7 +348,7 @@ function setupEventListeners() {
     try {
       showToast('Generating Square card...', 'info', 2000);
       const dataUrl = await exportCardAsImage('square');
-      downloadDataUrl(dataUrl, `soundwrapped-${state.cardStyle}-square.png`);
+      downloadDataUrl(dataUrl, `soulseekr-${state.cardStyle}-square.png`);
       showToast('Downloaded Square image!', 'success');
     } catch (err) {
       showToast(err.message, 'error');
