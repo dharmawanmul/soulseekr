@@ -4,8 +4,11 @@
  * Square Posts (1:1), or copying straight to clipboard!
  */
 
-export async function exportCardAsImage(format = 'card') {
-  const cardElement = document.getElementById('exportable-card');
+export async function exportCardAsImage(format = 'card', target = null) {
+  const cardElement = typeof target === 'string'
+    ? document.getElementById(target)
+    : (target || document.getElementById('exportable-card'));
+
   if (!cardElement) {
     throw new Error('Card element not found.');
   }
@@ -112,8 +115,10 @@ export function downloadDataUrl(dataUrl, filename = 'soulseekr-card.png') {
 /**
  * Copy image to clipboard if supported
  */
-export async function copyCardToClipboard() {
-  const cardElement = document.getElementById('exportable-card');
+export async function copyCardToClipboard(target = null) {
+  const cardElement = typeof target === 'string'
+    ? document.getElementById(target)
+    : (target || document.getElementById('exportable-card'));
   if (!cardElement) throw new Error('Card not found');
 
   const canvas = await window.html2canvas(cardElement, {

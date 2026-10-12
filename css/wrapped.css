@@ -1,0 +1,1118 @@
+/* ==========================================================================
+   Soulseekr — Spotify Wrapped 3D Experience Stylesheet
+   Apple-grade Fluid Motion • Three.js Stage • Glassmorphic Artifacts
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   Header Wrapped Launch Button
+   -------------------------------------------------------------------------- */
+.btn-wrapped {
+  position: relative;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.16) 0%, rgba(139, 92, 246, 0.18) 50%, rgba(236, 72, 153, 0.16) 100%);
+  color: #fafafa;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 20px -3px rgba(16, 185, 129, 0.25), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  font-weight: 600;
+  overflow: hidden;
+  gap: 0.5rem;
+  transition: transform 140ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 200ms ease, border-color 200ms ease;
+}
+
+.btn-wrapped::before {
+  content: "";
+  position: absolute;
+  inset: -100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.15), transparent);
+  transform: rotate(35deg);
+  animation: wrappedBtnShimmer 4.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes wrappedBtnShimmer {
+  0%, 70% { transform: translateX(-150%) rotate(35deg); }
+  100% { transform: translateX(150%) rotate(35deg); }
+}
+
+.btn-wrapped:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 25px 2px rgba(139, 92, 246, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  color: #fff;
+}
+
+.btn-wrapped:active {
+  transform: scale(0.97) translateY(0);
+}
+
+.wrapped-sparkle {
+  display: inline-block;
+  animation: sparkleTwinkle 2.5s ease-in-out infinite alternate;
+}
+
+@keyframes sparkleTwinkle {
+  0% { transform: scale(0.9) rotate(0deg); opacity: 0.85; }
+  100% { transform: scale(1.15) rotate(12deg); opacity: 1; filter: drop-shadow(0 0 6px #10b981); }
+}
+
+.wrapped-badge-pill {
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, #10b981, #8b5cf6);
+  color: #fff;
+  line-height: 1;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* --------------------------------------------------------------------------
+   Fullscreen Wrapped Experience Modal
+   -------------------------------------------------------------------------- */
+.wrapped-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 6, 10, 0.92);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 320ms cubic-bezier(0.23, 1, 0.32, 1), visibility 320ms;
+  user-select: none;
+}
+
+.wrapped-modal.is-open {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+/* Three.js 3D WebGL Canvas */
+#wrapped-three-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.92;
+}
+
+/* --------------------------------------------------------------------------
+   Story Stage Card Viewport
+   -------------------------------------------------------------------------- */
+.wrapped-stage {
+  position: relative;
+  z-index: 10;
+  width: 100%;
+  max-width: 440px;
+  height: 90vh;
+  max-height: 800px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 32px;
+  background: rgba(14, 15, 23, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 
+    0 30px 90px -20px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  transform: scale(0.95);
+  transition: transform 340ms cubic-bezier(0.23, 1, 0.32, 1), box-shadow 340ms ease;
+}
+
+.wrapped-modal.is-open .wrapped-stage {
+  transform: scale(1);
+}
+
+/* Ambient glow bleed behind stage */
+.wrapped-stage-glow {
+  position: absolute;
+  inset: -20px;
+  border-radius: 44px;
+  background: radial-gradient(circle at 50% 30%, var(--slide-accent, rgba(139, 92, 246, 0.25)) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 5;
+  filter: blur(40px);
+  opacity: 0.7;
+  transition: background 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+/* --------------------------------------------------------------------------
+   Story Header & Multi-Segment Progress Bars
+   -------------------------------------------------------------------------- */
+.wrapped-header-bar {
+  position: relative;
+  z-index: 30;
+  padding: 1.1rem 1.25rem 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.wrapped-progress-track {
+  display: flex;
+  gap: 6px;
+  width: 100%;
+  height: 3.5px;
+}
+
+.wrapped-seg {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
+  overflow: hidden;
+  position: relative;
+  cursor: pointer;
+  height: 100%;
+  transition: background 150ms ease;
+}
+
+.wrapped-seg:hover {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.wrapped-seg-fill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 0%;
+  background: #ffffff;
+  border-radius: 9999px;
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+}
+
+.wrapped-seg.completed .wrapped-seg-fill {
+  width: 100%;
+}
+
+.wrapped-user-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.wrapped-user-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+
+.wrapped-user-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+}
+
+.wrapped-user-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.wrapped-user-name {
+  font-size: 0.775rem;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.01em;
+}
+
+.wrapped-user-tag {
+  font-size: 0.625rem;
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.wrapped-top-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.btn-wrapped-control {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.btn-wrapped-control:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.btn-wrapped-control:active {
+  transform: scale(0.92);
+}
+
+/* --------------------------------------------------------------------------
+   Story Tap Zones & Desktop Navigation Chevrons
+   -------------------------------------------------------------------------- */
+.wrapped-tap-zone {
+  position: absolute;
+  top: 70px;
+  bottom: 0;
+  width: 38%;
+  z-index: 20;
+  cursor: pointer;
+}
+
+.wrapped-tap-zone-left {
+  left: 0;
+}
+
+.wrapped-tap-zone-right {
+  right: 0;
+}
+
+/* External Desktop Chevrons */
+.wrapped-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.25rem;
+  cursor: pointer;
+  z-index: 50;
+  transition: all 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.wrapped-nav-arrow:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: translateY(-50%) scale(1.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.wrapped-nav-arrow:active {
+  transform: translateY(-50%) scale(0.94);
+}
+
+.wrapped-nav-prev {
+  left: max(1.5rem, calc(50vw - 280px));
+}
+
+.wrapped-nav-next {
+  right: max(1.5rem, calc(50vw - 280px));
+}
+
+@media (max-width: 640px) {
+  .wrapped-nav-arrow {
+    display: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Slides Container & Transition Engine
+   -------------------------------------------------------------------------- */
+.wrapped-slides-viewport {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  z-index: 15;
+}
+
+.wrapped-slide {
+  position: absolute;
+  inset: 0;
+  padding: 1rem 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transform: scale(0.96) translateY(12px);
+  filter: blur(6px);
+  transition: 
+    opacity 320ms cubic-bezier(0.23, 1, 0.32, 1),
+    transform 320ms cubic-bezier(0.23, 1, 0.32, 1),
+    filter 320ms cubic-bezier(0.23, 1, 0.32, 1),
+    visibility 320ms;
+}
+
+.wrapped-slide.is-active {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: scale(1) translateY(0);
+  filter: blur(0);
+}
+
+/* --------------------------------------------------------------------------
+   Shared Slide Components & Typography
+   -------------------------------------------------------------------------- */
+.slide-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.675rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--slide-accent, #10b981);
+  margin-bottom: 0.4rem;
+}
+
+.slide-title {
+  font-family: var(--font-display, sans-serif);
+  font-size: 1.85rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: #fff;
+  margin-bottom: 0.35rem;
+}
+
+.slide-desc {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.35;
+}
+
+/* --------------------------------------------------------------------------
+   Slide 0: Prologue / Cosmic Identity
+   -------------------------------------------------------------------------- */
+.prologue-center {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 1.25rem;
+  margin: auto 0;
+}
+
+.prologue-avatar-orb {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 40px rgba(16, 185, 129, 0.35);
+}
+
+.prologue-avatar-orb::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #10b981, #8b5cf6, #ec4899, #10b981);
+  animation: rotateAura 8s linear infinite;
+  z-index: -1;
+}
+
+@keyframes rotateAura {
+  100% { transform: rotate(360deg); }
+}
+
+.prologue-avatar-img {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #0e0f17;
+}
+
+.prologue-stat-box {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 1.1rem 1.6rem;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  backdrop-filter: blur(12px);
+}
+
+.prologue-big-number {
+  font-family: var(--font-display, sans-serif);
+  font-size: 2.75rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  background: linear-gradient(135deg, #ffffff 30%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.prologue-stat-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.prologue-vibe-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #c084fc;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.prologue-prompt {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+  animation: promptPulse 2s ease-in-out infinite;
+}
+
+@keyframes promptPulse {
+  0%, 100% { opacity: 0.4; transform: translateY(0); }
+  50% { opacity: 0.9; transform: translateY(2px); }
+}
+
+/* --------------------------------------------------------------------------
+   Slide 1: Top 5 Anthems
+   -------------------------------------------------------------------------- */
+.top-track-hero {
+  position: relative;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  padding: 0.85rem;
+  display: flex;
+  gap: 0.85rem;
+  align-items: center;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  transition: transform 160ms var(--ease-snappy, ease), border-color 160ms ease;
+}
+
+.top-track-hero:hover {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.top-track-vinyl-wrapper {
+  position: relative;
+  width: 82px;
+  height: 82px;
+  flex-shrink: 0;
+}
+
+.top-track-art {
+  position: relative;
+  width: 74px;
+  height: 74px;
+  border-radius: 12px;
+  object-fit: cover;
+  z-index: 2;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+.top-track-vinyl {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #27272a 20%, #09090b 21%, #18181b 35%, #09090b 45%, #18181b 60%, #09090b 80%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 1;
+  transition: transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.top-track-hero:hover .top-track-vinyl,
+.top-track-hero.is-playing .top-track-vinyl {
+  transform: translateX(18px) rotate(180deg);
+}
+
+.top-track-hero.is-playing .top-track-vinyl {
+  animation: spinRecord 3s linear infinite;
+}
+
+@keyframes spinRecord {
+  100% { transform: translateX(18px) rotate(360deg); }
+}
+
+.top-track-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  overflow: hidden;
+  flex: 1;
+}
+
+.top-track-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #f59e0b;
+  letter-spacing: 0.08em;
+}
+
+.top-track-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-track-artist {
+  font-size: 0.775rem;
+  color: rgba(255, 255, 255, 0.65);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.top-track-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  font-size: 0.675rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+/* Secondary Tracks List */
+.tracks-ladder {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-top: 0.4rem;
+}
+
+.ladder-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  padding: 0.45rem 0.65rem;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.ladder-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  transform: translateX(4px);
+}
+
+.ladder-rank {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.4);
+  width: 18px;
+}
+
+.ladder-thumb {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  object-fit: cover;
+}
+
+.ladder-meta {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.ladder-title {
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ladder-artist {
+  font-size: 0.675rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   Slide 2: Top 5 Albums
+   -------------------------------------------------------------------------- */
+.album-hero {
+  position: relative;
+  width: 100%;
+  height: 190px;
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  padding: 1.1rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+.album-hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.7);
+  transition: transform 600ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.album-hero:hover .album-hero-bg {
+  transform: scale(1.05);
+}
+
+.album-hero-scrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.2) 60%, transparent 100%);
+}
+
+.album-hero-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.album-crown-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #f59e0b;
+  letter-spacing: 0.08em;
+}
+
+.album-hero-name {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+
+.album-hero-artist {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.album-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.album-mini-card {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.5rem;
+  transition: all 140ms ease;
+}
+
+.album-mini-card:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.album-mini-art {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.album-mini-info {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.album-mini-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.album-mini-artist {
+  font-size: 0.65rem;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   Slide 3: Minutes & Sonic DNA
+   -------------------------------------------------------------------------- */
+.minutes-hero-block {
+  text-align: center;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(6, 182, 212, 0.08));
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  border-radius: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.minutes-counter {
+  font-family: var(--font-display, sans-serif);
+  font-size: 3.25rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  color: #10b981;
+  line-height: 1;
+}
+
+.minutes-subtext {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
+}
+
+.metrics-bento {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.metric-bento-card {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.metric-bento-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.metric-bento-val {
+  font-family: var(--font-display, sans-serif);
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.metric-bento-bar {
+  width: 100%;
+  height: 4px;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+
+.metric-bento-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #06b6d4);
+  border-radius: 9999px;
+}
+
+/* Equalizer Bars Animation */
+.mini-eq-bars {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 4px;
+  height: 28px;
+  margin: 0.4rem 0;
+}
+
+.eq-bar {
+  width: 4px;
+  background: #10b981;
+  border-radius: 2px;
+  animation: eqBounce 1.2s ease-in-out infinite alternate;
+}
+
+.eq-bar:nth-child(1) { height: 12px; animation-delay: 0.1s; }
+.eq-bar:nth-child(2) { height: 24px; animation-delay: 0.4s; }
+.eq-bar:nth-child(3) { height: 18px; animation-delay: 0.2s; }
+.eq-bar:nth-child(4) { height: 28px; animation-delay: 0.5s; }
+.eq-bar:nth-child(5) { height: 14px; animation-delay: 0.3s; }
+
+@keyframes eqBounce {
+  0% { transform: scaleY(0.3); }
+  100% { transform: scaleY(1); }
+}
+
+/* --------------------------------------------------------------------------
+   Slide 4: Top 5 Genres & Sonic Aura
+   -------------------------------------------------------------------------- */
+.genres-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.genre-bar-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.genre-bar-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.775rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.genre-bar-pct {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.725rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.genre-bar-track {
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+.genre-bar-fill {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #8b5cf6, #ec4899);
+  transition: width 800ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.aura-card-box {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.12));
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 20px;
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.aura-orb-sphere {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #ec4899, #8b5cf6, #3b82f6);
+  box-shadow: 0 0 24px rgba(236, 72, 153, 0.5);
+  animation: auraFloat 4s ease-in-out infinite alternate;
+  flex-shrink: 0;
+}
+
+@keyframes auraFloat {
+  0% { transform: scale(0.95) rotate(0deg); filter: hue-rotate(0deg); }
+  100% { transform: scale(1.08) rotate(180deg); filter: hue-rotate(40deg); }
+}
+
+.aura-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.aura-card-title {
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.aura-card-desc {
+  font-size: 0.725rem;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+/* --------------------------------------------------------------------------
+   Slide 5: Master Recap Archive Card
+   -------------------------------------------------------------------------- */
+.recap-card-artifact {
+  position: relative;
+  background: linear-gradient(150deg, #18181f 0%, #0d0e14 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+}
+
+.recap-artifact-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 0.75rem;
+}
+
+.recap-brand {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.95rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.recap-year-pill {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 0.2rem 0.5rem;
+  border-radius: 9999px;
+}
+
+.recap-summary-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.recap-summary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.recap-item-label {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.625rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.45);
+  text-transform: uppercase;
+}
+
+.recap-item-val {
+  font-size: 0.825rem;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recap-actions-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+}
+
+.btn-recap-action {
+  flex: 1;
+  padding: 0.6rem;
+  border-radius: 12px;
+  font-size: 0.775rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  transition: transform 120ms ease, background 140ms ease;
+}
+
+.btn-recap-primary {
+  background: #10b981;
+  color: #042f2e;
+  border: 1px solid transparent;
+}
+
+.btn-recap-primary:hover {
+  background: #34d399;
+  transform: translateY(-1px);
+}
+
+.btn-recap-secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.btn-recap-secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+  transform: translateY(-1px);
+}
+
+.btn-recap-action:active {
+  transform: scale(0.97);
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .wrapped-slide {
+    transition: opacity 150ms ease;
+    transform: none !important;
+    filter: none !important;
+  }
+  .top-track-vinyl,
+  .prologue-avatar-orb::before,
+  .aura-orb-sphere,
+  .eq-bar {
+    animation: none !important;
+  }
+}

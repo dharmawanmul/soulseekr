@@ -22,6 +22,7 @@ import {
 } from './card-renderer.js';
 import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
+import { wrappedExperience } from './wrapped-experience.js';
 
 // Curated default preview data allowing instant, responsive exploration across all 7 card archetypes
 export const DEFAULT_CURATED_DATA = {
@@ -94,12 +95,61 @@ export const DEFAULT_CURATED_DATA = {
     { name: 'Arctic Monkeys', genres: ['garage rock', 'indie rock'], images: [{ url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=300&q=80' }] },
     { name: 'Fleetwood Mac', genres: ['classic rock', 'soft rock'], images: [{ url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80' }] }
   ],
+  topAlbums: [
+    {
+      id: 'alb_1',
+      name: 'Starboy',
+      artistName: 'The Weeknd',
+      releaseYear: '2016',
+      trackCount: 4,
+      images: [{ url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=500&q=80' }]
+    },
+    {
+      id: 'alb_2',
+      name: "Hurry Up, We're Dreaming",
+      artistName: 'M83',
+      releaseYear: '2011',
+      trackCount: 3,
+      images: [{ url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=500&q=80' }]
+    },
+    {
+      id: 'alb_3',
+      name: 'Currents',
+      artistName: 'Tame Impala',
+      releaseYear: '2015',
+      trackCount: 3,
+      images: [{ url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=500&q=80' }]
+    },
+    {
+      id: 'alb_4',
+      name: 'Favourite Worst Nightmare',
+      artistName: 'Arctic Monkeys',
+      releaseYear: '2007',
+      trackCount: 2,
+      images: [{ url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=500&q=80' }]
+    },
+    {
+      id: 'alb_5',
+      name: 'Rumours',
+      artistName: 'Fleetwood Mac',
+      releaseYear: '1977',
+      trackCount: 2,
+      images: [{ url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=500&q=80' }]
+    }
+  ],
+  topGenres: [
+    { name: 'Neo-Psychedelia', count: 9, percentage: 38 },
+    { name: 'Synthpop & Wave', count: 6, percentage: 24 },
+    { name: 'Indie Rock', count: 5, percentage: 19 },
+    { name: 'R&B / Soul', count: 3, percentage: 12 },
+    { name: 'Alternative Pop', count: 2, percentage: 7 }
+  ],
   stats: {
     dominantGenre: 'Neo-Psychedelia / Synthpop',
     topGenre: 'Neo-Psychedelia / Synthpop',
     obscurityScore: 78,
     obscurityTier: 'Underground Crate Digger',
-    totalMinutes: 198,
+    totalMinutes: 48320,
     acousticEnergy: '74%',
     energyScore: 78,
     danceScore: 72,
@@ -137,6 +187,7 @@ function initElements() {
   elements.btnExportStory = document.getElementById('btn-export-story');
   elements.btnExportSquare = document.getElementById('btn-export-square');
   elements.btnCopyClip = document.getElementById('btn-copy-clip');
+  elements.btnOpenWrapped = document.getElementById('btn-open-wrapped');
   elements.btnConnectSpotify = document.getElementById('btn-connect-spotify');
   elements.btnLogout = document.getElementById('btn-logout');
   elements.authStatusBadge = document.getElementById('auth-status-badge');
@@ -348,6 +399,11 @@ function init3DCardTilt() {
 }
 
 function setupEventListeners() {
+  elements.btnOpenWrapped?.addEventListener('click', () => {
+    const data = state.currentData || DEFAULT_CURATED_DATA;
+    wrappedExperience.open(data, state.timeRange);
+  });
+
   elements.npStopBtn?.addEventListener('click', () => {
     soundEngine.stop();
   });

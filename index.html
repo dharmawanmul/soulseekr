@@ -42,8 +42,12 @@
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
 
   <!-- Design System & Artifact Stylesheets -->
-  <link rel="stylesheet" href="css/style.css?v=2.3">
-  <link rel="stylesheet" href="css/cards.css?v=2.3">
+  <link rel="stylesheet" href="css/style.css?v=2.4">
+  <link rel="stylesheet" href="css/cards.css?v=2.4">
+  <link rel="stylesheet" href="css/wrapped.css?v=2.4">
+
+  <!-- Three.js WebGL Engine for 3D Wrapped Visualizer -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
   <!-- html2canvas for High-DPI Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
@@ -69,6 +73,13 @@
     </div>
 
     <div class="header-actions">
+      <!-- 3D Spotify Wrapped Experience Trigger -->
+      <button id="btn-open-wrapped" class="btn btn-wrapped" title="Launch 3D Spotify Wrapped Experience">
+        <span class="wrapped-sparkle">✨</span>
+        <span>Wrapped Experience</span>
+        <span class="wrapped-badge-pill">3D</span>
+      </button>
+
       <span id="auth-status-badge" class="auth-badge badge-unauth">NOT CONNECTED</span>
 
       <button id="btn-connect-spotify" class="btn btn-spotify" title="Connect your Spotify account via PKCE">
@@ -183,7 +194,45 @@
   <!-- Notification Toast Container -->
   <div id="toast-container" aria-live="polite"></div>
 
+  <!-- Fullscreen 3D Spotify Wrapped Experience Modal -->
+  <div id="wrapped-modal" class="wrapped-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Spotify Wrapped 3D Experience">
+    <canvas id="wrapped-three-canvas"></canvas>
+
+    <!-- Floating Desktop Nav Chevrons -->
+    <button id="wrapped-nav-prev" class="wrapped-nav-arrow wrapped-nav-prev" title="Previous Story (Left Arrow)" aria-label="Previous Story">‹</button>
+    <button id="wrapped-nav-next" class="wrapped-nav-arrow wrapped-nav-next" title="Next Story (Right Arrow / Space)" aria-label="Next Story">›</button>
+
+    <div class="wrapped-stage-glow" id="wrapped-stage-glow"></div>
+
+    <div class="wrapped-stage">
+      <!-- Top Progress Bar & Header Meta -->
+      <div class="wrapped-header-bar">
+        <div class="wrapped-progress-track" id="wrapped-progress-track"></div>
+        <div class="wrapped-user-row">
+          <div class="wrapped-user-identity">
+            <img id="wrapped-user-avatar" class="wrapped-user-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="avatar">
+            <div class="wrapped-user-meta">
+              <span id="wrapped-user-name" class="wrapped-user-name">Soulseekr Archivist</span>
+              <span id="wrapped-user-tag" class="wrapped-user-tag">2026 Archive</span>
+            </div>
+          </div>
+          <div class="wrapped-top-controls">
+            <button id="btn-wrapped-mute" class="btn-wrapped-control" title="Toggle Audio (Mute / Unmute)">🔊</button>
+            <button id="btn-wrapped-close" class="btn-wrapped-control" title="Close Wrapped (Esc)">✕</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tap Navigation Zones -->
+      <div id="wrapped-tap-left" class="wrapped-tap-zone wrapped-tap-zone-left" title="Tap left to go back"></div>
+      <div id="wrapped-tap-right" class="wrapped-tap-zone wrapped-tap-zone-right" title="Tap right to continue"></div>
+
+      <!-- Slides Viewport (Rendered dynamically) -->
+      <div class="wrapped-slides-viewport" id="wrapped-slides-viewport"></div>
+    </div>
+  </div>
+
   <!-- App Main Orchestrator (ES Module) -->
-  <script type="module" src="js/app.js?v=2.3"></script>
+  <script type="module" src="js/app.js?v=2.4"></script>
 </body>
 </html>
