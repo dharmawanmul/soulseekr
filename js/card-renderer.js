@@ -27,22 +27,46 @@ export function getTimeRangeLabel(timeRange) {
     case 'short_term': return 'PAST 4 WEEKS';
     case 'medium_term': return 'LAST 6 MONTHS';
     case 'long_term': return 'ALL-TIME CLASSICS';
+    case 'custom': return 'CUSTOM SELECTION';
     default: return 'RECENT ROTATION';
   }
+}
+
+function getIndicator(trackId, playbackState) {
+  const isMatch = playbackState && (
+    (typeof playbackState === 'string' && playbackState === trackId) ||
+    (typeof playbackState === 'object' && playbackState.trackId === trackId)
+  );
+
+  if (!isMatch) {
+    return '<span class="play-hint">▶</span>';
+  }
+
+  if (typeof playbackState === 'object' && playbackState.isLoading) {
+    return '<span class="mini-spinner" title="Loading audio..."></span>';
+  }
+
+  return '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>';
+}
+
+function isTrackActive(trackId, playbackState) {
+  if (!playbackState) return false;
+  if (typeof playbackState === 'string') return playbackState === trackId;
+  return playbackState.trackId === trackId;
 }
 
 /**
  * Render Festival Lineup Card
  */
-export function renderFestivalCard(data, timeRange, currentPlayingId) {
+export function renderFestivalCard(data, timeRange, playbackState) {
   const user = data.user || { display_name: 'Audiophile' };
   const artists = data.topArtists || [];
   const tracks = data.topTracks || [];
   const rangeLabel = getTimeRangeLabel(timeRange);
 
-  const headliner = artists[0] ? artists[0].name.toUpperCase() : 'THE WEEKND';
-  const subHeadliners = artists.slice(1, 3).map(a => a.name.toUpperCase()).join(' • ');
-  const supporting = artists.slice(3, 5).map(a => a.name.toUpperCase()).join(' — ');
+  const headliner = artists[0] ? artists[0].name.toUpperCase() : (tracks[0]?.artists[0]?.name?.toUpperCase() || 'THE WEEKND');
+  const subHeadliners = artists.slice(1, 3).map(a => a.name.toUpperCase()).join(' • ') || 'DAFT PUNK • M83';
+  const supporting = artists.slice(3, 5).map(a => a.name.toUpperCase()).join(' — ') || 'DUA LIPA — ARCTIC MONKEYS';
 
   return `
     <div class="card-inner card-festival" id="exportable-card">
@@ -63,10 +87,10 @@ export function renderFestivalCard(data, timeRange, currentPlayingId) {
           <span class="act-name">${escapeHtml(headliner)}</span>
         </div>
         <div class="billing-tier tier-sub">
-          <span class="act-name">${escapeHtml(subHeadliners || 'DUA LIPA • DAFT PUNK')}</span>
+          <span class="act-name">${escapeHtml(subHeadliners)}</span>
         </div>
         <div class="billing-tier tier-support">
-          <span class="act-name">${escapeHtml(supporting || 'M83 — ARCTIC MONKEYS')}</span>
+          <span class="act-name">${escapeHtml(supporting)}</span>
         </div>
         <div class="billing-tier tier-genres">
           <span>SPECIAL SETS: ${escapeHtml(data.stats.dominantGenre).toUpperCase()}</span>
@@ -74,16 +98,16 @@ export function renderFestivalCard(data, timeRange, currentPlayingId) {
       </div>
 
       <div class="fest-setlist-box">
-        <div class="fest-setlist-title">OFFICIAL FESTIVAL ANTHEMS</div>
+        <div class="fest-setlist-title">OFFICIAL FESTIVAL ANTHEMS (CLICK TO PLAY)</div>
         <div class="fest-tracks-grid">
           ${tracks.slice(0, 5).map((track, i) => {
-            const isPlaying = currentPlayingId === track.id;
+            const active = isTrackActive(track.id, playbackState);
             return `
-              <div class="fest-track-item track-play-trigger ${isPlaying ? 'playing' : ''}" data-track-id="${track.id}" title="Click to play preview">
+              <div class="fest-track-item track-play-trigger ${active ? 'playing' : ''}" data-track-id="${track.id}" title="Click to play preview">
                 <span class="fest-track-idx">0${i + 1}</span>
                 <span class="fest-track-name">${escapeHtml(track.name)}</span>
                 <span class="fest-track-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
-                ${isPlaying ? '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>' : '<span class="play-hint">▶</span>'}
+                ${getIndicator(track.id, playbackState)}
               </div>
             `;
           }).join('')}
@@ -93,7 +117,7 @@ export function renderFestivalCard(data, timeRange, currentPlayingId) {
       <div class="fest-footer">
         <div class="fest-barcode-wrap">
           <div class="fest-barcode">||| | |||| | ||| |||| | | |||| |||</div>
-          <div class="fest-serial">PASS ID: ${Math.floor(100000 + Math.random() * 900000)} // SPOTIFY PKCE CERTIFIED</div>
+          <div class="fest-serial">PASS ID: ${Math.floor(100000 + Math.random() * 900000)} // SPOTIFY CERTIFIED</div>
         </div>
         <div class="fest-stamp">VIP ACCESS</div>
       </div>
@@ -104,7 +128,7 @@ export function renderFestivalCard(data, timeRange, currentPlayingId) {
 /**
  * Render Sound DNA Aurora Glass Card
  */
-export function renderDnaCard(data, timeRange, currentPlayingId) {
+export function renderDnaCard(data, timeRange, playbackState) {
   const user = data.user || { display_name: 'Explorer' };
   const tracks = data.topTracks || [];
   const stats = data.stats || {};
@@ -162,12 +186,12 @@ export function renderDnaCard(data, timeRange, currentPlayingId) {
       </div>
 
       <div class="dna-track-list">
-        <div class="dna-tracks-heading">TOP ROTATION</div>
+        <div class="dna-tracks-heading">TOP ROTATION (CLICK TO LISTEN)</div>
         ${tracks.slice(0, 5).map((track, i) => {
-          const isPlaying = currentPlayingId === track.id;
+          const active = isTrackActive(track.id, playbackState);
           const imgUrl = (track.album && track.album.images && track.album.images[0]?.url) || '';
           return `
-            <div class="dna-track-row track-play-trigger ${isPlaying ? 'playing' : ''}" data-track-id="${track.id}">
+            <div class="dna-track-row track-play-trigger ${active ? 'playing' : ''}" data-track-id="${track.id}">
               <span class="dna-idx">0${i + 1}</span>
               ${imgUrl ? `<img src="${imgUrl}" class="dna-album-art" alt="art" />` : ''}
               <div class="dna-track-info">
@@ -175,7 +199,7 @@ export function renderDnaCard(data, timeRange, currentPlayingId) {
                 <span class="dna-tartist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
               </div>
               <span class="dna-tdur">${formatDuration(track.duration_ms)}</span>
-              ${isPlaying ? '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>' : '<span class="play-btn-ghost">▶</span>'}
+              ${getIndicator(track.id, playbackState)}
             </div>
           `;
         }).join('')}
@@ -192,10 +216,14 @@ export function renderDnaCard(data, timeRange, currentPlayingId) {
 /**
  * Render Retro Mixtape / Cassette Card
  */
-export function renderRetroCard(data, timeRange, currentPlayingId) {
+export function renderRetroCard(data, timeRange, playbackState) {
   const user = data.user || { display_name: 'Tape Head' };
   const tracks = data.topTracks || [];
   const rangeLabel = getTimeRangeLabel(timeRange);
+  const isCurrentlyPlaying = playbackState && (
+    (typeof playbackState === 'object' && playbackState.isPlaying) || 
+    (typeof playbackState === 'string')
+  );
 
   return `
     <div class="card-inner card-retro" id="exportable-card">
@@ -213,14 +241,14 @@ export function renderRetroCard(data, timeRange, currentPlayingId) {
           </div>
 
           <div class="tape-window-area">
-            <div class="spool spool-left ${currentPlayingId ? 'spinning' : ''}">
+            <div class="spool spool-left ${isCurrentlyPlaying ? 'spinning' : ''}">
               <div class="teeth"></div>
             </div>
             <div class="tape-glass">
               <div class="tape-film"></div>
               <div class="tape-ruler">| • | • | • | • |</div>
             </div>
-            <div class="spool spool-right ${currentPlayingId ? 'spinning' : ''}">
+            <div class="spool spool-right ${isCurrentlyPlaying ? 'spinning' : ''}">
               <div class="teeth"></div>
             </div>
           </div>
@@ -231,19 +259,19 @@ export function renderRetroCard(data, timeRange, currentPlayingId) {
 
       <div class="jcard-inlay">
         <div class="jcard-header">
-          <span>TRACKLIST // SIDE A</span>
+          <span>TRACKLIST // SIDE A (CLICK TRACK)</span>
           <span class="jcard-genre">${escapeHtml(data.stats.dominantGenre)}</span>
         </div>
         <div class="jcard-tracks">
           ${tracks.slice(0, 5).map((track, i) => {
-            const isPlaying = currentPlayingId === track.id;
+            const active = isTrackActive(track.id, playbackState);
             return `
-              <div class="jcard-track-item track-play-trigger ${isPlaying ? 'playing' : ''}" data-track-id="${track.id}">
+              <div class="jcard-track-item track-play-trigger ${active ? 'playing' : ''}" data-track-id="${track.id}">
                 <span class="j-num">${i + 1}.</span>
                 <span class="j-title">${escapeHtml(track.name)}</span>
                 <span class="j-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
                 <span class="j-time">${formatDuration(track.duration_ms)}</span>
-                ${isPlaying ? '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>' : ''}
+                ${getIndicator(track.id, playbackState)}
               </div>
             `;
           }).join('')}
@@ -252,7 +280,7 @@ export function renderRetroCard(data, timeRange, currentPlayingId) {
 
       <div class="cassette-meta-footer">
         <span>STEREO DOLBY B NR</span>
-        <span>RECORDED FROM SPOTIFY STREAM</span>
+        <span>SOUNDWRAPPED ANALOG AUDIO</span>
       </div>
     </div>
   `;
@@ -261,7 +289,7 @@ export function renderRetroCard(data, timeRange, currentPlayingId) {
 /**
  * Render 8-Bit Arcade High-Score Card
  */
-export function renderArcadeCard(data, timeRange, currentPlayingId) {
+export function renderArcadeCard(data, timeRange, playbackState) {
   const user = data.user || { display_name: 'PLAYER 1' };
   const tracks = data.topTracks || [];
   const rangeLabel = getTimeRangeLabel(timeRange);
@@ -288,17 +316,17 @@ export function renderArcadeCard(data, timeRange, currentPlayingId) {
         </div>
         <div class="board-rows">
           ${tracks.slice(0, 5).map((track, i) => {
-            const isPlaying = currentPlayingId === track.id;
+            const active = isTrackActive(track.id, playbackState);
             const points = (99000 - (i * 12340)).toLocaleString();
             return `
-              <div class="arcade-row track-play-trigger ${isPlaying ? 'playing' : ''}" data-track-id="${track.id}">
+              <div class="arcade-row track-play-trigger ${active ? 'playing' : ''}" data-track-id="${track.id}">
                 <span class="a-rank">${i + 1}ST</span>
                 <div class="a-info">
                   <span class="a-song">${escapeHtml(track.name)}</span>
                   <span class="a-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
                 </div>
                 <span class="a-score">${points}</span>
-                ${isPlaying ? '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>' : ''}
+                ${getIndicator(track.id, playbackState)}
               </div>
             `;
           }).join('')}
@@ -327,7 +355,7 @@ export function renderArcadeCard(data, timeRange, currentPlayingId) {
 /**
  * Render Thermal Receipt 2.0 Card
  */
-export function renderReceiptCard(data, timeRange, currentPlayingId) {
+export function renderReceiptCard(data, timeRange, playbackState) {
   const user = data.user || { display_name: 'Customer' };
   const tracks = data.topTracks || [];
   const rangeLabel = getTimeRangeLabel(timeRange);
@@ -361,17 +389,17 @@ export function renderReceiptCard(data, timeRange, currentPlayingId) {
           <span class="amt">AMT</span>
         </div>
         ${tracks.slice(0, 5).map((track, i) => {
-          const isPlaying = currentPlayingId === track.id;
+          const active = isTrackActive(track.id, playbackState);
           const durStr = formatDuration(track.duration_ms);
           return `
-            <div class="receipt-row track-play-trigger ${isPlaying ? 'playing' : ''}" data-track-id="${track.id}">
+            <div class="receipt-row track-play-trigger ${active ? 'playing' : ''}" data-track-id="${track.id}">
               <span class="qty">0${i + 1}</span>
               <div class="desc">
                 <span class="r-track">${escapeHtml(track.name)}</span>
                 <span class="r-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
               </div>
               <span class="amt">${durStr}</span>
-              ${isPlaying ? '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>' : ''}
+              ${getIndicator(track.id, playbackState)}
             </div>
           `;
         }).join('')}
@@ -402,7 +430,7 @@ export function renderReceiptCard(data, timeRange, currentPlayingId) {
 
       <div class="receipt-barcode-wrap">
         <div class="r-barcode">||| |||| || | ||||| ||| || |||| || |||</div>
-        <div class="r-cardnum">CARD: **** **** **** 2026 (SPOTIFY PKCE)</div>
+        <div class="r-cardnum">CARD: **** **** **** 2026</div>
         <div class="r-thankyou">THANK YOU FOR SUPPORTING MUSIC!</div>
         <div class="r-website">SOUNDWRAPPED.APP</div>
       </div>

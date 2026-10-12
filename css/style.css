@@ -637,3 +637,97 @@ body {
     justify-content: center;
   }
 }
+
+/* Modal URI List & Copy Helpers */
+.uri-list-box {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin: 0.75rem 0;
+}
+
+.uri-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  font-family: monospace;
+  font-size: 0.75rem;
+}
+
+.uri-item code {
+  color: var(--spotify-green-hover);
+  word-break: break-all;
+}
+
+.btn-copy-mini {
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 140ms ease;
+}
+.btn-copy-mini:hover {
+  background: var(--spotify-green);
+  color: #000;
+}
+
+/* Custom Mix Modal Presets & Inputs */
+.preset-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 1.25rem;
+}
+
+.preset-chip {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all 140ms var(--ease-snappy);
+}
+.preset-chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  border-color: var(--border-focus);
+}
+
+.custom-inputs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  margin-bottom: 1.5rem;
+}
+
+.custom-input-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.custom-input-row input {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 0.55rem 0.75rem;
+  color: #fff;
+  font-size: 0.825rem;
+  outline: none;
+}
+.custom-input-row input:focus {
+  border-color: var(--accent-purple);
+}
+

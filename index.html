@@ -10,7 +10,7 @@
   <!-- OpenGraph / Social Sharing -->
   <meta property="og:type" content="website">
   <meta property="og:title" content="SoundWrapped — Aesthetic Music Wrapped Experience">
-  <meta property="og:description" content="Turn your music into aesthetic cultural artifacts. Instant interactive preview, sound synthesis, and high-res export.">
+  <meta property="og:description" content="Turn your music into aesthetic cultural artifacts. Instant interactive preview, real 30s studio audio, and high-res export.">
 
   <!-- Google Fonts: Curated Typography Pairing -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -48,11 +48,15 @@
     <div class="header-actions">
       <span id="auth-status-badge" class="auth-badge badge-demo">DEMO MODE</span>
       
-      <button id="btn-toggle-demo" class="btn btn-secondary" title="Switch to sample Spotify catalog">
-        Demo Mode
+      <button id="btn-toggle-demo" class="btn btn-secondary" title="View sample Spotify cards">
+        Demo
       </button>
 
-      <button id="btn-connect-spotify" class="btn btn-spotify">
+      <button id="btn-custom-mix" class="btn btn-secondary" title="Pick any 5 songs & artists to render custom cards">
+        Custom Top 5
+      </button>
+
+      <button id="btn-connect-spotify" class="btn btn-spotify" title="Connect your real Spotify account">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
         </svg>
@@ -91,7 +95,7 @@
         </div>
 
         <!-- Time Range Selector -->
-        <div class="time-pills-group" aria-label="Timeframe Selection">
+        <div class="time-pills-group" id="time-pills-wrapper" aria-label="Timeframe Selection">
           <button class="time-pill active" data-range="short_term">4 Weeks</button>
           <button class="time-pill" data-range="medium_term">6 Months</button>
           <button class="time-pill" data-range="long_term">All Time</button>
@@ -161,7 +165,7 @@
         type="text" 
         id="client-id-input" 
         class="modal-input-field" 
-        placeholder="e.g. 7f8a92b3c4d5e6..." 
+        placeholder="Paste your 32-character Client ID from developer.spotify.com" 
         autocomplete="off"
       />
 
@@ -172,10 +176,71 @@
 
       <div class="setup-note">
         <strong>Need a free Client ID?</strong><br>
-        1. Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" style="color: var(--spotify-green-hover);">Spotify Developer Dashboard</a>.<br>
-        2. Create an App and add this exact Redirect URI:<br>
-        <code id="redirect-uri-display">window.location.origin + window.location.pathname</code><br>
-        3. Paste your Client ID above and click Authorize!
+        1. Open <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener" style="color: var(--spotify-green-hover);">Spotify Developer Dashboard</a> and click <strong>Create an App</strong>.<br>
+        2. In your app settings, add these <strong>Redirect URIs</strong> (tip: add all 3 so you can log in anywhere!):
+        
+        <div class="uri-list-box">
+          <div class="uri-item">
+            <code id="uri-ip">http://127.0.0.1:5173/</code>
+            <button class="btn-copy-mini" id="copy-uri-ip">Copy</button>
+          </div>
+          <div class="uri-item">
+            <code id="uri-local">http://localhost:5173/</code>
+            <button class="btn-copy-mini" id="copy-uri-local">Copy</button>
+          </div>
+          <div class="uri-item">
+            <code id="uri-gh">https://dharmawanmul.github.io/soulseekr/</code>
+            <button class="btn-copy-mini" id="copy-uri-gh">Copy</button>
+          </div>
+        </div>
+
+        3. Select <strong>Web API</strong> under APIs, click Save, then paste your Client ID above!
+      </div>
+    </div>
+  </div>
+
+  <!-- Custom Top 5 Mix Modal -->
+  <div id="custom-mix-modal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="custom-modal-title">
+    <div class="modal-card" style="max-width: 580px;">
+      <h2 id="custom-modal-title">Create Your Custom Top 5</h2>
+      <p>
+        Pick a preset or type any 5 songs and artists. Real 30-second studio audio and album covers will be fetched automatically!
+      </p>
+
+      <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.4rem;">QUICK PRESETS:</div>
+      <div class="preset-chips-row">
+        <button class="preset-chip" data-preset="synthwave">🌆 Synthwave Drive</button>
+        <button class="preset-chip" data-preset="indie">🎸 2000s Indie Rock</button>
+        <button class="preset-chip" data-preset="pop">✨ Pop Chart Toppers</button>
+        <button class="preset-chip" data-preset="classics">💿 Vinyl Classics</button>
+      </div>
+
+      <div class="custom-inputs-list" id="custom-inputs-list">
+        <div class="custom-input-row">
+          <input type="text" class="c-song" placeholder="Song 1" value="Starboy" />
+          <input type="text" class="c-artist" placeholder="Artist 1" value="The Weeknd" />
+        </div>
+        <div class="custom-input-row">
+          <input type="text" class="c-song" placeholder="Song 2" value="Midnight City" />
+          <input type="text" class="c-artist" placeholder="Artist 2" value="M83" />
+        </div>
+        <div class="custom-input-row">
+          <input type="text" class="c-song" placeholder="Song 3" value="Levitating" />
+          <input type="text" class="c-artist" placeholder="Artist 3" value="Dua Lipa" />
+        </div>
+        <div class="custom-input-row">
+          <input type="text" class="c-song" placeholder="Song 4" value="505" />
+          <input type="text" class="c-artist" placeholder="Artist 4" value="Arctic Monkeys" />
+        </div>
+        <div class="custom-input-row">
+          <input type="text" class="c-song" placeholder="Song 5" value="Space Song" />
+          <input type="text" class="c-artist" placeholder="Artist 5" value="Beach House" />
+        </div>
+      </div>
+
+      <div class="modal-btn-row">
+        <button id="btn-custom-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-custom-generate" class="btn btn-export-primary">Generate My Cards</button>
       </div>
     </div>
   </div>
@@ -187,12 +252,23 @@
   <script type="module" src="js/app.js"></script>
 
   <script>
-    // Set dynamic current redirect URI in modal instructions
-    window.addEventListener('DOMContentLoaded', () => {
-      const codeEl = document.getElementById('redirect-uri-display');
-      if (codeEl) {
-        codeEl.textContent = window.location.origin + window.location.pathname;
-      }
+    // Copy buttons for Redirect URIs
+    document.addEventListener('DOMContentLoaded', () => {
+      const setupCopyBtn = (btnId, text) => {
+        const btn = document.getElementById(btnId);
+        if (btn) {
+          btn.addEventListener('click', () => {
+            navigator.clipboard.writeText(text);
+            const original = btn.textContent;
+            btn.textContent = 'Copied!';
+            setTimeout(() => { btn.textContent = original; }, 1500);
+          });
+        }
+      };
+
+      setupCopyBtn('copy-uri-ip', 'http://127.0.0.1:5173/');
+      setupCopyBtn('copy-uri-local', 'http://localhost:5173/');
+      setupCopyBtn('copy-uri-gh', 'https://dharmawanmul.github.io/soulseekr/');
     });
   </script>
 </body>

@@ -119,14 +119,17 @@ To allow visitors or yourself to log in with real Spotify data:
 2. Click **Create an App**:
    - **App name**: `SoundWrapped` (or any name you like).
    - **App description**: `Experiential music wrapped cards`.
-   - **Redirect URIs**: Add your deployment URLs:
-     - For local development: `http://localhost:5173/` (or `http://localhost:3000/`)
-     - For GitHub Pages: `https://<your-username>.github.io/<repository-name>/`
-   - Under **Which API/SDKs are you planning to use?**, select **Web API**.
+   - **Redirect URIs**: Add **all 3** of these URIs into your Spotify App settings:
+     - `http://127.0.0.1:5173/` (for local IP testing)
+     - `http://localhost:5173/` (for localhost testing)
+     - `https://dharmawanmul.github.io/soulseekr/` (for live GitHub Pages!)
+   - Under **Which API/SDKs are you planning to use?**, check **Web API**.
 3. Save the app and copy your **Client ID**.
 4. Open your SoundWrapped site, click **Connect Spotify**, paste your **Client ID**, and click **Authorize**!
 
-> **Note on Spotify Developer Quotas**: While your Spotify Developer app is in *Development Mode*, Spotify allows up to 25 specific test users added in the Spotify Dashboard under *Settings → User Management*. If you wish to make it public for anyone worldwide, you can submit for Spotify's standard *Extension Request* quota.
+> **Why did 127.0.0.1 work while localhost needed adding?** Spotify's security treats `localhost` and `127.0.0.1` as two completely separate domains. Registering all 3 URIs above guarantees you can log in from any URL without `INVALID_REDIRECT_URI` errors!
+>
+> **Don't want to configure Spotify Developer keys?** Click **Custom Top 5** in the header! You can pick presets or type any 5 songs you want — real album art and real 30-second studio audio will load automatically!
 
 ---
 

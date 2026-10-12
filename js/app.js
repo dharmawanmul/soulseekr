@@ -24,12 +24,48 @@ import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './expor
 // Application State
 const state = {
   cardStyle: 'festival', // 'festival' | 'dna' | 'retro' | 'arcade' | 'receipt'
-  timeRange: 'short_term', // 'short_term' | 'medium_term' | 'long_term'
+  timeRange: 'short_term', // 'short_term' | 'medium_term' | 'long_term' | 'custom'
   isDemoMode: true,
   spotifyToken: null,
-  cachedRealData: {}, // per timeRange
+  cachedRealData: {},
   currentData: null,
-  activeTrackId: null
+  playbackState: {
+    isPlaying: false,
+    isLoading: false,
+    trackId: null
+  }
+};
+
+// Preset Mixes
+const PRESETS = {
+  synthwave: [
+    { name: "Starboy", artist: "The Weeknd" },
+    { name: "Midnight City", artist: "M83" },
+    { name: "Nightcall", artist: "Kavinsky" },
+    { name: "Tech Noir", artist: "GUNSHIP" },
+    { name: "Instant Crush", artist: "Daft Punk" }
+  ],
+  indie: [
+    { name: "505", artist: "Arctic Monkeys" },
+    { name: "Last Nite", artist: "The Strokes" },
+    { name: "1901", artist: "Phoenix" },
+    { name: "The Less I Know The Better", artist: "Tame Impala" },
+    { name: "Mr. Brightside", artist: "The Killers" }
+  ],
+  pop: [
+    { name: "Levitating", artist: "Dua Lipa" },
+    { name: "Bad Guy", artist: "Billie Eilish" },
+    { name: "As It Was", artist: "Harry Styles" },
+    { name: "Kill Bill", artist: "SZA" },
+    { name: "vampire", artist: "Olivia Rodrigo" }
+  ],
+  classics: [
+    { name: "Heroes", artist: "David Bowie" },
+    { name: "Dreams", artist: "Fleetwood Mac" },
+    { name: "Blue Monday", artist: "New Order" },
+    { name: "Bohemian Rhapsody", artist: "Queen" },
+    { name: "Purple Rain", artist: "Prince" }
+  ]
 };
 
 // DOM References
@@ -37,17 +73,23 @@ const elements = {
   cardContainer: document.getElementById('card-display-container'),
   cardStyleTabs: document.querySelectorAll('.card-style-btn'),
   timeRangePills: document.querySelectorAll('.time-pill'),
+  timePillsWrapper: document.getElementById('time-pills-wrapper'),
   btnExportStory: document.getElementById('btn-export-story'),
   btnExportSquare: document.getElementById('btn-export-square'),
   btnCopyClip: document.getElementById('btn-copy-clip'),
   btnConnectSpotify: document.getElementById('btn-connect-spotify'),
   btnToggleDemo: document.getElementById('btn-toggle-demo'),
+  btnCustomMix: document.getElementById('btn-custom-mix'),
   btnLogout: document.getElementById('btn-logout'),
   authStatusBadge: document.getElementById('auth-status-badge'),
   clientIdModal: document.getElementById('client-id-modal'),
   clientIdInput: document.getElementById('client-id-input'),
   btnModalSubmit: document.getElementById('btn-modal-submit'),
   btnModalCancel: document.getElementById('btn-modal-cancel'),
+  customMixModal: document.getElementById('custom-mix-modal'),
+  btnCustomCancel: document.getElementById('btn-custom-cancel'),
+  btnCustomGenerate: document.getElementById('btn-custom-generate'),
+  presetChips: document.querySelectorAll('.preset-chip'),
   toastContainer: document.getElementById('toast-container'),
   nowPlayingBar: document.getElementById('now-playing-bar'),
   npTrackName: document.getElementById('np-track-name'),
@@ -64,7 +106,6 @@ export function showToast(message, type = 'info', duration = 3000) {
   toast.innerHTML = `<span>${message}</span>`;
   elements.toastContainer.appendChild(toast);
 
-  // Trigger enter animation
   requestAnimationFrame(() => {
     toast.classList.add('toast-visible');
   });
@@ -79,18 +120,24 @@ export function showToast(message, type = 'info', duration = 3000) {
  * Update UI Data based on mode & range
  */
 async function loadData() {
+  if (state.timeRange === 'custom' && state.currentData) {
+    updateAuthBadge('CUSTOM MIX', 'demo');
+    renderCurrentCard();
+    return;
+  }
+
   if (state.isDemoMode) {
-    state.currentData = mockData[state.timeRange];
+    state.currentData = mockData[state.timeRange] || mockData.short_term;
     updateAuthBadge('DEMO MODE', 'demo');
     renderCurrentCard();
     return;
   }
 
   // Real Spotify data mode
-  const token = state.spotifyToken || getValidAccessToken();
+  const token = state.spotifyToken || (await getValidAccessToken());
   if (!token) {
     state.isDemoMode = true;
-    state.currentData = mockData[state.timeRange];
+    state.currentData = mockData[state.timeRange] || mockData.short_term;
     updateAuthBadge('DEMO MODE', 'demo');
     renderCurrentCard();
     return;
@@ -108,19 +155,19 @@ async function loadData() {
     elements.cardContainer.innerHTML = `
       <div class="card-loading-state">
         <div class="loading-spinner"></div>
-        <p>Crunching your Spotify acoustic data...</p>
+        <p>Crunching your Spotify acoustic profile...</p>
       </div>
     `;
     const wrapped = await fetchCompleteUserWrapped(token, state.timeRange);
     state.cachedRealData[state.timeRange] = wrapped;
     state.currentData = wrapped;
-    updateAuthBadge(wrapped.user.display_name.toUpperCase(), 'active');
+    updateAuthBadge((wrapped.user.display_name || 'SPOTIFY').toUpperCase(), 'active');
     renderCurrentCard();
   } catch (err) {
     console.error('Fetch wrapped error:', err);
     showToast(`Spotify API: ${err.message}`, 'error', 4500);
     state.isDemoMode = true;
-    state.currentData = mockData[state.timeRange];
+    state.currentData = mockData[state.timeRange] || mockData.short_term;
     updateAuthBadge('DEMO MODE', 'demo');
     renderCurrentCard();
   }
@@ -147,19 +194,19 @@ function renderCurrentCard() {
   let html = '';
   switch (state.cardStyle) {
     case 'festival':
-      html = renderFestivalCard(state.currentData, state.timeRange, state.activeTrackId);
+      html = renderFestivalCard(state.currentData, state.timeRange, state.playbackState);
       break;
     case 'dna':
-      html = renderDnaCard(state.currentData, state.timeRange, state.activeTrackId);
+      html = renderDnaCard(state.currentData, state.timeRange, state.playbackState);
       break;
     case 'retro':
-      html = renderRetroCard(state.currentData, state.timeRange, state.activeTrackId);
+      html = renderRetroCard(state.currentData, state.timeRange, state.playbackState);
       break;
     case 'arcade':
-      html = renderArcadeCard(state.currentData, state.timeRange, state.activeTrackId);
+      html = renderArcadeCard(state.currentData, state.timeRange, state.playbackState);
       break;
     case 'receipt':
-      html = renderReceiptCard(state.currentData, state.timeRange, state.activeTrackId);
+      html = renderReceiptCard(state.currentData, state.timeRange, state.playbackState);
       break;
   }
 
@@ -173,11 +220,11 @@ function renderCurrentCard() {
 function attachTrackListeners() {
   const triggerElements = elements.cardContainer.querySelectorAll('.track-play-trigger');
   triggerElements.forEach(el => {
-    el.addEventListener('click', () => {
+    el.addEventListener('click', async () => {
       const trackId = el.getAttribute('data-track-id');
       const track = state.currentData.topTracks.find(t => t.id === trackId);
       if (track) {
-        soundEngine.playTrack(track);
+        await soundEngine.playTrack(track);
       }
     });
   });
@@ -186,22 +233,23 @@ function attachTrackListeners() {
 /**
  * Setup Sound Engine Notifications
  */
-soundEngine.onStateChange(({ isPlaying, currentTrackId }) => {
-  state.activeTrackId = isPlaying ? currentTrackId : null;
+soundEngine.onStateChange(({ isPlaying, isLoading, currentTrackId }) => {
+  state.playbackState = { isPlaying, isLoading, trackId: currentTrackId };
 
-  if (isPlaying && currentTrackId && state.currentData) {
+  if ((isPlaying || isLoading) && currentTrackId && state.currentData) {
     const track = state.currentData.topTracks.find(t => t.id === currentTrackId);
     if (track) {
       elements.nowPlayingBar.classList.add('active');
       elements.npTrackName.textContent = track.name;
       elements.npArtistName.textContent = track.artists.map(a => a.name).join(', ');
-      showToast(`Now Playing: ${track.name}`, 'info', 2000);
+      if (isPlaying) {
+        showToast(`Playing Studio Preview: ${track.name}`, 'info', 2000);
+      }
     }
-  } else {
+  } else if (!isPlaying && !isLoading) {
     elements.nowPlayingBar.classList.remove('active');
   }
 
-  // Refresh active playback indicator on cards without re-creating DOM
   renderCurrentCard();
 });
 
@@ -210,7 +258,7 @@ elements.npStopBtn.addEventListener('click', () => {
 });
 
 /**
- * Setup Card Style Switcher Buttons
+ * Setup Card Style Switcher Tabs
  */
 elements.cardStyleTabs.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -263,12 +311,12 @@ elements.btnCopyClip.addEventListener('click', async () => {
     await copyCardToClipboard();
     showToast('Copied card snapshot to clipboard!', 'success');
   } catch (err) {
-    showToast('Clipboard access denied or unsupported.', 'error');
+    showToast('Clipboard copy: Please click Download Image instead.', 'error');
   }
 });
 
 /**
- * Setup Spotify Auth and Modal
+ * Setup Spotify Auth Modal
  */
 elements.btnConnectSpotify.addEventListener('click', () => {
   const savedId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
@@ -316,10 +364,122 @@ elements.btnLogout.addEventListener('click', () => {
 });
 
 /**
+ * Setup Custom Mix Modal & Presets
+ */
+elements.btnCustomMix.addEventListener('click', () => {
+  elements.customMixModal.classList.add('modal-open');
+});
+
+elements.btnCustomCancel.addEventListener('click', () => {
+  elements.customMixModal.classList.remove('modal-open');
+});
+
+elements.presetChips.forEach(chip => {
+  chip.addEventListener('click', () => {
+    const presetKey = chip.getAttribute('data-preset');
+    const songs = PRESETS[presetKey];
+    if (!songs) return;
+
+    const rowInputs = document.querySelectorAll('.custom-input-row');
+    songs.forEach((s, i) => {
+      if (rowInputs[i]) {
+        rowInputs[i].querySelector('.c-song').value = s.name;
+        rowInputs[i].querySelector('.c-artist').value = s.artist;
+      }
+    });
+    showToast(`Loaded "${chip.textContent}" preset`, 'info', 1500);
+  });
+});
+
+elements.btnCustomGenerate.addEventListener('click', async () => {
+  const rowInputs = document.querySelectorAll('.custom-input-row');
+  const tracksToFetch = [];
+
+  rowInputs.forEach((row, i) => {
+    const name = row.querySelector('.c-song').value.trim();
+    const artist = row.querySelector('.c-artist').value.trim();
+    if (name) {
+      tracksToFetch.push({ name, artist: artist || 'Various Artists' });
+    }
+  });
+
+  if (tracksToFetch.length < 3) {
+    showToast('Please enter at least 3 tracks.', 'error');
+    return;
+  }
+
+  elements.customMixModal.classList.remove('modal-open');
+  showToast('Resolving real studio previews & artwork...', 'info', 3000);
+
+  try {
+    elements.cardContainer.innerHTML = `
+      <div class="card-loading-state">
+        <div class="loading-spinner"></div>
+        <p>Fetching studio audio and cover art...</p>
+      </div>
+    `;
+
+    // Query iTunes API for real metadata and previews for each song
+    const resolvedTracks = await Promise.all(tracksToFetch.map(async (item, idx) => {
+      const q = `${item.artist} ${item.name}`.trim();
+      const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(q)}&entity=song&limit=1`);
+      const json = await res.json();
+      const hit = json.results && json.results[0];
+
+      return {
+        id: `custom_t_${idx + 1}`,
+        name: hit?.trackName || item.name,
+        artists: [{ name: hit?.artistName || item.artist }],
+        album: {
+          name: hit?.collectionName || 'Custom Collection',
+          images: [{ url: hit?.artworkUrl100?.replace('100x100bb', '600x600bb') || 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=500&q=80' }]
+        },
+        duration_ms: hit?.trackTimeMillis || 215000,
+        preview_url: hit?.previewUrl || null,
+        energy: 0.82,
+        danceability: 0.74
+      };
+    }));
+
+    // Build custom wrapped data structure
+    const topArtists = [...new Set(resolvedTracks.map(t => t.artists[0].name))].map((name, i) => ({
+      id: `custom_a_${i}`,
+      name: name,
+      genres: ['custom selection']
+    }));
+
+    state.currentData = {
+      user: {
+        display_name: 'Custom Curator',
+        images: [{ url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80' }]
+      },
+      topTracks: resolvedTracks,
+      topArtists: topArtists,
+      stats: {
+        dominantGenre: 'Handcrafted Sonic Palette',
+        vibeLabel: 'Master Curator',
+        energyScore: 88,
+        danceScore: 79,
+        obscurityScore: 72,
+        tempoBpm: 124
+      }
+    };
+
+    state.timeRange = 'custom';
+    updateAuthBadge('CUSTOM MIX', 'demo');
+    renderCurrentCard();
+    showToast('Custom cards generated with real studio previews!', 'success');
+  } catch (err) {
+    console.error('Custom mix error:', err);
+    showToast('Could not load track data: ' + err.message, 'error');
+    loadData();
+  }
+});
+
+/**
  * Application Bootstrap
  */
 async function initApp() {
-  // Check for PKCE callback
   const hasAuthCode = new URLSearchParams(window.location.search).has('code');
   if (hasAuthCode) {
     try {
@@ -332,20 +492,17 @@ async function initApp() {
       }
     } catch (err) {
       console.error('Auth error:', err);
-      showToast(err.message, 'error', 4000);
+      showToast(err.message, 'error', 4500);
     }
   } else {
-    // Check if token exists from previous session
-    const existingToken = getValidAccessToken();
+    const existingToken = await getValidAccessToken();
     if (existingToken) {
       state.spotifyToken = existingToken;
       state.isDemoMode = false;
     }
   }
 
-  // Load initial data
   await loadData();
 }
 
-// Start app
 window.addEventListener('DOMContentLoaded', initApp);

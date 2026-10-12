@@ -1,7 +1,11 @@
 /**
- * Audio Player Engine with Web Audio API Synthesizer Fallback
- * Provides real 30s preview playback OR dynamic synthesized lofi/synthwave
- * audio loops when Spotify preview_url is not available.
+ * Audio Player Engine with Real 30-Second Studio Audio Preview Matcher
+ * & Web Audio API Generative Fallback
+ *
+ * 1. Checks for native Spotify preview_url
+ * 2. If null (as Spotify now does for most tracks), queries the public Apple Music / iTunes
+ *    search API to stream the REAL 30s studio master audio preview of that exact track!
+ * 3. Falls back to generative Web Audio synth loops if offline.
  */
 
 class SoundEngine {
@@ -9,18 +13,27 @@ class SoundEngine {
     this.audioElement = new Audio();
     this.audioContext = null;
     this.isPlaying = false;
+    this.isLoading = false;
     this.currentTrackId = null;
     this.synthInterval = null;
     this.onStateChangeCallbacks = [];
+    this.previewCache = new Map(); // cache query -> previewUrl
 
     this.audioElement.addEventListener('ended', () => {
       this.stop();
     });
 
     this.audioElement.addEventListener('pause', () => {
-      if (!this.synthInterval) {
+      if (!this.synthInterval && !this.isLoading) {
         this.isPlaying = false;
         this.notifyState();
+      }
+    });
+
+    this.audioElement.addEventListener('error', (e) => {
+      console.warn('Audio playback error, falling back to synth:', e);
+      if (this.currentTrackId) {
+        this.playSynthesizedLoop('Synth Fallback');
       }
     });
   }
@@ -32,6 +45,7 @@ class SoundEngine {
   notifyState() {
     this.onStateChangeCallbacks.forEach(cb => cb({
       isPlaying: this.isPlaying,
+      isLoading: this.isLoading,
       currentTrackId: this.currentTrackId
     }));
   }
@@ -46,7 +60,47 @@ class SoundEngine {
     }
   }
 
-  playTrack(track) {
+  /**
+   * Search public iTunes/Apple Music catalog for the real 30s studio preview
+   */
+  async resolveRealAudioPreview(trackName, artistName) {
+    const cacheKey = `${artistName} - ${trackName}`.toLowerCase().trim();
+    if (this.previewCache.has(cacheKey)) {
+      return this.previewCache.get(cacheKey);
+    }
+
+    try {
+      // Clean track name of remaster / deluxe suffixes for optimal search matching
+      const cleanTrack = trackName
+        .replace(/\(feat\..*?\)/gi, '')
+        .replace(/-\s*remaster.*?$/gi, '')
+        .replace(/\(.*remaster.*?\)/gi, '')
+        .replace(/-\s*radio edit.*?$/gi, '')
+        .trim();
+
+      const query = `${artistName} ${cleanTrack}`.trim();
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`;
+      
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      
+      const data = await res.json();
+      if (data.results && data.results.length > 0 && data.results[0].previewUrl) {
+        const previewUrl = data.results[0].previewUrl;
+        this.previewCache.set(cacheKey, previewUrl);
+        return previewUrl;
+      }
+    } catch (err) {
+      console.warn('Could not fetch external preview snippet:', err);
+    }
+
+    return null;
+  }
+
+  /**
+   * Play track: Resolves real audio and streams
+   */
+  async playTrack(track) {
     if (this.currentTrackId === track.id && this.isPlaying) {
       this.stop();
       return;
@@ -54,36 +108,51 @@ class SoundEngine {
 
     this.stop();
     this.currentTrackId = track.id;
+    this.isLoading = true;
+    this.notifyState();
 
-    if (track.preview_url) {
-      this.audioElement.src = track.preview_url;
-      this.audioElement.play()
-        .then(() => {
-          this.isPlaying = true;
-          this.notifyState();
-        })
-        .catch(() => {
-          this.playSynthesizedLoop(track.name);
-        });
+    let previewUrl = track.preview_url;
+
+    // If Spotify didn't provide a preview_url (or in demo mode), resolve genuine 30s audio
+    if (!previewUrl) {
+      const artist = (track.artists && track.artists[0]) ? track.artists[0].name : '';
+      previewUrl = await this.resolveRealAudioPreview(track.name, artist);
+      if (previewUrl) {
+        track.preview_url = previewUrl; // cache on object
+      }
+    }
+
+    this.isLoading = false;
+
+    if (previewUrl) {
+      try {
+        this.audioElement.src = previewUrl;
+        await this.audioElement.play();
+        this.isPlaying = true;
+        this.notifyState();
+      } catch (err) {
+        console.warn('HTML5 Audio play failed, starting generative synth:', err);
+        this.playSynthesizedLoop(track.name);
+      }
     } else {
+      // Fallback only if no preview exists anywhere
       this.playSynthesizedLoop(track.name);
     }
   }
 
   /**
-   * Generates a pleasant generative synth & beat chord progression using Web Audio API
+   * Generative pleasant musical chords if offline / no internet connection
    */
   playSynthesizedLoop(seedName = 'Music') {
     this.initAudioContext();
     this.isPlaying = true;
+    this.isLoading = false;
     this.notifyState();
 
-    // Determine musical key based on track name
     const charSum = seedName.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0);
-    const rootNotes = [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00]; // A, B, C, D, E, F, G
+    const rootNotes = [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00];
     const root = rootNotes[charSum % rootNotes.length];
 
-    // Chords: root, minor/major 3rd, 5th, 7th
     const chordProgressions = [
       [root, root * 1.2, root * 1.5, root * 1.8],
       [root * 0.75, root * 0.9, root * 1.12, root * 1.34],
@@ -99,7 +168,6 @@ class SoundEngine {
       chordIdx++;
       const now = this.audioContext.currentTime;
 
-      // Play soft synth pad
       chord.forEach((freq, i) => {
         const osc = this.audioContext.createOscillator();
         const gain = this.audioContext.createGain();
@@ -108,11 +176,9 @@ class SoundEngine {
         osc.type = i === 0 ? 'triangle' : 'sine';
         osc.frequency.setValueAtTime(freq, now);
 
-        // Lowpass filter for smooth vintage warmth
         filter.type = 'lowpass';
         filter.frequency.setValueAtTime(900 + (Math.sin(chordIdx) * 300), now);
 
-        // Envelope
         gain.gain.setValueAtTime(0.001, now);
         gain.gain.linearRampToValueAtTime(0.06 / (i + 1), now + 0.3);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
@@ -125,7 +191,6 @@ class SoundEngine {
         osc.stop(now + 1.9);
       });
 
-      // Play subtle vinyl sub beat
       if (chordIdx % 2 === 1) {
         const kickOsc = this.audioContext.createOscillator();
         const kickGain = this.audioContext.createGain();
@@ -144,7 +209,6 @@ class SoundEngine {
       }
     };
 
-    // First chord immediately
     playChordStep();
     this.synthInterval = setInterval(playChordStep, 1800);
   }
@@ -159,6 +223,7 @@ class SoundEngine {
     }
 
     this.isPlaying = false;
+    this.isLoading = false;
     this.currentTrackId = null;
     this.notifyState();
   }

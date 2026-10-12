@@ -15,6 +15,7 @@ export const SPOTIFY_CONFIG = {
   storageKeys: {
     clientId: 'vibe_spotify_client_id',
     verifier: 'vibe_code_verifier',
+    redirectUri: 'vibe_redirect_uri',
     token: 'vibe_access_token',
     refreshToken: 'vibe_refresh_token',
     expiresAt: 'vibe_token_expires_at'
@@ -50,6 +51,18 @@ function base64UrlEncode(buffer) {
 }
 
 /**
+ * Get the standardized redirect URI for current page
+ */
+export function getStandardRedirectUri() {
+  // Removes query parameters and hash, ensures clean trailing slash if root
+  let uri = window.location.origin + window.location.pathname;
+  if (!uri.endsWith('/') && !uri.includes('.')) {
+    uri += '/';
+  }
+  return uri;
+}
+
+/**
  * Initiate Spotify OAuth flow with PKCE
  */
 export async function initiateSpotifyLogin(customClientId = null) {
@@ -67,8 +80,9 @@ export async function initiateSpotifyLogin(customClientId = null) {
   const hashed = await sha256(verifier);
   const challenge = base64UrlEncode(hashed);
 
-  // Clean current origin + pathname as redirect URI (works on both localhost and username.github.io/repo/)
-  const redirectUri = window.location.origin + window.location.pathname;
+  // Save the EXACT redirect URI used during authorization to guarantee token exchange match
+  const redirectUri = getStandardRedirectUri();
+  localStorage.setItem(SPOTIFY_CONFIG.storageKeys.redirectUri, redirectUri);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -91,7 +105,6 @@ export async function handleAuthCallback() {
   const error = urlParams.get('error');
 
   if (error) {
-    // Clear URL query
     window.history.replaceState({}, document.title, window.location.pathname);
     throw new Error(`Spotify Auth Error: ${error}`);
   }
@@ -100,11 +113,12 @@ export async function handleAuthCallback() {
 
   const verifier = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.verifier);
   const clientId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
-  const redirectUri = window.location.origin + window.location.pathname;
+  // Retrieve the exact redirect URI stored before redirect
+  const redirectUri = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.redirectUri) || getStandardRedirectUri();
 
   if (!verifier || !clientId) {
     window.history.replaceState({}, document.title, window.location.pathname);
-    throw new Error('Missing code verifier or client ID from storage.');
+    throw new Error('Missing code verifier or client ID. Please initiate login again.');
   }
 
   const payload = {
@@ -148,28 +162,78 @@ export async function handleAuthCallback() {
 }
 
 /**
- * Check if active access token is valid
+ * Refresh expired access token using refresh_token
  */
-export function getValidAccessToken() {
+export async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.refreshToken);
+  const clientId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
+
+  if (!refreshToken || !clientId) {
+    logoutSpotify();
+    return null;
+  }
+
+  const payload = {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded'
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken
+    })
+  };
+
+  try {
+    const res = await fetch(SPOTIFY_CONFIG.tokenEndpoint, payload);
+    const data = await res.json();
+
+    if (!res.ok) {
+      logoutSpotify();
+      return null;
+    }
+
+    localStorage.setItem(SPOTIFY_CONFIG.storageKeys.token, data.access_token);
+    if (data.refresh_token) {
+      localStorage.setItem(SPOTIFY_CONFIG.storageKeys.refreshToken, data.refresh_token);
+    }
+    const expiresAt = Date.now() + (data.expires_in * 1000);
+    localStorage.setItem(SPOTIFY_CONFIG.storageKeys.expiresAt, expiresAt.toString());
+
+    return data.access_token;
+  } catch (err) {
+    console.warn('Silent token refresh failed:', err);
+    logoutSpotify();
+    return null;
+  }
+}
+
+/**
+ * Check if active access token is valid, auto-refreshing if expired
+ */
+export async function getValidAccessToken() {
   const token = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.token);
   const expiresAt = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.expiresAt);
 
   if (!token || !expiresAt) return null;
-  if (Date.now() > parseInt(expiresAt, 10)) {
-    // Token expired
-    return null;
+
+  // If expired or expiring within 60 seconds, refresh
+  if (Date.now() > (parseInt(expiresAt, 10) - 60000)) {
+    return await refreshAccessToken();
   }
   return token;
 }
 
 /**
- * Log out and clear tokens
+ * Log out and clear stored tokens
  */
 export function logoutSpotify() {
   localStorage.removeItem(SPOTIFY_CONFIG.storageKeys.token);
   localStorage.removeItem(SPOTIFY_CONFIG.storageKeys.refreshToken);
   localStorage.removeItem(SPOTIFY_CONFIG.storageKeys.expiresAt);
   localStorage.removeItem(SPOTIFY_CONFIG.storageKeys.verifier);
+  localStorage.removeItem(SPOTIFY_CONFIG.storageKeys.redirectUri);
 }
 
 /**
@@ -183,8 +247,13 @@ async function spotifyFetch(endpoint, token) {
   });
 
   if (res.status === 401) {
+    // Try one refresh
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) {
+      return spotifyFetch(endpoint, refreshedToken);
+    }
     logoutSpotify();
-    throw new Error('Spotify session expired. Please log in again.');
+    throw new Error('Spotify session expired. Please reconnect.');
   }
 
   if (!res.ok) {
@@ -217,7 +286,7 @@ export async function fetchTopArtists(token, timeRange = 'short_term', limit = 1
 }
 
 /**
- * Fetch User Wrapped Data and compute Stats
+ * Fetch User Wrapped Data and compute Stats with intelligent fallback cascades
  */
 export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') {
   const [user, tracksRes, artistsRes] = await Promise.all([
@@ -226,10 +295,31 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
     fetchTopArtists(token, timeRange, 10)
   ]);
 
-  const topTracks = tracksRes.items || [];
-  const topArtists = artistsRes.items || [];
+  let topTracks = tracksRes.items || [];
+  let topArtists = artistsRes.items || [];
 
-  // Calculate dynamic stats
+  // Intelligently cascade if user has sparse listening history for selected timeframe
+  if (topTracks.length < 5) {
+    const fallbackRange = timeRange === 'short_term' ? 'medium_term' : 'long_term';
+    try {
+      const fallbackTracks = await fetchTopTracks(token, fallbackRange, 10);
+      if (fallbackTracks.items && fallbackTracks.items.length > topTracks.length) {
+        topTracks = fallbackTracks.items;
+      }
+    } catch (_) {}
+  }
+
+  if (topArtists.length < 5) {
+    const fallbackRange = timeRange === 'short_term' ? 'medium_term' : 'long_term';
+    try {
+      const fallbackArtists = await fetchTopArtists(token, fallbackRange, 10);
+      if (fallbackArtists.items && fallbackArtists.items.length > topArtists.length) {
+        topArtists = fallbackArtists.items;
+      }
+    } catch (_) {}
+  }
+
+  // Calculate dynamic acoustic stats
   let allGenres = [];
   topArtists.forEach(a => {
     if (a.genres && a.genres.length) {
@@ -237,13 +327,12 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
     }
   });
 
-  // Calculate most frequent genre
   const genreCounts = {};
   allGenres.forEach(g => {
     genreCounts[g] = (genreCounts[g] || 0) + 1;
   });
   const sortedGenres = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]);
-  const dominantGenre = sortedGenres.length ? sortedGenres[0][0] : "Eclectic Taste";
+  const dominantGenre = sortedGenres.length ? sortedGenres[0][0] : "Eclectic Audiophile";
 
   // Obscurity rating: lower artist average popularity = higher underground rating
   const avgPopularity = topArtists.length 
@@ -251,13 +340,12 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
     : 70;
   const obscurityScore = Math.max(10, Math.min(99, 100 - avgPopularity + 15));
 
-  // Energy & Dance heuristics based on genres & popularity
   const danceScore = Math.min(96, Math.max(45, Math.round(75 + (Math.sin(avgPopularity) * 15))));
   const energyScore = Math.min(98, Math.max(50, Math.round(82 + (Math.cos(avgPopularity) * 12))));
   const tempoBpm = 115 + (avgPopularity % 25);
 
   let vibeLabel = "Eclectic Audiophile";
-  if (obscurityScore > 70) vibeLabel = "Underground Sonic Explorer";
+  if (obscurityScore > 75) vibeLabel = "Underground Deep Diver";
   else if (energyScore > 85) vibeLabel = "High-Voltage Dynamo";
   else if (danceScore > 80) vibeLabel = "Club & Groove Alchemist";
   else vibeLabel = "Midnight Dreamer";
