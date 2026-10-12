@@ -1064,69 +1064,7 @@
   z-index: 2;
 }
 
-/* ==========================================================================
-   7. MATERIAL CUSTOMIZER FINISHES (tweakcn tactile finishes)
-   ========================================================================== */
 
-/* FROST: VisionOS Frosted Lucite Glass */
-[data-material="frost"] .card-inner,
-.card-inner[data-material="frost"] {
-  background: rgba(255, 255, 255, 0.05) !important;
-  backdrop-filter: blur(44px) saturate(210%) !important;
-  border-color: rgba(255, 255, 255, 0.22) !important;
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.15), 0 0 24px rgba(56, 189, 248, 0.12) !important;
-}
-[data-material="frost"] .card-specular-glare {
-  background: radial-gradient(circle 360px at var(--glare-x, 50%) var(--glare-y, 50%), rgba(56, 189, 248, 0.22) 0%, rgba(139, 92, 246, 0.08) 45%, transparent 80%) !important;
-}
-
-/* AMBER: Vintage 70s Tortoiseshell Amber Resin */
-[data-material="amber"] .card-inner,
-.card-inner[data-material="amber"] {
-  background: linear-gradient(145deg, rgba(35, 20, 8, 0.92), rgba(20, 10, 4, 0.95)) !important;
-  backdrop-filter: blur(28px) !important;
-  border-color: rgba(245, 158, 11, 0.3) !important;
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(245, 158, 11, 0.2), 0 0 28px rgba(245, 158, 11, 0.15) !important;
-}
-[data-material="amber"] .card-inner h2,
-[data-material="amber"] .card-inner .brand-tagline,
-[data-material="amber"] .card-inner .sw-title {
-  color: #fef3c7 !important;
-}
-[data-material="amber"] .card-specular-glare {
-  background: radial-gradient(circle 360px at var(--glare-x, 50%) var(--glare-y, 50%), rgba(245, 158, 11, 0.28) 0%, rgba(217, 119, 6, 0.1) 45%, transparent 80%) !important;
-}
-
-/* PAPER: Tokyo Minimalist Unbleached Cotton Washi */
-[data-material="paper"] .card-inner,
-.card-inner[data-material="paper"] {
-  background: #f6f1e7 !important;
-  color: #1c1917 !important;
-  border-color: rgba(28, 25, 23, 0.14) !important;
-  box-shadow: 0 24px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(28, 25, 23, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.8) !important;
-}
-[data-material="paper"] .card-inner h2,
-[data-material="paper"] .card-inner h3,
-[data-material="paper"] .card-inner .sw-title,
-[data-material="paper"] .card-inner .v-album-title,
-[data-material="paper"] .card-inner .prism-heading,
-[data-material="paper"] .card-inner .t-name {
-  color: #1c1917 !important;
-}
-[data-material="paper"] .card-inner p,
-[data-material="paper"] .card-inner .v-album-artist,
-[data-material="paper"] .card-inner .t-artist,
-[data-material="paper"] .card-inner .prism-desc,
-[data-material="paper"] .card-inner .sw-col-meta {
-  color: #57534e !important;
-}
-[data-material="paper"] .card-inner .track-row,
-[data-material="paper"] .card-inner .prism-track-row {
-  border-color: rgba(28, 25, 23, 0.08) !important;
-}
-[data-material="paper"] .card-specular-glare {
-  background: radial-gradient(circle 380px at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, 0.4) 0%, transparent 70%) !important;
-}
 
 /* ==========================================================================
    8. OBSCURITY SNOB RATING & SONIC AURA BADGES

@@ -83,17 +83,16 @@ export function renderGatewayCard() {
           </svg>
           Authorize with Spotify
         </button>
-        <button id="btn-gateway-custom" class="btn btn-secondary btn-gateway-secondary">
-          Craft Custom Mix
-        </button>
       </div>
 
       <div class="gateway-archetypes-preview">
         <span class="preview-pill">💿 Vinyl Obi</span>
-        <span class="preview-pill">📐 Swiss Grid</span>
+        <span class="preview-pill">📐 Swiss Poster</span>
         <span class="preview-pill">🔮 Sound Prism</span>
         <span class="preview-pill">📼 Cassette</span>
         <span class="preview-pill">🧾 Thermal Slip</span>
+        <span class="preview-pill">🎮 90s Cartridge</span>
+        <span class="preview-pill">🎫 VIP Pass</span>
       </div>
 
       <div class="gateway-footer-note">
@@ -119,7 +118,7 @@ export function renderVinylCard(data, timeRange, playbackState) {
           <span class="obi-badge">限定盤</span>
           <span class="obi-kanji-vert">最高峰の音楽体験</span>
         </div>
-        <div class="obi-cat-num">SW-2026-JP // STEREO</div>
+        <div class="obi-cat-num">SLSK-2026-JP // STEREO</div>
       </div>
 
       <div class="vinyl-sleeve-main">
@@ -182,7 +181,7 @@ export function renderSwissCard(data, timeRange, playbackState) {
       </div>
 
       <div class="swiss-title-block">
-        <h1 class="swiss-super-title">SONIC 26</h1>
+        <h1 class="swiss-super-title">SOULSEEKR 26</h1>
         <div class="swiss-meta-coords">
           <span>CURATOR: ${escapeHtml(user.display_name).toUpperCase()}</span>
           <span>VENUE: MAIN STAGE // HEADPHONES</span>
