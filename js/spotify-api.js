@@ -340,7 +340,7 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
   const avgPopularity = topArtists.length 
     ? Math.round(topArtists.reduce((acc, a) => acc + (a.popularity || 50), 0) / topArtists.length) 
     : 70;
-  const obscurityScore = Math.max(10, Math.min(99, 100 - avgPopularity + 15));
+  const obscurityScore = Math.max(12, Math.min(99, 100 - avgPopularity + 15));
 
   const danceScore = Math.min(96, Math.max(45, Math.round(75 + (Math.sin(avgPopularity) * 15))));
   const energyScore = Math.min(98, Math.max(50, Math.round(82 + (Math.cos(avgPopularity) * 12))));
@@ -352,17 +352,75 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
   else if (danceScore > 80) vibeLabel = "Club & Groove Alchemist";
   else vibeLabel = "Midnight Dreamer";
 
+  const rawStats = {
+    dominantGenre: dominantGenre.charAt(0).toUpperCase() + dominantGenre.slice(1),
+    vibeLabel,
+    energyScore,
+    danceScore,
+    obscurityScore,
+    tempoBpm
+  };
+
+  const aura = computeSonicAura(rawStats, topArtists, topTracks);
+
   return {
     user,
     topTracks,
     topArtists,
     stats: {
-      dominantGenre: dominantGenre.charAt(0).toUpperCase() + dominantGenre.slice(1),
-      vibeLabel,
-      energyScore,
-      danceScore,
-      obscurityScore,
-      tempoBpm
+      ...rawStats,
+      ...aura
     }
+  };
+}
+
+/**
+ * Compute Sonic Aura (Synesthetic color mesh & Obscurity Snob Tier)
+ */
+export function computeSonicAura(stats, topArtists = [], topTracks = []) {
+  const obscurityScore = stats.obscurityScore || 65;
+  const energyScore = stats.energyScore || 75;
+  const danceScore = stats.danceScore || 70;
+
+  // Snob Tiers
+  let obscurityTier = "Eclectic Tastemaker";
+  if (obscurityScore >= 82) obscurityTier = "Ultra Crate Digger";
+  else if (obscurityScore >= 70) obscurityTier = "Underground Purist";
+  else if (obscurityScore >= 52) obscurityTier = "Indie Connoisseur";
+  else if (obscurityScore >= 35) obscurityTier = "Eclectic Tastemaker";
+  else obscurityTier = "Chart Navigator";
+
+  const snobLabel = `${obscurityScore}% Obscurity • ${obscurityTier}`;
+
+  // Aura title and synesthetic color palette
+  let auraTitle = "Deep Celestial Drift";
+  let auraColors = ["#3b82f6", "#14b8a6", "#c084fc"];
+
+  if (energyScore > 82 && danceScore > 76) {
+    auraTitle = "Hyperpop Supernova";
+    auraColors = ["#ec4899", "#f59e0b", "#8b5cf6"];
+  } else if (obscurityScore >= 72) {
+    auraTitle = "Subterranean Velvet";
+    auraColors = ["#3b0764", "#6366f1", "#06b6d4"];
+  } else if (energyScore >= 80) {
+    auraTitle = "High-Voltage Acid Pulse";
+    auraColors = ["#10b981", "#06b6d4", "#facc15"];
+  } else if (danceScore >= 78) {
+    auraTitle = "Midnight Velvet Groove";
+    auraColors = ["#a855f7", "#ec4899", "#3b82f6"];
+  } else if (stats.dominantGenre && stats.dominantGenre.toLowerCase().includes("rock")) {
+    auraTitle = "Obsidian Distortion Glow";
+    auraColors = ["#f43f5e", "#ea580c", "#7c3aed"];
+  }
+
+  const auraGradient = `radial-gradient(circle at 35% 35%, ${auraColors[0]}44 0%, transparent 65%), radial-gradient(circle at 75% 65%, ${auraColors[1]}38 0%, transparent 60%), radial-gradient(circle at 50% 50%, ${auraColors[2]}30 0%, transparent 70%)`;
+
+  return {
+    obscurityScore,
+    obscurityTier,
+    snobLabel,
+    auraTitle,
+    auraColors,
+    auraGradient
   };
 }

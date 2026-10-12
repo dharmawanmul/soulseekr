@@ -368,6 +368,101 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
+.controls-subrow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Material Finish Segmented Group (tweakcn style) */
+.material-segmented-group {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.mat-btn {
+  background: transparent;
+  border: none;
+  color: var(--muted-foreground);
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 140ms var(--ease-snappy);
+  user-select: none;
+}
+
+.mat-btn:hover {
+  color: #fff;
+}
+
+.mat-btn.active {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.mat-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.mat-obsidian {
+  background: #18181b;
+  border: 1px solid #52525b;
+}
+
+.mat-frost {
+  background: rgba(56, 189, 248, 0.5);
+  border: 1px solid #38bdf8;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.5);
+}
+
+.mat-amber {
+  background: #d97706;
+  border: 1px solid #fbbf24;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+}
+
+.mat-paper {
+  background: #fdf6e2;
+  border: 1px solid #d6cfb8;
+}
+
+/* Dynamic Synesthesia Sonic Aura */
+.sonic-aura-mesh {
+  position: absolute;
+  width: 580px;
+  height: 580px;
+  max-width: 90vw;
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 45%, rgba(139, 92, 246, 0.28) 0%, rgba(16, 185, 129, 0.2) 40%, rgba(6, 182, 212, 0.12) 70%, transparent 85%);
+  filter: blur(64px);
+  pointer-events: none;
+  z-index: 1;
+  transition: background 700ms ease, transform 700ms ease;
+  animation: auraFloat 9s ease-in-out infinite alternate;
+}
+
+@keyframes auraFloat {
+  0% { transform: scale(0.95) translate(-10px, -10px); }
+  50% { transform: scale(1.05) translate(12px, 8px); }
+  100% { transform: scale(0.98) translate(-6px, 12px); }
+}
+
 /* --------------------------------------------------------------------------
    3D Interactive Card Stage (motion-primitives interactive tilt)
    -------------------------------------------------------------------------- */

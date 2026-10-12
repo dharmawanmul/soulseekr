@@ -8,6 +8,7 @@ import {
   handleAuthCallback, 
   getValidAccessToken, 
   fetchCompleteUserWrapped, 
+  computeSonicAura,
   logoutSpotify,
   SPOTIFY_CONFIG 
 } from './spotify-api.js';
@@ -17,14 +18,17 @@ import {
   renderSwissCard, 
   renderPrismCard, 
   renderCassetteCard, 
-  renderReceiptCard 
+  renderReceiptCard,
+  renderGameboyCard,
+  renderVipPassCard
 } from './card-renderer.js';
 import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 
 // Application State
 const state = {
-  cardStyle: 'vinyl', // 'vinyl' | 'swiss' | 'prism' | 'cassette' | 'receipt'
+  cardStyle: 'vinyl', // 'vinyl' | 'swiss' | 'prism' | 'cassette' | 'receipt' | 'gameboy' | 'vippass'
+  material: 'obsidian', // 'obsidian' | 'frost' | 'amber' | 'paper'
   timeRange: 'short_term', // 'short_term' | 'medium_term' | 'long_term' | 'custom'
   spotifyToken: null,
   cachedRealData: {},
@@ -90,11 +94,27 @@ function initElements() {
   elements.btnCustomGenerate = document.getElementById('btn-custom-generate');
   elements.presetChips = document.querySelectorAll('.preset-chip');
   elements.toastContainer = document.getElementById('toast-container');
+  elements.materialBtns = document.querySelectorAll('.mat-btn');
+  elements.sonicAuraMesh = document.getElementById('sonic-aura-mesh');
   elements.nowPlayingBar = document.getElementById('now-playing-bar');
   elements.dockThumb = document.getElementById('dock-thumb');
   elements.npTrackName = document.getElementById('np-track-name');
   elements.npArtistName = document.getElementById('np-artist-name');
   elements.npStopBtn = document.getElementById('np-stop-btn');
+}
+
+/**
+ * Dynamic Synesthetic Sonic Aura Mesh Updater
+ */
+function updateSonicAura(stats) {
+  if (!elements.sonicAuraMesh) return;
+  if (stats && stats.auraGradient) {
+    elements.sonicAuraMesh.style.background = stats.auraGradient;
+    elements.sonicAuraMesh.style.opacity = '0.85';
+  } else {
+    elements.sonicAuraMesh.style.background = 'radial-gradient(circle at 45% 45%, rgba(139, 92, 246, 0.28) 0%, rgba(16, 185, 129, 0.2) 40%, rgba(6, 182, 212, 0.12) 70%, transparent 85%)';
+    elements.sonicAuraMesh.style.opacity = '0.5';
+  }
 }
 
 /**
@@ -123,6 +143,7 @@ export function showToast(message, type = 'info', duration = 2800) {
  */
 async function loadData() {
   if (state.timeRange === 'custom' && state.currentData) {
+    updateSonicAura(state.currentData.stats);
     updateAuthBadge('CUSTOM MIX', 'custom');
     renderCurrentCard();
     return;
@@ -132,6 +153,7 @@ async function loadData() {
   const token = state.spotifyToken || (await getValidAccessToken());
   if (!token) {
     state.currentData = null;
+    updateSonicAura(null);
     updateAuthBadge('NOT CONNECTED', 'unauth');
     renderCurrentCard();
     return;
@@ -139,6 +161,7 @@ async function loadData() {
 
   if (state.cachedRealData[state.timeRange]) {
     state.currentData = state.cachedRealData[state.timeRange];
+    updateSonicAura(state.currentData.stats);
     updateAuthBadge((state.currentData.user?.display_name || 'SPOTIFY CONNECTED').toUpperCase(), 'active');
     renderCurrentCard();
     return;
@@ -154,12 +177,14 @@ async function loadData() {
     const wrapped = await fetchCompleteUserWrapped(token, state.timeRange);
     state.cachedRealData[state.timeRange] = wrapped;
     state.currentData = wrapped;
+    updateSonicAura(wrapped.stats);
     updateAuthBadge((wrapped.user?.display_name || 'SPOTIFY CONNECTED').toUpperCase(), 'active');
     renderCurrentCard();
   } catch (err) {
     console.error('Fetch wrapped error:', err);
     showToast(`Spotify API: ${err.message}`, 'error', 4500);
     state.currentData = null;
+    updateSonicAura(null);
     updateAuthBadge('NOT CONNECTED', 'unauth');
     renderCurrentCard();
   }
@@ -217,9 +242,19 @@ function renderCurrentCard() {
     case 'receipt':
       html = renderReceiptCard(state.currentData, state.timeRange, state.playbackState);
       break;
+    case 'gameboy':
+      html = renderGameboyCard(state.currentData, state.timeRange, state.playbackState);
+      break;
+    case 'vippass':
+      html = renderVipPassCard(state.currentData, state.timeRange, state.playbackState);
+      break;
   }
 
   elements.cardContainer.innerHTML = html;
+  const cardEl = document.getElementById('exportable-card');
+  if (cardEl && state.material) {
+    cardEl.setAttribute('data-material', state.material);
+  }
   attachTrackListeners();
 }
 
@@ -306,6 +341,19 @@ function setupEventListeners() {
       btn.classList.add('active');
       state.cardStyle = btn.getAttribute('data-style');
       renderCurrentCard();
+    });
+  });
+
+  elements.materialBtns?.forEach(btn => {
+    btn.addEventListener('click', () => {
+      elements.materialBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const mat = btn.getAttribute('data-material');
+      state.material = mat;
+      elements.cardTiltBox?.setAttribute('data-material', mat);
+      const cardEl = document.getElementById('exportable-card');
+      if (cardEl) cardEl.setAttribute('data-material', mat);
+      showToast(`Tactile Finish: ${mat.charAt(0).toUpperCase() + mat.slice(1)}`, 'info', 1400);
     });
   });
 
@@ -458,6 +506,16 @@ function setupEventListeners() {
         genres: ['curated collection']
       }));
 
+      const rawCustomStats = {
+        dominantGenre: 'Handcrafted Sonic Palette',
+        vibeLabel: 'Master Curator',
+        energyScore: 88,
+        danceScore: 79,
+        obscurityScore: 78,
+        tempoBpm: 124
+      };
+      const customAura = computeSonicAura(rawCustomStats, topArtists, resolvedTracks);
+
       state.currentData = {
         user: {
           display_name: 'Custom Curator',
@@ -466,16 +524,13 @@ function setupEventListeners() {
         topTracks: resolvedTracks,
         topArtists: topArtists,
         stats: {
-          dominantGenre: 'Handcrafted Sonic Palette',
-          vibeLabel: 'Master Curator',
-          energyScore: 88,
-          danceScore: 79,
-          obscurityScore: 72,
-          tempoBpm: 124
+          ...rawCustomStats,
+          ...customAura
         }
       };
 
       state.timeRange = 'custom';
+      updateSonicAura(state.currentData.stats);
       updateAuthBadge('CUSTOM MIX', 'custom');
       renderCurrentCard();
       showToast('Physical artifacts generated with real studio previews!', 'success');

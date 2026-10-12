@@ -112,21 +112,48 @@
           <button class="seg-btn" data-style="receipt" role="tab" aria-selected="false">
             🧾 Thermal Slip
           </button>
+          <button class="seg-btn" data-style="gameboy" role="tab" aria-selected="false">
+            🎮 90s Cartridge
+          </button>
+          <button class="seg-btn" data-style="vippass" role="tab" aria-selected="false">
+            🎫 VIP Pass
+          </button>
         </div>
 
-        <!-- Timeframe Segmented Control -->
-        <div class="time-segmented-group" aria-label="Timeframe">
-          <button class="time-btn active" data-range="short_term">4 Weeks</button>
-          <button class="time-btn" data-range="medium_term">6 Months</button>
-          <button class="time-btn" data-range="long_term">All Time</button>
+        <div class="controls-subrow">
+          <!-- Timeframe Segmented Control -->
+          <div class="time-segmented-group" aria-label="Timeframe">
+            <button class="time-btn active" data-range="short_term">4 Weeks</button>
+            <button class="time-btn" data-range="medium_term">6 Months</button>
+            <button class="time-btn" data-range="long_term">All Time</button>
+          </div>
+
+          <!-- Material Finish Segmented Control (tweakcn tactile finishes) -->
+          <div class="material-segmented-group" aria-label="Material Finish">
+            <button class="mat-btn active" data-material="obsidian" title="OLED Obsidian Black">
+              <span class="mat-swatch mat-obsidian"></span> Obsidian
+            </button>
+            <button class="mat-btn" data-material="frost" title="VisionOS Frosted Lucite Glass">
+              <span class="mat-swatch mat-frost"></span> Frosted
+            </button>
+            <button class="mat-btn" data-material="amber" title="Vintage 70s Amber Resin">
+              <span class="mat-swatch mat-amber"></span> Amber
+            </button>
+            <button class="mat-btn" data-material="paper" title="Tokyo Cream Cotton Paper">
+              <span class="mat-swatch mat-paper"></span> Paper
+            </button>
+          </div>
         </div>
 
       </div>
     </section>
 
-    <!-- 3D Interactive Card Stage with Specular Glare (motion-primitives) -->
+    <!-- 3D Interactive Card Stage with Specular Glare & Dynamic Sonic Aura (motion-primitives) -->
     <section class="card-stage-wrapper" aria-label="Interactive Card Stage">
-      <div id="card-tilt-container">
+      <!-- Dynamic Synesthesia Sonic Aura (Mesh Gradient calculated from acoustic frequencies) -->
+      <div id="sonic-aura-mesh" class="sonic-aura-mesh" aria-hidden="true"></div>
+
+      <div id="card-tilt-container" data-material="obsidian">
         <!-- Rendered dynamically by js/app.js -->
         <div id="card-display-container"></div>
         <div class="card-specular-glare" id="specular-glare"></div>

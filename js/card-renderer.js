@@ -451,3 +451,165 @@ export function renderReceiptCard(data, timeRange, playbackState) {
     </div>
   `;
 }
+
+/**
+ * 6. THE 90S GAME BOY MEMORY CARTRIDGE (Dot-Matrix LCD & Translucent Shell)
+ */
+export function renderGameboyCard(data, timeRange, playbackState) {
+  const user = data.user || { display_name: 'Player 1' };
+  const tracks = data.topTracks || [];
+  const stats = data.stats || {};
+  const rangeLabel = getTimeRangeLabel(timeRange);
+
+  return `
+    <div class="card-inner card-gameboy" id="exportable-card">
+      <div class="gameboy-top-grip">
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="gameboy-notch"></div>
+
+      <div class="gameboy-label-sticker">
+        <div class="gameboy-sticker-header">
+          <div class="gb-brand-title">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
+            </svg>
+            SOUL-CARTRIDGE DMG-01
+          </div>
+          <div class="gb-battery-row">
+            <span>BATTERY</span>
+            <span class="gb-led"></span>
+          </div>
+        </div>
+
+        <div class="gameboy-screen-bezel">
+          <div class="gameboy-screen-lcd">
+            <div class="gb-screen-header">
+              <span>PLAYER: ${escapeHtml(user.display_name).toUpperCase()}</span>
+              <span>${rangeLabel}</span>
+            </div>
+
+            <div class="gb-track-list">
+              ${tracks.slice(0, 5).map((track, i) => {
+                const active = isTrackActive(track.id, playbackState);
+                return `
+                  <div class="gb-track-row track-play-trigger ${active ? 'active' : ''}" data-track-id="${track.id}">
+                    <span class="gb-track-name">0${i + 1}. ${escapeHtml(track.name).toUpperCase()}</span>
+                    <span>${active ? '▶ PLAY' : formatDuration(track.duration_ms)}</span>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+
+            <div class="gb-screen-footer">
+              <span>LV.${stats.obscurityScore || 85} ${escapeHtml(stats.obscurityTier || 'PRO CRATE')}</span>
+              <span>BPM:${stats.tempoBpm || 120}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="snob-meter-container" style="margin-top: 0.85rem;">
+          <div class="snob-meter-header">
+            <span>OBSCURITY SNOB RATING</span>
+            <span class="snob-score-tag">${stats.obscurityScore || 85}% • ${escapeHtml(stats.obscurityTier || 'Ultra Crate Digger')}</span>
+          </div>
+          <div class="snob-meter-track">
+            <div class="snob-meter-fill" style="width: ${stats.obscurityScore || 85}%"></div>
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem;">
+          <div class="snob-aura-pill">
+            <span class="snob-aura-dot" style="background:${stats.auraColors?.[1] || '#c084fc'};"></span>
+            <span>AURA: ${escapeHtml(stats.auraTitle || 'Subterranean Velvet').toUpperCase()}</span>
+          </div>
+          <span style="font-family:'Press Start 2P', monospace; font-size:0.48rem; color:#71717a;">MADE IN JAPAN</span>
+        </div>
+      </div>
+
+      <div class="cartridge-screw-row">
+        <div class="cartridge-screw"></div>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * 7. THE ALL-ACCESS VIP FESTIVAL PASS (Holographic Band & Security RFID)
+ */
+export function renderVipPassCard(data, timeRange, playbackState) {
+  const user = data.user || { display_name: 'VIP Guest' };
+  const tracks = data.topTracks || [];
+  const stats = data.stats || {};
+  const rangeLabel = getTimeRangeLabel(timeRange);
+  const avatarUrl = (user.images && user.images[0]?.url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
+
+  const stages = ["MAIN STAGE", "HYPER TENT", "THE VELVET DOME", "OBSCURITY LAB", "AFTERHOURS"];
+  const setTimes = ["20:00", "21:15", "22:30", "23:45", "01:00"];
+
+  return `
+    <div class="card-inner card-vippass" id="exportable-card">
+      <div class="lanyard-slot-row">
+        <div class="lanyard-slot"></div>
+      </div>
+
+      <div class="vip-hologram-band"></div>
+
+      <div class="vip-badge-row">
+        <div class="vip-event-meta">SOULSEEKR 2026 // ${rangeLabel}</div>
+        <div class="vip-all-access-tag">ALL ACCESS VIP</div>
+      </div>
+
+      <div class="vip-holder-box">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+          <div>
+            <div class="vip-holder-label">CREDENTIAL ISSUED TO:</div>
+            <div class="vip-holder-name">${escapeHtml(user.display_name).toUpperCase()}</div>
+          </div>
+          <img src="${avatarUrl}" alt="Pass Holder" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid #10b981; object-fit: cover;" />
+        </div>
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
+          <div class="snob-aura-pill">
+            <span class="snob-aura-dot" style="background:${stats.auraColors?.[1] || '#38bdf8'};"></span>
+            <span>AURA: ${escapeHtml(stats.auraTitle || 'Sonic Nebula')}</span>
+          </div>
+          <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #10b981; margin-left: auto;">● ACTIVE CREDENTIAL</span>
+        </div>
+      </div>
+
+      <div class="vip-timetable">
+        <div style="font-family: var(--font-mono); font-size: 0.55rem; font-weight: 700; letter-spacing: 0.1em; color: #a1a1aa; margin-bottom: 0.2rem;">
+          HEADLINER SETLIST &amp; TIMETABLE (TAP TO PREVIEW)
+        </div>
+        ${tracks.slice(0, 5).map((track, i) => {
+          const active = isTrackActive(track.id, playbackState);
+          return `
+            <div class="vip-set-row track-play-trigger ${active ? 'active' : ''}" data-track-id="${track.id}">
+              <span class="vip-set-time">${setTimes[i] || '20:00'}</span>
+              <div class="vip-set-info">
+                <div class="vip-set-song">${escapeHtml(track.name)}</div>
+                <div class="vip-set-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))} • ${stages[i]}</div>
+              </div>
+              ${getIndicator(track.id, playbackState)}
+            </div>
+          `;
+        }).join('')}
+      </div>
+
+      <div class="snob-meter-container">
+        <div class="snob-meter-header">
+          <span>OBSCURITY SNOB INDEX</span>
+          <span class="snob-score-tag">${stats.obscurityScore || 85}% • ${escapeHtml(stats.obscurityTier || 'Ultra Crate Digger')}</span>
+        </div>
+        <div class="snob-meter-track">
+          <div class="snob-meter-fill" style="width: ${stats.obscurityScore || 85}%"></div>
+        </div>
+      </div>
+
+      <div class="vip-footer-row" style="margin-top: 0.85rem;">
+        <span class="vip-barcode-code">||| | ||||| || ||| |||| || |</span>
+        <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #71717a;">RFID SECURE • SOULSEEKR PASS</span>
+      </div>
+    </div>
+  `;
+}
