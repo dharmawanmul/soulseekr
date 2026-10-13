@@ -1,0 +1,10 @@
+{
+    "claudeCode.disableLoginPrompt": true,
+
+    "claudeCode.spinnerVerbs": {
+
+        "mode": "append",
+        "verbs": []
+    },
+    "claudeCode.preferredLocation": "panel"
+}
