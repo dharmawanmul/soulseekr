@@ -320,9 +320,8 @@
   <div id="amaze-modal" class="amaze-modal" aria-hidden="true" role="dialog" aria-modal="true">
     <canvas id="amaze-canvas" class="amaze-canvas"></canvas>
     
-    <!-- Atmospheric VFX layers -->
+    <!-- Atmospheric VFX layers (Crisp high-resolution space, no pixelated noise) -->
     <div class="amaze-vignette" aria-hidden="true"></div>
-    <div class="amaze-noise-overlay" aria-hidden="true"></div>
     <div class="amaze-speed-lines" id="amaze-speed-lines" aria-hidden="true"></div>
 
     <!-- HUD Chrome Top Bar -->
@@ -359,6 +358,15 @@
         </button>
       </div>
     </div>
+
+    <!-- NASA Eyes 3D Projected Billboard Tags Layer (Stay anchored above stationary planets) -->
+    <div id="amaze-billboards-layer" class="amaze-billboards-layer"></div>
+
+    <!-- NASA Eyes Planetary Quick-Selector Bar (Bottom Center) -->
+    <div id="amaze-planet-selector-bar" class="amaze-planet-selector-bar"></div>
+
+    <!-- NASA Eyes Planet Detail Fly-To Inspector Drawer -->
+    <div id="amaze-inspector-drawer" class="amaze-inspector-drawer"></div>
 
     <!-- Right Side Scene Progress Rail -->
     <div class="amaze-scene-nav" id="amaze-scene-nav"></div>

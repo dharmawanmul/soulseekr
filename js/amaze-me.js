@@ -7,6 +7,7 @@
 import { soundEngine } from './audio-player.js';
 import { showToast } from './app.js';
 import { exportCardAsImage, downloadDataUrl } from './exporter.js';
+import { escapeHtml, formatDuration } from './card-renderer.js';
 
 // Scene Configuration & Metadata
 const SCENES = [
@@ -96,6 +97,24 @@ class AmazeMeEngine {
     this.mouse = { x: 0, y: 0, screenX: 0, screenY: 0 };
     this.raycaster = null;
 
+    // NASA Eyes Orbit Camera & Inspection State
+    this.billboardsLayerEl = null;
+    this.selectorBarEl = null;
+    this.inspectorDrawerEl = null;
+    this.orbitTheta = Math.PI * 0.15;
+    this.orbitPhi = 0.58;
+    this.orbitRadius = 38;
+    this.targetOrbitTheta = this.orbitTheta;
+    this.targetOrbitPhi = this.orbitPhi;
+    this.targetOrbitRadius = this.orbitRadius;
+    this.targetLookAt = null;
+    this.currentLookAt = null;
+    this.isDragging = false;
+    this.hasDragged = false;
+    this.dragStart = { x: 0, y: 0 };
+    this.isInspecting = false;
+    this.inspectedPlanetIdx = -1;
+
     // 3D Scene object groups
     this.starfield = null;
     this.solarSystemGroup = null;
@@ -129,6 +148,8 @@ class AmazeMeEngine {
     this.onTouchStart = this.handleTouchStart.bind(this);
     this.onTouchMove = this.handleTouchMove.bind(this);
     this.onMouseMove = this.handleMouseMove.bind(this);
+    this.onMouseDown = this.handleMouseDown.bind(this);
+    this.onMouseUp = this.handleMouseUp.bind(this);
     this.onClick = this.handleClick.bind(this);
     this.onKeyDown = this.handleKeyDown.bind(this);
     this.onResize = this.handleResize.bind(this);
@@ -165,6 +186,7 @@ class AmazeMeEngine {
     // Reset camera scroll to 0
     this.targetScroll = 0;
     this.scrollProgress = 0;
+    this.resetToSolarSystem();
     this.updateHUD(0);
 
     // Attach interaction listeners
@@ -172,11 +194,13 @@ class AmazeMeEngine {
     window.addEventListener('touchstart', this.onTouchStart, { passive: true });
     window.addEventListener('touchmove', this.onTouchMove, { passive: false });
     window.addEventListener('mousemove', this.onMouseMove);
+    window.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
     window.addEventListener('click', this.onClick);
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('resize', this.onResize);
 
-    showToast('Scroll or swipe to dive through your music universe', 'info', 3500);
+    showToast('Click & drag to orbit • Hover & click celestial bodies to inspect', 'info', 4000);
   }
 
   /**
@@ -196,9 +220,14 @@ class AmazeMeEngine {
     window.removeEventListener('touchstart', this.onTouchStart);
     window.removeEventListener('touchmove', this.onTouchMove);
     window.removeEventListener('mousemove', this.onMouseMove);
+    window.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
     window.removeEventListener('click', this.onClick);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('resize', this.onResize);
+
+    this.hideInspectorDrawer();
+    this.hideBillboardTags();
 
     if (this.tooltipEl) {
       this.tooltipEl.classList.remove('is-visible');
@@ -224,6 +253,11 @@ class AmazeMeEngine {
     this.btnAudio = document.getElementById('btn-amaze-audio');
     this.btnFullscreen = document.getElementById('btn-amaze-fullscreen');
     this.btnClose = document.getElementById('btn-amaze-close');
+
+    // NASA Eyes Layers
+    this.billboardsLayerEl = document.getElementById('amaze-billboards-layer');
+    this.selectorBarEl = document.getElementById('amaze-planet-selector-bar');
+    this.inspectorDrawerEl = document.getElementById('amaze-inspector-drawer');
 
     // Create target reticle element if not present
     if (!document.getElementById('amaze-target-reticle')) {
@@ -385,7 +419,7 @@ class AmazeMeEngine {
   }
 
   // =========================================================================
-  // SCENE 0: SOLAR SYSTEM (TOP 5 TRACKS)
+  // SCENE 0: SOLAR SYSTEM (TOP 5 TRACKS - NASA EYES ARCHITECTURE)
   // =========================================================================
   buildScene0_SolarSystem() {
     if (this.solarSystemGroup) this.scene.remove(this.solarSystemGroup);
@@ -405,7 +439,7 @@ class AmazeMeEngine {
     this.solarSystemGroup.add(sunMesh);
 
     // Sun glowing corona
-    const coronaGeom = new THREE.SphereGeometry(5.2, 24, 24);
+    const coronaGeom = new THREE.SphereGeometry(5.2, 32, 32);
     const coronaMat = new THREE.MeshBasicMaterial({
       color: 0xffdd44,
       transparent: true,
@@ -420,43 +454,48 @@ class AmazeMeEngine {
     const sunLight = new THREE.PointLight(0xffeedd, 2.8, 120);
     this.solarSystemGroup.add(sunLight);
 
-    // Top 5 Tracks as Orbiting Celestial Spheres
+    // Top 5 Tracks as Celestial Spheres - FIXED ASTRONOMICAL COORDINATES
     const tracks = (this.data && this.data.topTracks) ? this.data.topTracks.slice(0, 5) : [];
     const planetColors = [0xf59e0b, 0x06b6d4, 0xec4899, 0x10b981, 0x8b5cf6];
-    const orbitRadii = [13, 20, 27, 34, 42];
+    const orbitRadii = [14, 21, 28, 35, 42];
     const planetSizes = [1.8, 1.4, 1.5, 1.2, 1.3];
-    const orbitSpeeds = [0.018, 0.013, 0.009, 0.007, 0.005];
+    const fixedAngles = [0.45, 1.85, 3.25, 4.55, 5.85];
 
     tracks.forEach((track, i) => {
-      const radius = orbitRadii[i] || (12 + i * 7);
+      const radius = orbitRadii[i] || (14 + i * 7);
       const size = planetSizes[i] || 1.3;
       const color = planetColors[i] || 0x38bdf8;
-      const speed = orbitSpeeds[i] || 0.01;
+      const angle = fixedAngles[i] || ((i * Math.PI * 2) / 5 + 0.4);
 
       // Orbit Path Ring
       const orbitCurve = new THREE.EllipseCurve(0, 0, radius, radius, 0, 2 * Math.PI, false, 0);
-      const points = orbitCurve.getPoints(80);
+      const points = orbitCurve.getPoints(100);
       const orbitGeom = new THREE.BufferGeometry().setFromPoints(points);
       const orbitMat = new THREE.LineBasicMaterial({
         color: color,
         transparent: true,
-        opacity: 0.22,
+        opacity: 0.28,
         blending: THREE.AdditiveBlending
       });
       const orbitLine = new THREE.Line(orbitGeom, orbitMat);
       orbitLine.rotation.x = Math.PI / 2;
       this.solarSystemGroup.add(orbitLine);
 
-      // Planet Sphere
-      const pGeom = new THREE.SphereGeometry(size, 24, 24);
+      // Planet Sphere - Positioned ONCE at its fixed celestial coordinate
+      const pGeom = new THREE.SphereGeometry(size, 32, 32);
       const pMat = new THREE.MeshStandardMaterial({
         color: color,
-        roughness: 0.4,
-        metalness: 0.3,
+        roughness: 0.35,
+        metalness: 0.25,
         emissive: color,
-        emissiveIntensity: 0.2
+        emissiveIntensity: 0.22
       });
       const pMesh = new THREE.Mesh(pGeom, pMat);
+      pMesh.position.set(
+        Math.cos(angle) * radius,
+        0,
+        Math.sin(angle) * radius
+      );
       pMesh.userData = {
         type: 'planet',
         index: i,
@@ -469,16 +508,16 @@ class AmazeMeEngine {
       // Add Saturn-like rings for #1 Top Track
       let ringMesh = null;
       if (i === 0) {
-        const ringGeom = new THREE.RingGeometry(size * 1.5, size * 2.5, 32);
+        const ringGeom = new THREE.RingGeometry(size * 1.5, size * 2.5, 48);
         const ringMat = new THREE.MeshBasicMaterial({
           color: 0xfde047,
           side: THREE.DoubleSide,
           transparent: true,
-          opacity: 0.6,
+          opacity: 0.65,
           blending: THREE.AdditiveBlending
         });
         ringMesh = new THREE.Mesh(ringGeom, ringMat);
-        ringMesh.rotation.x = Math.PI / 2.4;
+        ringMesh.rotation.x = Math.PI / 2.3;
         pMesh.add(ringMesh);
       }
 
@@ -489,8 +528,8 @@ class AmazeMeEngine {
         mesh: pMesh,
         track: track,
         orbitRadius: radius,
-        angle: (i * Math.PI * 2) / 5 + Math.random(),
-        speed: speed,
+        angle: angle,
+        basePosition: pMesh.position.clone(),
         ring: ringMesh
       });
     });
@@ -501,7 +540,7 @@ class AmazeMeEngine {
     const astPos = new Float32Array(asteroidCount * 3);
     for (let j = 0; j < asteroidCount; j++) {
       const aTheta = Math.random() * Math.PI * 2;
-      const aR = 22.5 + (Math.random() - 0.5) * 3.5;
+      const aR = 24.5 + (Math.random() - 0.5) * 3.5;
       astPos[j * 3] = Math.cos(aTheta) * aR;
       astPos[j * 3 + 1] = (Math.random() - 0.5) * 1.8;
       astPos[j * 3 + 2] = Math.sin(aTheta) * aR;
@@ -515,6 +554,234 @@ class AmazeMeEngine {
     });
     const asteroidBelt = new THREE.Points(astGeom, astMat);
     this.solarSystemGroup.add(asteroidBelt);
+
+    // Build NASA Eyes Billboard Tags & Bottom Selector Bar
+    this.buildBillboardTags(tracks);
+    this.buildSelectorBar(tracks, planetColors);
+  }
+
+  buildBillboardTags(tracks) {
+    if (!this.billboardsLayerEl) return;
+    this.billboardsLayerEl.innerHTML = '';
+
+    tracks.forEach((track, i) => {
+      const tag = document.createElement('div');
+      tag.className = 'planet-billboard';
+      tag.id = `planet-billboard-${i}`;
+      tag.dataset.idx = i;
+      tag.innerHTML = `
+        <span class="billboard-rank">0${i + 1}</span>
+        <span class="billboard-name">${escapeHtml(track.name)}</span>
+      `;
+      tag.onclick = (e) => {
+        e.stopPropagation();
+        this.focusPlanet(i);
+      };
+      tag.onmouseenter = () => {
+        if (this.planets[i]) this.hoverObject(this.planets[i].mesh);
+      };
+      tag.onmouseleave = () => {
+        if (this.planets[i]) this.unhoverObject(this.planets[i].mesh);
+      };
+      this.billboardsLayerEl.appendChild(tag);
+    });
+  }
+
+  buildSelectorBar(tracks, planetColors) {
+    if (!this.selectorBarEl) return;
+    this.selectorBarEl.innerHTML = '';
+
+    const sunBtn = document.createElement('button');
+    sunBtn.className = 'selector-pill active';
+    sunBtn.dataset.idx = '-1';
+    sunBtn.innerHTML = `
+      <span class="selector-pill-dot" style="background:#ffaa22;"></span>
+      <span>☀️ SUN</span>
+    `;
+    sunBtn.onclick = (e) => {
+      e.stopPropagation();
+      this.resetToSolarSystem();
+    };
+    this.selectorBarEl.appendChild(sunBtn);
+
+    tracks.forEach((track, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'selector-pill';
+      btn.dataset.idx = i;
+      const colHex = '#' + (planetColors[i] || 0x38bdf8).toString(16).padStart(6, '0');
+      btn.innerHTML = `
+        <span class="selector-pill-dot" style="background:${colHex};"></span>
+        <span>0${i + 1} ${escapeHtml(track.name.slice(0, 14))}</span>
+      `;
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        this.focusPlanet(i);
+      };
+      this.selectorBarEl.appendChild(btn);
+    });
+  }
+
+  focusPlanet(idx) {
+    const p = this.planets[idx];
+    if (!p) return;
+    this.isInspecting = true;
+    this.inspectedPlanetIdx = idx;
+
+    if (!this.targetLookAt) this.targetLookAt = new THREE.Vector3();
+    this.targetLookAt.copy(p.mesh.position);
+    this.targetOrbitRadius = 8.6;
+    this.targetOrbitPhi = 0.45;
+    this.targetOrbitTheta = p.angle + 0.35;
+
+    this.showInspectorDrawer(p);
+    this.updateSelectorPills(idx);
+    this.updateBillboardActive(idx);
+
+    soundEngine.playTrack(p.track);
+    showToast(`Inspecting Orbit 0${idx + 1}: ${p.track.name}`, 'info', 2200);
+  }
+
+  resetToSolarSystem() {
+    this.isInspecting = false;
+    this.inspectedPlanetIdx = -1;
+    if (this.targetLookAt) this.targetLookAt.set(0, 0, 0);
+    this.targetOrbitRadius = 38;
+    this.targetOrbitPhi = 0.58;
+    this.targetOrbitTheta = Math.PI * 0.15;
+
+    this.hideInspectorDrawer();
+    this.updateSelectorPills(-1);
+    this.updateBillboardActive(-1);
+  }
+
+  showInspectorDrawer(p) {
+    if (!this.inspectorDrawerEl) return;
+    const track = p.track;
+    const img = track.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80';
+    const artists = track.artists?.map(a => a.name).join(', ') || 'Unknown Artist';
+    const durationMin = formatDuration(track.duration_ms);
+    const stats = this.data?.stats || {};
+
+    this.inspectorDrawerEl.innerHTML = `
+      <div class="inspector-header">
+        <div class="inspector-badge">ORBIT #${p.rank} // CELESTIAL RESONANCE</div>
+        <button id="btn-close-inspector" class="inspector-close-btn" title="Return to Solar System Overview">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="inspector-hero">
+        <img src="${img}" class="inspector-art" alt="Album Art">
+        <div class="inspector-track-meta">
+          <h3 class="inspector-title" title="${escapeHtml(track.name)}">${escapeHtml(track.name)}</h3>
+          <p class="inspector-artist" title="${escapeHtml(artists)}">${escapeHtml(artists)}</p>
+          <span class="inspector-album" title="${escapeHtml(track.album?.name || '')}">${escapeHtml(track.album?.name || 'Master Single')}</span>
+        </div>
+      </div>
+
+      <div class="inspector-telemetry-grid">
+        <div class="telemetry-cell">
+          <span class="telemetry-label">ORBIT RADIUS</span>
+          <span class="telemetry-value">${p.orbitRadius} AU</span>
+        </div>
+        <div class="telemetry-cell">
+          <span class="telemetry-label">RUNTIME</span>
+          <span class="telemetry-value">${durationMin}</span>
+        </div>
+        <div class="telemetry-cell">
+          <span class="telemetry-label">ENERGY LEVEL</span>
+          <span class="telemetry-value">${stats.energyScore || 78}%</span>
+        </div>
+        <div class="telemetry-cell">
+          <span class="telemetry-label">PULSE TEMPO</span>
+          <span class="telemetry-value">${stats.tempoBpm || 122} BPM</span>
+        </div>
+      </div>
+
+      <div class="inspector-actions">
+        <button id="btn-inspector-play" class="inspector-play-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          <span>Stream Studio Audio</span>
+        </button>
+        <button id="btn-inspector-back" class="inspector-back-btn">
+          <span>← Solar System Overview</span>
+        </button>
+      </div>
+    `;
+
+    this.inspectorDrawerEl.classList.add('is-open');
+
+    const btnClose = this.inspectorDrawerEl.querySelector('#btn-close-inspector');
+    if (btnClose) btnClose.onclick = () => this.resetToSolarSystem();
+
+    const btnBack = this.inspectorDrawerEl.querySelector('#btn-inspector-back');
+    if (btnBack) btnBack.onclick = () => this.resetToSolarSystem();
+
+    const btnPlay = this.inspectorDrawerEl.querySelector('#btn-inspector-play');
+    if (btnPlay) {
+      btnPlay.onclick = () => {
+        soundEngine.playTrack(track);
+        showToast(`Playing Studio Preview: ${track.name}`, 'info', 2200);
+      };
+    }
+  }
+
+  hideInspectorDrawer() {
+    if (this.inspectorDrawerEl) {
+      this.inspectorDrawerEl.classList.remove('is-open');
+    }
+  }
+
+  updateSelectorPills(activeIdx) {
+    if (!this.selectorBarEl) return;
+    const pills = this.selectorBarEl.querySelectorAll('.selector-pill');
+    pills.forEach(p => {
+      const idx = parseInt(p.dataset.idx, 10);
+      p.classList.toggle('active', idx === activeIdx);
+    });
+  }
+
+  updateBillboardActive(activeIdx) {
+    if (!this.billboardsLayerEl) return;
+    const tags = this.billboardsLayerEl.querySelectorAll('.planet-billboard');
+    tags.forEach(t => {
+      const idx = parseInt(t.dataset.idx, 10);
+      t.classList.toggle('is-active', idx === activeIdx);
+    });
+  }
+
+  updateBillboardProjections() {
+    if (!this.billboardsLayerEl || !this.camera) return;
+    this.planets.forEach((p, i) => {
+      const el = document.getElementById(`planet-billboard-${i}`);
+      if (!el) return;
+      if (this.isInspecting && this.inspectedPlanetIdx === i) {
+        el.style.display = 'none';
+        return;
+      }
+      const pos = p.mesh.position.clone();
+      pos.y += p.userData.baseSize * 1.6;
+      pos.project(this.camera);
+
+      if (pos.z < 1) {
+        const sx = (pos.x * 0.5 + 0.5) * window.innerWidth;
+        const sy = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
+        el.style.left = `${sx}px`;
+        el.style.top = `${sy}px`;
+        el.style.display = 'flex';
+      } else {
+        el.style.display = 'none';
+      }
+    });
+  }
+
+  hideBillboardTags() {
+    if (!this.billboardsLayerEl) return;
+    const tags = this.billboardsLayerEl.querySelectorAll('.planet-billboard');
+    tags.forEach(t => t.style.display = 'none');
   }
 
   // =========================================================================
@@ -885,13 +1152,43 @@ class AmazeMeEngine {
   // =========================================================================
   // INTERACTION HANDLERS: SCROLL, TOUCH, HOVER & CLICK
   // =========================================================================
+  handleMouseDown(e) {
+    if (!this.isOpen) return;
+    if (e.target === this.canvas || (this.billboardsLayerEl && e.target === this.billboardsLayerEl)) {
+      this.isDragging = true;
+      this.hasDragged = false;
+      this.dragStart.x = e.clientX;
+      this.dragStart.y = e.clientY;
+      if (this.canvas) this.canvas.style.cursor = 'grabbing';
+    }
+  }
+
+  handleMouseUp(e) {
+    if (this.isDragging) {
+      this.isDragging = false;
+      if (this.canvas) this.canvas.style.cursor = 'grab';
+    }
+  }
+
   handleWheel(e) {
     if (!this.isOpen) return;
     e.preventDefault();
 
-    // Scroll delta damping
+    // In Scene 0: Dolly Zoom like NASA Eyes on the Solar System
+    if (this.currentSceneIdx === 0 && !this.isInspecting) {
+      if (Math.abs(e.deltaY) < 45) {
+        this.targetOrbitRadius = Math.max(16, Math.min(68, this.targetOrbitRadius + e.deltaY * 0.035));
+        return;
+      }
+    }
+
+    // Scroll delta damping for transitioning across chapters
     const delta = e.deltaY * 0.0016;
     this.targetScroll = Math.max(0, Math.min(4.0, this.targetScroll + delta));
+
+    if (this.targetScroll > 0.08 && this.isInspecting) {
+      this.resetToSolarSystem();
+    }
 
     // Show speed lines when scrolling fast
     if (Math.abs(delta) > 0.04 && this.speedLinesEl) {
@@ -906,12 +1203,29 @@ class AmazeMeEngine {
   handleTouchStart(e) {
     if (e.touches.length > 0) {
       this.touchStartY = e.touches[0].clientY;
+      this.dragStart.x = e.touches[0].clientX;
+      this.dragStart.y = e.touches[0].clientY;
+      this.isDragging = true;
+      this.hasDragged = false;
     }
   }
 
   handleTouchMove(e) {
     if (!this.isOpen || e.touches.length === 0) return;
+    const touchX = e.touches[0].clientX;
     const touchY = e.touches[0].clientY;
+
+    if (this.currentSceneIdx === 0 && this.isDragging) {
+      const dx = touchX - this.dragStart.x;
+      const dy = touchY - this.dragStart.y;
+      if (Math.hypot(dx, dy) > 5) this.hasDragged = true;
+      this.targetOrbitTheta -= dx * 0.008;
+      this.targetOrbitPhi = Math.max(0.12, Math.min(1.42, this.targetOrbitPhi - dy * 0.008));
+      this.dragStart.x = touchX;
+      this.dragStart.y = touchY;
+      return;
+    }
+
     const delta = (this.touchStartY - touchY) * 0.004;
     this.targetScroll = Math.max(0, Math.min(4.0, this.targetScroll + delta));
     this.touchStartY = touchY;
@@ -924,19 +1238,34 @@ class AmazeMeEngine {
     this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
     this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
 
+    // Active drag-to-orbit in Scene 0 (NASA Eyes free camera orbit)
+    if (this.isDragging && this.currentSceneIdx === 0) {
+      const dx = e.clientX - this.dragStart.x;
+      const dy = e.clientY - this.dragStart.y;
+      if (Math.hypot(dx, dy) > 4) {
+        this.hasDragged = true;
+      }
+      this.targetOrbitTheta -= dx * 0.006;
+      this.targetOrbitPhi = Math.max(0.12, Math.min(1.42, this.targetOrbitPhi - dy * 0.006));
+      this.dragStart.x = e.clientX;
+      this.dragStart.y = e.clientY;
+      return; // Skip raycast during drag
+    }
+
     this.checkRaycastHover();
   }
 
   handleClick(e) {
     if (!this.isOpen) return;
+    if (this.hasDragged) return; // Prevent click firing after drag orbit
+
     // Raycast on click
     if (this.hoveredObject && this.hoveredObject.userData) {
       const uData = this.hoveredObject.userData;
       if (uData.type === 'planet' && uData.track) {
-        soundEngine.playTrack(uData.track);
-        showToast(`Playing Studio Preview: ${uData.track.name}`, 'info', 2200);
+        this.focusPlanet(uData.index);
+        return;
       } else if (uData.type === 'artist' && uData.artist) {
-        // Find top track by this artist if available
         const matchingTrack = this.data?.topTracks?.find(t => 
           t.artists?.some(a => a.name.toLowerCase() === uData.artist.name.toLowerCase())
         ) || this.data?.topTracks?.[0];
@@ -945,6 +1274,8 @@ class AmazeMeEngine {
           showToast(`Playing Master: ${matchingTrack.name}`, 'info', 2200);
         }
       }
+    } else if (this.isInspecting && (e.target === this.canvas || e.target === this.billboardsLayerEl)) {
+      this.resetToSolarSystem();
     }
   }
 
@@ -1163,41 +1494,64 @@ class AmazeMeEngine {
 
     // Smooth camera scroll interpolation (Spring Damping)
     this.scrollProgress += (this.targetScroll - this.scrollProgress) * 0.075;
+    this.currentSceneIdx = Math.min(4, Math.floor(this.scrollProgress + 0.3));
 
-    // Determine current scene & transition fraction
-    const sceneIdx = Math.min(3, Math.floor(this.scrollProgress));
-    const nextIdx = Math.min(4, sceneIdx + 1);
-    const frac = this.scrollProgress - sceneIdx;
+    if (this.scrollProgress < 0.08) {
+      // Scene 0: Interactive NASA Eyes Orbit Camera
+      this.orbitTheta += (this.targetOrbitTheta - this.orbitTheta) * 0.08;
+      this.orbitPhi += (this.targetOrbitPhi - this.orbitPhi) * 0.08;
+      this.orbitRadius += (this.targetOrbitRadius - this.orbitRadius) * 0.08;
+      if (!this.currentLookAt) this.currentLookAt = new THREE.Vector3(0, 0, 0);
+      if (!this.targetLookAt) this.targetLookAt = new THREE.Vector3(0, 0, 0);
+      this.currentLookAt.lerp(this.targetLookAt, 0.08);
 
-    const curScene = SCENES[sceneIdx];
-    const nxtScene = SCENES[nextIdx];
+      const camX = this.currentLookAt.x + this.orbitRadius * Math.sin(this.orbitPhi) * Math.sin(this.orbitTheta);
+      const camY = this.currentLookAt.y + this.orbitRadius * Math.cos(this.orbitPhi);
+      const camZ = this.currentLookAt.z + this.orbitRadius * Math.sin(this.orbitPhi) * Math.cos(this.orbitTheta);
 
-    // Smoothly interpolate camera position & lookAt
-    const targetCamX = curScene.cameraX + (nxtScene.cameraX - curScene.cameraX) * frac + this.mouse.x * 2.5;
-    const targetCamY = curScene.cameraY + (nxtScene.cameraY - curScene.cameraY) * frac - this.mouse.y * 1.5;
-    const targetCamZ = curScene.cameraZ + (nxtScene.cameraZ - curScene.cameraZ) * frac;
+      this.camera.position.set(camX, camY, camZ);
+      this.camera.lookAt(this.currentLookAt);
 
-    this.camera.position.x += (targetCamX - this.camera.position.x) * 0.08;
-    this.camera.position.y += (targetCamY - this.camera.position.y) * 0.08;
-    this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.08;
+      // Stationary Celestial Bodies: only axial spin in place (Rock still!)
+      if (this.solarSystemGroup) {
+        this.planets.forEach((p) => {
+          p.mesh.rotation.y += 0.003;
+        });
+      }
 
-    const lookX = curScene.lookAt.x + (nxtScene.lookAt.x - curScene.lookAt.x) * frac;
-    const lookY = curScene.lookAt.y + (nxtScene.lookAt.y - curScene.lookAt.y) * frac;
-    const lookZ = curScene.lookAt.z + (nxtScene.lookAt.z - curScene.lookAt.z) * frac;
-    this.camera.lookAt(lookX, lookY, lookZ);
+      this.updateBillboardProjections();
+      if (this.selectorBarEl) this.selectorBarEl.style.display = 'flex';
+      this.scene.fog.density = 0.002;
+    } else {
+      // Transitioning across scenes 1-4 (The Boat / Midnight Voyage, etc.)
+      const sceneIdx = Math.min(3, Math.floor(this.scrollProgress));
+      const nextIdx = Math.min(4, sceneIdx + 1);
+      const frac = this.scrollProgress - sceneIdx;
 
-    // Update Fog Density
-    const targetFog = curScene.fogDensity + (nxtScene.fogDensity - curScene.fogDensity) * frac;
-    this.scene.fog.density = targetFog;
+      const curScene = SCENES[sceneIdx];
+      const nxtScene = SCENES[nextIdx];
 
-    // Scene 0: Orbiting Planets Physics
-    if (this.solarSystemGroup) {
-      this.planets.forEach((p) => {
-        p.angle += p.speed;
-        p.mesh.position.x = Math.cos(p.angle) * p.orbitRadius;
-        p.mesh.position.z = Math.sin(p.angle) * p.orbitRadius;
-        p.mesh.rotation.y += 0.02;
-      });
+      // Smoothly interpolate camera position & lookAt
+      const targetCamX = curScene.cameraX + (nxtScene.cameraX - curScene.cameraX) * frac + this.mouse.x * 2.5;
+      const targetCamY = curScene.cameraY + (nxtScene.cameraY - curScene.cameraY) * frac - this.mouse.y * 1.5;
+      const targetCamZ = curScene.cameraZ + (nxtScene.cameraZ - curScene.cameraZ) * frac;
+
+      this.camera.position.x += (targetCamX - this.camera.position.x) * 0.08;
+      this.camera.position.y += (targetCamY - this.camera.position.y) * 0.08;
+      this.camera.position.z += (targetCamZ - this.camera.position.z) * 0.08;
+
+      const lookX = curScene.lookAt.x + (nxtScene.lookAt.x - curScene.lookAt.x) * frac;
+      const lookY = curScene.lookAt.y + (nxtScene.lookAt.y - curScene.lookAt.y) * frac;
+      const lookZ = curScene.lookAt.z + (nxtScene.lookAt.z - curScene.lookAt.z) * frac;
+      this.camera.lookAt(lookX, lookY, lookZ);
+
+      // Update Fog Density
+      const targetFog = curScene.fogDensity + (nxtScene.fogDensity - curScene.fogDensity) * frac;
+      this.scene.fog.density = targetFog;
+
+      this.hideBillboardTags();
+      if (this.selectorBarEl) this.selectorBarEl.style.display = 'none';
+      this.hideInspectorDrawer();
     }
 
     // Scene 1: Bioluminescent Ocean Wave Vertex Displacement & Boat Sway
