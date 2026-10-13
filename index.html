@@ -42,9 +42,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Press+Start+2P&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
 
   <!-- Design System & Artifact Stylesheets -->
-  <link rel="stylesheet" href="css/style.css?v=2.4">
-  <link rel="stylesheet" href="css/cards.css?v=2.4">
-  <link rel="stylesheet" href="css/wrapped.css?v=2.4">
+  <link rel="stylesheet" href="css/style.css?v=3.0">
+  <link rel="stylesheet" href="css/cards.css?v=3.0">
+  <link rel="stylesheet" href="css/wrapped.css?v=3.0">
+  <link rel="stylesheet" href="css/amaze-me.css?v=3.0">
 
   <!-- Three.js WebGL Engine for 3D Wrapped Visualizer -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -75,9 +76,22 @@
     <div class="header-actions">
       <!-- 3D Spotify Wrapped Experience Trigger -->
       <button id="btn-open-wrapped" class="btn btn-wrapped" title="Launch 3D Spotify Wrapped Experience">
-        <span class="wrapped-sparkle">✨</span>
-        <span>Wrapped Experience</span>
+        <!-- Waveform SVG — no emoji -->
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+          <path d="M2 12h2M6 6v12M10 9v6M14 4v16M18 8v8M22 12h2"/>
+        </svg>
+        <span>Wrapped</span>
         <span class="wrapped-badge-pill">3D</span>
+      </button>
+
+      <!-- Amaze Me Multiverse Experience Trigger -->
+      <button id="btn-amaze-me" class="btn btn-amaze" title="Launch Amaze Me Multiverse Experience">
+        <svg class="amaze-btn-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12"/>
+        </svg>
+        <span>Amaze Me</span>
+        <span class="amaze-badge-pill">COSMIC</span>
       </button>
 
       <span id="auth-status-badge" class="auth-badge badge-unauth">NOT CONNECTED</span>
@@ -100,28 +114,73 @@
     
     <!-- Segmented Inspector & Archetype Switcher -->
     <section class="controls-hub" aria-label="Controls">
-      <!-- 7 Physical Card Archetypes -->
+      <!-- 7 Physical Card Archetypes — editorial tab bar, no emoji -->
       <div class="segmented-toolbar" role="tablist" aria-label="Card Archetype">
         <button class="seg-btn active" data-style="vinyl" role="tab" aria-selected="true">
-          <span class="seg-icon">💿</span> Vinyl Obi
+          <!-- Vinyl / record groove lines icon -->
+          <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="4"/>
+            <circle cx="12" cy="12" r="1" fill="currentColor"/>
+          </svg>
+          Vinyl Obi
         </button>
         <button class="seg-btn" data-style="swiss" role="tab" aria-selected="false">
-          <span class="seg-icon">📐</span> Swiss Poster
+          <!-- Grid / layout icon -->
+          <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="3" width="7" height="18" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+          Swiss Poster
         </button>
         <button class="seg-btn" data-style="prism" role="tab" aria-selected="false">
-          <span class="seg-icon">🔮</span> Sound Prism
+          <!-- Triangle prism icon -->
+          <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M12 3L22 21H2L12 3Z"/>
+            <line x1="12" y1="3" x2="12" y2="21"/>
+          </svg>
+          Sound Prism
         </button>
         <button class="seg-btn" data-style="cassette" role="tab" aria-selected="false">
-          <span class="seg-icon">📼</span> Tape Cassette
+          <!-- Cassette reel icon -->
+          <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="2" y="6" width="20" height="14" rx="2"/>
+            <circle cx="8" cy="13" r="2.5"/>
+            <circle cx="16" cy="13" r="2.5"/>
+            <path d="M10.5 13h3"/>
+            <path d="M5 20V6"/>
+            <path d="M19 20V6"/>
+          </svg>
+          Tape Cassette
         </button>
         <button class="seg-btn" data-style="receipt" role="tab" aria-selected="false">
-          <span class="seg-icon">🧾</span> Thermal Slip
+          <!-- Receipt icon -->
+          <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M6 2h12a1 1 0 011 1v17l-3-2-2 2-2-2-2 2-3-2V3a1 1 0 011-1z"/>
+            <line x1="9" y1="8" x2="15" y2="8"/>
+            <line x1="9" y1="12" x2="15" y2="12"/>
+          </svg>
+          Thermal Slip
         </button>
         <button class="seg-btn" data-style="gameboy" role="tab" aria-selected="false">
-          <span class="seg-icon">🎮</span> 90s Cartridge
+          <!-- Cartridge chip icon -->
+          <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="5" y="6" width="14" height="16" rx="2"/>
+            <path d="M9 6V3M15 6V3"/>
+            <path d="M9 14h6M12 11v6"/>
+          </svg>
+          90s Cartridge
         </button>
         <button class="seg-btn" data-style="vippass" role="tab" aria-selected="false">
-          <span class="seg-icon">🎫</span> VIP Pass
+          <!-- ID badge / pass icon -->
+          <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="3" y="4" width="18" height="16" rx="2"/>
+            <path d="M8 4v2M16 4v2"/>
+            <circle cx="12" cy="12" r="2.5"/>
+            <path d="M7 18c0-2.2 2.2-4 5-4s5 1.8 5 4"/>
+          </svg>
+          VIP Pass
         </button>
       </div>
 
@@ -185,7 +244,11 @@
       <span id="np-track-name" class="dock-title">Track Name</span>
       <span id="np-artist-name" class="dock-artist">Artist Name</span>
     </div>
-    <button id="np-stop-btn" class="btn-dock-close" title="Stop Audio">✕</button>
+    <button id="np-stop-btn" class="btn-dock-close" title="Stop Audio">
+      <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+      </svg>
+    </button>
   </aside>
 
 
@@ -199,8 +262,16 @@
     <canvas id="wrapped-three-canvas"></canvas>
 
     <!-- Floating Desktop Nav Chevrons -->
-    <button id="wrapped-nav-prev" class="wrapped-nav-arrow wrapped-nav-prev" title="Previous Story (Left Arrow)" aria-label="Previous Story">‹</button>
-    <button id="wrapped-nav-next" class="wrapped-nav-arrow wrapped-nav-next" title="Next Story (Right Arrow / Space)" aria-label="Next Story">›</button>
+    <button id="wrapped-nav-prev" class="wrapped-nav-arrow wrapped-nav-prev" title="Previous Story (Left Arrow)" aria-label="Previous Story">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+    </button>
+    <button id="wrapped-nav-next" class="wrapped-nav-arrow wrapped-nav-next" title="Next Story (Right Arrow / Space)" aria-label="Next Story">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="9 18 15 12 9 6"/>
+      </svg>
+    </button>
 
     <div class="wrapped-stage-glow" id="wrapped-stage-glow"></div>
 
@@ -217,8 +288,21 @@
             </div>
           </div>
           <div class="wrapped-top-controls">
-            <button id="btn-wrapped-mute" class="btn-wrapped-control" title="Toggle Audio (Mute / Unmute)">🔊</button>
-            <button id="btn-wrapped-close" class="btn-wrapped-control" title="Close Wrapped (Esc)">✕</button>
+            <button id="btn-wrapped-mute" class="btn-wrapped-control" title="Toggle Audio (Mute / Unmute)" aria-label="Toggle mute">
+              <!-- Speaker icon -->
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+              </svg>
+            </button>
+            <button id="btn-wrapped-close" class="btn-wrapped-control" title="Close Wrapped (Esc)" aria-label="Close">
+              <!-- Close X icon -->
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
@@ -232,7 +316,73 @@
     </div>
   </div>
 
+  <!-- Amaze Me Multiverse Interactive Canvas & HUD Overlay -->
+  <div id="amaze-modal" class="amaze-modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <canvas id="amaze-canvas" class="amaze-canvas"></canvas>
+    
+    <!-- Atmospheric VFX layers -->
+    <div class="amaze-vignette" aria-hidden="true"></div>
+    <div class="amaze-noise-overlay" aria-hidden="true"></div>
+    <div class="amaze-speed-lines" id="amaze-speed-lines" aria-hidden="true"></div>
+
+    <!-- HUD Chrome Top Bar -->
+    <div class="amaze-top-hud">
+      <div class="amaze-hud-brand">
+        <div class="amaze-hud-pill">
+          <span class="amaze-pulsing-dot"></span>
+          <span id="amaze-hud-scene-name" class="amaze-hud-title">SCENE 01 / SOLAR SYSTEM</span>
+        </div>
+        <span class="amaze-hud-sub" id="amaze-hud-sub">TOP 5 TRACKS IN ORBITAL RESONANCE</span>
+      </div>
+
+      <div class="amaze-hud-controls">
+        <button id="btn-amaze-audio" class="amaze-hud-btn is-active" title="Toggle Soundscape / Audio (M)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          </svg>
+        </button>
+        <button id="btn-amaze-fullscreen" class="amaze-hud-btn" title="Toggle Fullscreen">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 3 21 3 21 9"/>
+            <polyline points="9 21 3 21 3 15"/>
+            <line x1="21" y1="3" x2="14" y2="10"/>
+            <line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+        </button>
+        <button id="btn-amaze-close" class="amaze-hud-btn" title="Exit Amaze Me (Esc)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="18" y1="6" x2="6" y2="18"/>
+            <line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Right Side Scene Progress Rail -->
+    <div class="amaze-scene-nav" id="amaze-scene-nav"></div>
+
+    <!-- Dynamic 2D/3D Contextual Tooltip & Target HUD reticle -->
+    <div id="amaze-planet-tooltip" class="amaze-planet-tooltip"></div>
+
+    <!-- Bottom Telemetry & Navigation Prompts -->
+    <div class="amaze-bottom-hud">
+      <div class="amaze-scroll-prompt">
+        <span class="amaze-scroll-mouse">
+          <span class="amaze-scroll-wheel"></span>
+        </span>
+        <span class="amaze-scroll-label">SCROLL / SWIPE TO DIVE DEEPER</span>
+      </div>
+      <div class="amaze-telemetry" id="amaze-telemetry">
+        <span class="amaze-telem-item">VELOCITY: <b id="amaze-telem-vel">0.12c</b></span>
+        <span class="amaze-telem-divider">|</span>
+        <span class="amaze-telem-item">COORDINATES: <b id="amaze-telem-coords">RA 18h 36m / DEC +38°</b></span>
+      </div>
+    </div>
+  </div>
+
   <!-- App Main Orchestrator (ES Module) -->
-  <script type="module" src="js/app.js?v=2.4"></script>
+  <script type="module" src="js/app.js?v=3.0"></script>
 </body>
 </html>

@@ -23,6 +23,7 @@ import {
 import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 import { wrappedExperience } from './wrapped-experience.js';
+import { amazeMe } from './amaze-me.js';
 
 // Curated default preview data allowing instant, responsive exploration across all 7 card archetypes
 export const DEFAULT_CURATED_DATA = {
@@ -188,6 +189,7 @@ function initElements() {
   elements.btnExportSquare = document.getElementById('btn-export-square');
   elements.btnCopyClip = document.getElementById('btn-copy-clip');
   elements.btnOpenWrapped = document.getElementById('btn-open-wrapped');
+  elements.btnAmazeMe = document.getElementById('btn-amaze-me');
   elements.btnConnectSpotify = document.getElementById('btn-connect-spotify');
   elements.btnLogout = document.getElementById('btn-logout');
   elements.authStatusBadge = document.getElementById('auth-status-badge');
@@ -402,6 +404,11 @@ function setupEventListeners() {
   elements.btnOpenWrapped?.addEventListener('click', () => {
     const data = state.currentData || DEFAULT_CURATED_DATA;
     wrappedExperience.open(data, state.timeRange);
+  });
+
+  elements.btnAmazeMe?.addEventListener('click', () => {
+    const data = state.currentData || DEFAULT_CURATED_DATA;
+    amazeMe.open(data, state.timeRange);
   });
 
   elements.npStopBtn?.addEventListener('click', () => {

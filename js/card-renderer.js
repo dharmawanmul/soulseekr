@@ -62,14 +62,14 @@ export function renderGatewayCard() {
   return `
     <div class="card-inner card-gateway" id="exportable-card">
       <div class="gateway-icon-wrap">
-        <svg width="34" height="34" viewBox="0 0 24 24" fill="#fafafa">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="#fafafa">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
         </svg>
       </div>
 
       <div class="gateway-badge">ARCHIVAL SOUND EXHIBIT</div>
 
-      <h2 class="gateway-title">CONNECT SPOTIFY TO REVEAL YOUR ARTIFACTS</h2>
+      <h2 class="gateway-title">Connect Spotify<br>to reveal your artifacts</h2>
       
       <p class="gateway-desc">
         Authorize your Spotify account to analyze your listening history and generate tactile physical artifacts — Japanese Obi sleeves, Swiss posters, and playable cassettes.
@@ -85,17 +85,17 @@ export function renderGatewayCard() {
       </div>
 
       <div class="gateway-archetypes-preview">
-        <span class="preview-pill">💿 Vinyl Obi</span>
-        <span class="preview-pill">📐 Swiss Poster</span>
-        <span class="preview-pill">🔮 Sound Prism</span>
-        <span class="preview-pill">📼 Cassette</span>
-        <span class="preview-pill">🧾 Thermal Slip</span>
-        <span class="preview-pill">🎮 90s Cartridge</span>
-        <span class="preview-pill">🎫 VIP Pass</span>
+        <span class="preview-pill">Vinyl Obi</span>
+        <span class="preview-pill">Swiss Poster</span>
+        <span class="preview-pill">Sound Prism</span>
+        <span class="preview-pill">Cassette</span>
+        <span class="preview-pill">Thermal Slip</span>
+        <span class="preview-pill">90s Cartridge</span>
+        <span class="preview-pill">VIP Pass</span>
       </div>
 
       <div class="gateway-footer-note">
-        🔒 100% Client-Side PKCE OAuth • Direct from your browser
+        Client-Side PKCE OAuth — runs entirely in your browser
       </div>
     </div>
   `;
