@@ -24,7 +24,7 @@ import {
 import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 import { wrappedExperience } from './wrapped-experience.js';
-import { amazeMe } from './amaze-me.js';
+import { sonicDossier } from './dossier.js';
 
 // Curated default preview data allowing instant, responsive exploration across all 7 card archetypes
 export const DEFAULT_CURATED_DATA = {
@@ -40,9 +40,11 @@ export const DEFAULT_CURATED_DATA = {
       artists: [{ name: 'The Weeknd', id: 'art_1' }, { name: 'Daft Punk', id: 'art_2' }],
       album: {
         name: 'Starboy',
+        release_date: '2016-11-25',
         images: [{ url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80' }]
       },
       duration_ms: 230453,
+      popularity: 94,
       preview_url: null
     },
     {
@@ -51,9 +53,11 @@ export const DEFAULT_CURATED_DATA = {
       artists: [{ name: 'M83', id: 'art_3' }],
       album: {
         name: "Hurry Up, We're Dreaming",
+        release_date: '2011-10-18',
         images: [{ url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80' }]
       },
       duration_ms: 243266,
+      popularity: 76,
       preview_url: null
     },
     {
@@ -62,9 +66,11 @@ export const DEFAULT_CURATED_DATA = {
       artists: [{ name: 'Tame Impala', id: 'art_4' }],
       album: {
         name: 'Currents',
+        release_date: '2015-07-17',
         images: [{ url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=300&q=80' }]
       },
       duration_ms: 216320,
+      popularity: 84,
       preview_url: null
     },
     {
@@ -73,9 +79,11 @@ export const DEFAULT_CURATED_DATA = {
       artists: [{ name: 'Arctic Monkeys', id: 'art_5' }],
       album: {
         name: 'Favourite Worst Nightmare',
+        release_date: '2007-04-23',
         images: [{ url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=300&q=80' }]
       },
       duration_ms: 253586,
+      popularity: 88,
       preview_url: null
     },
     {
@@ -84,18 +92,27 @@ export const DEFAULT_CURATED_DATA = {
       artists: [{ name: 'Fleetwood Mac', id: 'art_6' }],
       album: {
         name: 'Rumours',
+        release_date: '1977-02-04',
         images: [{ url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80' }]
       },
       duration_ms: 257800,
+      popularity: 82,
       preview_url: null
     }
   ],
   topArtists: [
-    { name: 'The Weeknd', genres: ['canadian pop', 'r&b'], images: [{ url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80' }] },
-    { name: 'M83', genres: ['indie rock', 'synthpop'], images: [{ url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80' }] },
-    { name: 'Tame Impala', genres: ['neo-psychedelia'], images: [{ url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=300&q=80' }] },
-    { name: 'Arctic Monkeys', genres: ['garage rock', 'indie rock'], images: [{ url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=300&q=80' }] },
-    { name: 'Fleetwood Mac', genres: ['classic rock', 'soft rock'], images: [{ url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80' }] }
+    { name: 'The Weeknd', popularity: 95, genres: ['canadian pop', 'r&b'], images: [{ url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'M83', popularity: 72, genres: ['indie rock', 'synthpop', 'french touch'], images: [{ url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Tame Impala', popularity: 84, genres: ['neo-psychedelia', 'aussie psych'], images: [{ url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Arctic Monkeys', popularity: 88, genres: ['garage rock', 'indie rock', 'uk post-punk'], images: [{ url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Fleetwood Mac', popularity: 82, genres: ['classic rock', 'soft rock'], images: [{ url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'The Japanese House', popularity: 38, genres: ['indie pop', 'synthwave'], images: [{ url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Boy Harsher', popularity: 44, genres: ['darkwave', 'electronic body music'], images: [{ url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Beach House', popularity: 71, genres: ['dream pop', 'shoegaze'], images: [{ url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Men I Trust', popularity: 58, genres: ['canadian indie', 'bedroom pop'], images: [{ url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Alvvays', popularity: 62, genres: ['jangle pop', 'indie rock'], images: [{ url: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Slowdive', popularity: 64, genres: ['shoegaze', 'ethereal wave'], images: [{ url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80' }] },
+    { name: 'Yves Tumor', popularity: 52, genres: ['experimental rock', 'glam rock'], images: [{ url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80' }] }
   ],
   topAlbums: [
     {
@@ -190,7 +207,7 @@ function initElements() {
   elements.btnExportSquare = document.getElementById('btn-export-square');
   elements.btnCopyClip = document.getElementById('btn-copy-clip');
   elements.btnOpenWrapped = document.getElementById('btn-open-wrapped');
-  elements.btnAmazeMe = document.getElementById('btn-amaze-me');
+  elements.btnOpenDossier = document.getElementById('btn-open-dossier');
   elements.btnConnectSpotify = document.getElementById('btn-connect-spotify');
   elements.btnLogout = document.getElementById('btn-logout');
   elements.authStatusBadge = document.getElementById('auth-status-badge');
@@ -408,9 +425,9 @@ function setupEventListeners() {
     wrappedExperience.open(data, state.timeRange);
   });
 
-  elements.btnAmazeMe?.addEventListener('click', () => {
+  elements.btnOpenDossier?.addEventListener('click', () => {
     const data = state.currentData || DEFAULT_CURATED_DATA;
-    amazeMe.open(data, state.timeRange);
+    sonicDossier.open(data, state.timeRange);
   });
 
   elements.npStopBtn?.addEventListener('click', () => {
