@@ -189,6 +189,11 @@ class AmazeMeEngine {
     this.resetToSolarSystem();
     this.updateHUD(0);
 
+    // Guarantee immediate canvas viewport size and initial projection frame
+    this.handleResize();
+    if (this.camera) this.camera.updateMatrixWorld(true);
+    this.render();
+
     // Attach interaction listeners
     window.addEventListener('wheel', this.onWheel, { passive: false });
     window.addEventListener('touchstart', this.onTouchStart, { passive: true });
@@ -429,29 +434,44 @@ class AmazeMeEngine {
 
     this.planets = [];
 
-    // Central Star (The Pulsing Nucleus)
-    const sunGeom = new THREE.SphereGeometry(4.2, 32, 32);
-    const sunMat = new THREE.MeshBasicMaterial({
-      color: 0xffaa22,
-      wireframe: false
+    // Central Star (The Radiant Pulsing Nucleus)
+    const sunGeom = new THREE.SphereGeometry(4.2, 48, 48);
+    const sunMat = new THREE.MeshStandardMaterial({
+      color: 0xffb703,
+      emissive: 0xf59e0b,
+      emissiveIntensity: 0.95,
+      roughness: 0.2,
+      metalness: 0.1
     });
     const sunMesh = new THREE.Mesh(sunGeom, sunMat);
     this.solarSystemGroup.add(sunMesh);
 
-    // Sun glowing corona
-    const coronaGeom = new THREE.SphereGeometry(5.2, 32, 32);
+    // Sun glowing inner corona
+    const coronaGeom = new THREE.SphereGeometry(5.2, 48, 48);
     const coronaMat = new THREE.MeshBasicMaterial({
-      color: 0xffdd44,
+      color: 0xffedd5,
       transparent: true,
-      opacity: 0.25,
+      opacity: 0.35,
       blending: THREE.AdditiveBlending,
       side: THREE.BackSide
     });
     const coronaMesh = new THREE.Mesh(coronaGeom, coronaMat);
     this.solarSystemGroup.add(coronaMesh);
 
+    // Sun atmospheric flare
+    const flareGeom = new THREE.SphereGeometry(6.6, 32, 32);
+    const flareMat = new THREE.MeshBasicMaterial({
+      color: 0xfbbf24,
+      transparent: true,
+      opacity: 0.15,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide
+    });
+    const flareMesh = new THREE.Mesh(flareGeom, flareMat);
+    this.solarSystemGroup.add(flareMesh);
+
     // Sun PointLight
-    const sunLight = new THREE.PointLight(0xffeedd, 2.8, 120);
+    const sunLight = new THREE.PointLight(0xffedd5, 3.2, 160);
     this.solarSystemGroup.add(sunLight);
 
     // Top 5 Tracks as Celestial Spheres - FIXED ASTRONOMICAL COORDINATES
@@ -481,14 +501,14 @@ class AmazeMeEngine {
       orbitLine.rotation.x = Math.PI / 2;
       this.solarSystemGroup.add(orbitLine);
 
-      // Planet Sphere - Positioned ONCE at its fixed celestial coordinate
-      const pGeom = new THREE.SphereGeometry(size, 32, 32);
+      // Planet Sphere - Positioned at its fixed celestial coordinate with smooth PBR finish
+      const pGeom = new THREE.SphereGeometry(size, 48, 48);
       const pMat = new THREE.MeshStandardMaterial({
         color: color,
-        roughness: 0.35,
-        metalness: 0.25,
+        roughness: 0.28,
+        metalness: 0.35,
         emissive: color,
-        emissiveIntensity: 0.22
+        emissiveIntensity: 0.28
       });
       const pMesh = new THREE.Mesh(pGeom, pMat);
       pMesh.position.set(
@@ -569,6 +589,7 @@ class AmazeMeEngine {
       tag.className = 'planet-billboard';
       tag.id = `planet-billboard-${i}`;
       tag.dataset.idx = i;
+      tag.style.display = 'none'; // Hidden until projected
       tag.innerHTML = `
         <span class="billboard-rank">0${i + 1}</span>
         <span class="billboard-name">${escapeHtml(track.name)}</span>
@@ -644,10 +665,16 @@ class AmazeMeEngine {
   resetToSolarSystem() {
     this.isInspecting = false;
     this.inspectedPlanetIdx = -1;
-    if (this.targetLookAt) this.targetLookAt.set(0, 0, 0);
+    if (!this.targetLookAt) this.targetLookAt = new THREE.Vector3(0, 0, 0);
+    else this.targetLookAt.set(0, 0, 0);
+    if (!this.currentLookAt) this.currentLookAt = new THREE.Vector3(0, 0, 0);
+    else this.currentLookAt.set(0, 0, 0);
     this.targetOrbitRadius = 38;
+    this.orbitRadius = 38;
     this.targetOrbitPhi = 0.58;
+    this.orbitPhi = 0.58;
     this.targetOrbitTheta = Math.PI * 0.15;
+    this.orbitTheta = Math.PI * 0.15;
 
     this.hideInspectorDrawer();
     this.updateSelectorPills(-1);
@@ -762,11 +789,13 @@ class AmazeMeEngine {
         el.style.display = 'none';
         return;
       }
-      const pos = p.mesh.position.clone();
+      const pos = new THREE.Vector3();
+      p.mesh.getWorldPosition(pos);
       pos.y += p.userData.baseSize * 1.6;
       pos.project(this.camera);
 
-      if (pos.z < 1) {
+      // In Three.js NDC space, visible objects in front of camera have -1 <= z <= 1
+      if (pos.z > -1 && pos.z < 1) {
         const sx = (pos.x * 0.5 + 0.5) * window.innerWidth;
         const sy = (-(pos.y * 0.5) + 0.5) * window.innerHeight;
         el.style.left = `${sx}px`;
@@ -813,12 +842,12 @@ class AmazeMeEngine {
     }
 
     const oceanMat = new THREE.MeshStandardMaterial({
-      color: 0x050e1a,
-      emissive: 0x082f49,
-      emissiveIntensity: 0.45,
-      roughness: 0.15,
-      metalness: 0.7,
-      wireframe: true
+      color: 0x030712,
+      emissive: 0x07273d,
+      emissiveIntensity: 0.35,
+      roughness: 0.08,
+      metalness: 0.88,
+      wireframe: false
     });
     this.oceanPlane = new THREE.Mesh(oceanGeom, oceanMat);
     this.oceanPlane.position.set(0, 0, -35);
@@ -1100,12 +1129,16 @@ class AmazeMeEngine {
     this.singularityGroup.add(this.accretionDisk);
 
     // Orbiting DNA Telemetry Torus Ring
-    const torusGeom = new THREE.TorusGeometry(26, 0.2, 16, 64);
-    const torusMat = new THREE.MeshBasicMaterial({
+    const torusGeom = new THREE.TorusGeometry(26, 0.25, 24, 96);
+    const torusMat = new THREE.MeshStandardMaterial({
       color: 0x38bdf8,
-      wireframe: true,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.5,
+      roughness: 0.2,
+      metalness: 0.8,
+      wireframe: false,
       transparent: true,
-      opacity: 0.35
+      opacity: 0.75
     });
     const dnaRing = new THREE.Mesh(torusGeom, torusMat);
     dnaRing.rotation.x = Math.PI / 3;
@@ -1121,15 +1154,15 @@ class AmazeMeEngine {
     this.finaleGroup.position.set(0, 0, -560);
     this.scene.add(this.finaleGroup);
 
-    // Central Floating 3D Octahedral Crystal Artifact
-    const octGeom = new THREE.OctahedronGeometry(6.5, 0);
+    // Central Floating 3D Octahedral Crystal Artifact (Solid faceted gemstone, not wireframe)
+    const octGeom = new THREE.OctahedronGeometry(6.5, 2);
     const octMat = new THREE.MeshStandardMaterial({
       color: 0x10b981,
       emissive: 0x8b5cf6,
-      emissiveIntensity: 0.4,
-      roughness: 0.1,
-      metalness: 0.9,
-      wireframe: true
+      emissiveIntensity: 0.45,
+      roughness: 0.06,
+      metalness: 0.92,
+      wireframe: false
     });
     this.finaleArtifact = new THREE.Mesh(octGeom, octMat);
     this.finaleGroup.add(this.finaleArtifact);
@@ -1154,13 +1187,15 @@ class AmazeMeEngine {
   // =========================================================================
   handleMouseDown(e) {
     if (!this.isOpen) return;
-    if (e.target === this.canvas || (this.billboardsLayerEl && e.target === this.billboardsLayerEl)) {
-      this.isDragging = true;
-      this.hasDragged = false;
-      this.dragStart.x = e.clientX;
-      this.dragStart.y = e.clientY;
-      if (this.canvas) this.canvas.style.cursor = 'grabbing';
+    // Don't drag if clicking buttons, inspector, or selector pills
+    if (e.target.closest('button') || e.target.closest('.amaze-inspector-drawer') || e.target.closest('.planet-billboard') || e.target.closest('.selector-pill')) {
+      return;
     }
+    this.isDragging = true;
+    this.hasDragged = false;
+    this.dragStart.x = e.clientX;
+    this.dragStart.y = e.clientY;
+    if (this.canvas) this.canvas.style.cursor = 'grabbing';
   }
 
   handleMouseUp(e) {
@@ -1174,24 +1209,24 @@ class AmazeMeEngine {
     if (!this.isOpen) return;
     e.preventDefault();
 
-    // In Scene 0: Dolly Zoom like NASA Eyes on the Solar System
-    if (this.currentSceneIdx === 0 && !this.isInspecting) {
-      if (Math.abs(e.deltaY) < 45) {
-        this.targetOrbitRadius = Math.max(16, Math.min(68, this.targetOrbitRadius + e.deltaY * 0.035));
-        return;
+    // In Scene 0: Dolly Zoom if user is holding Ctrl/Meta (standard trackpad pinch or Ctrl+wheel)
+    if (e.ctrlKey || e.metaKey) {
+      if (this.currentSceneIdx === 0 && !this.isInspecting) {
+        this.targetOrbitRadius = Math.max(16, Math.min(68, this.targetOrbitRadius + e.deltaY * 0.04));
       }
+      return;
     }
 
-    // Scroll delta damping for transitioning across chapters
-    const delta = e.deltaY * 0.0016;
+    // Standard mouse wheel or trackpad scroll advances chapters with buttery smoothness
+    const delta = e.deltaY * 0.0018;
     this.targetScroll = Math.max(0, Math.min(4.0, this.targetScroll + delta));
 
     if (this.targetScroll > 0.08 && this.isInspecting) {
       this.resetToSolarSystem();
     }
 
-    // Show speed lines when scrolling fast
-    if (Math.abs(delta) > 0.04 && this.speedLinesEl) {
+    // Show speed lines when scrolling rapidly
+    if (Math.abs(delta) > 0.03 && this.speedLinesEl) {
       this.speedLinesEl.classList.add('active');
       clearTimeout(this.speedTimer);
       this.speedTimer = setTimeout(() => {
@@ -1215,10 +1250,12 @@ class AmazeMeEngine {
     const touchX = e.touches[0].clientX;
     const touchY = e.touches[0].clientY;
 
-    if (this.currentSceneIdx === 0 && this.isDragging) {
-      const dx = touchX - this.dragStart.x;
-      const dy = touchY - this.dragStart.y;
-      if (Math.hypot(dx, dy) > 5) this.hasDragged = true;
+    const dx = touchX - this.dragStart.x;
+    const dy = touchY - this.dragStart.y;
+
+    // In Scene 0: horizontal swipe orbits celestial camera
+    if (this.currentSceneIdx === 0 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      if (Math.hypot(dx, dy) > 4) this.hasDragged = true;
       this.targetOrbitTheta -= dx * 0.008;
       this.targetOrbitPhi = Math.max(0.12, Math.min(1.42, this.targetOrbitPhi - dy * 0.008));
       this.dragStart.x = touchX;
@@ -1226,9 +1263,12 @@ class AmazeMeEngine {
       return;
     }
 
+    // Vertical touch drag advances/reverses the scene journey smoothly
     const delta = (this.touchStartY - touchY) * 0.004;
     this.targetScroll = Math.max(0, Math.min(4.0, this.targetScroll + delta));
     this.touchStartY = touchY;
+    this.dragStart.x = touchX;
+    this.dragStart.y = touchY;
   }
 
   handleMouseMove(e) {

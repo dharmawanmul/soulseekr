@@ -456,62 +456,104 @@ export function renderReceiptCard(data, timeRange, playbackState) {
 }
 
 /**
- * 6. THE 90S GAME BOY MEMORY CARTRIDGE (Dot-Matrix LCD & Translucent Shell)
+ * 6. THE TITANIUM STUDIO DAP (Audiophile Digital Audio Player & Balanced Pentaconn Architecture)
  */
-export function renderGameboyCard(data, timeRange, playbackState) {
-  const user = data.user || { display_name: 'Player 1' };
+export function renderDapCard(data, timeRange, playbackState) {
+  const user = data.user || { display_name: 'Audiophile Master' };
   const tracks = data.topTracks || [];
   const stats = data.stats || {};
   const rangeLabel = getTimeRangeLabel(timeRange);
+  const topSong = tracks[0] || { name: 'Direct Stream Track', artists: [{ name: 'Studio Master' }] };
+  const topCover = topSong.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80';
 
   return `
-    <div class="card-inner card-gameboy" id="exportable-card">
-      <div class="gameboy-top-grip">
-        <span></span><span></span><span></span><span></span><span></span>
+    <div class="card-inner card-dap" id="exportable-card">
+      <!-- Top CNC Bevel & 4.4mm Balanced Audio Jack Accent -->
+      <div class="dap-chassis-top">
+        <div class="dap-jack-group">
+          <div class="dap-jack-rim" title="4.4mm Pentaconn Balanced Output">
+            <div class="dap-jack-bore"></div>
+          </div>
+          <span class="dap-jack-label">4.4mm BAL</span>
+        </div>
+        <div class="dap-chassis-brand">
+          <span class="dap-brand-name">SOULSEEKR</span>
+          <span class="dap-brand-model">DAP-X9000 // TITANIUM</span>
+        </div>
+        <div class="dap-volume-crown" title="Precision Knurled Volume Crown"></div>
       </div>
-      <div class="gameboy-notch"></div>
 
-      <div class="gameboy-label-sticker">
-        <div class="gameboy-sticker-header">
-          <div class="gb-brand-title">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
-            </svg>
-            SOUL-CARTRIDGE DMG-01
-          </div>
-          <div class="gb-battery-row">
-            <span>BATTERY</span>
-            <span class="gb-led"></span>
-          </div>
-        </div>
-
-        <div class="gameboy-screen-bezel">
-          <div class="gameboy-screen-lcd">
-            <div class="gb-screen-header">
-              <span>PLAYER: ${escapeHtml(user.display_name).toUpperCase()}</span>
-              <span>${rangeLabel}</span>
+      <!-- OLED Display Screen Bevel -->
+      <div class="dap-screen-bezel">
+        <div class="dap-screen-oled">
+          <!-- Status Bar -->
+          <div class="dap-status-bar">
+            <span class="dap-status-mode">DSD256 • 11.2MHz</span>
+            <div class="dap-status-center">
+              <span class="dap-hi-res-badge">Hi-Res AUDIO</span>
             </div>
+            <div class="dap-battery-stat">
+              <span class="dap-volt-val">100%</span>
+              <div class="dap-battery-icon"><div class="dap-battery-cell"></div></div>
+            </div>
+          </div>
 
-            <div class="gb-track-list">
-              ${tracks.slice(0, 5).map((track, i) => {
-                const active = isTrackActive(track.id, playbackState);
-                return `
-                  <div class="gb-track-row track-play-trigger ${active ? 'active' : ''}" data-track-id="${track.id}">
-                    <span class="gb-track-name">0${i + 1}. ${escapeHtml(track.name).toUpperCase()}</span>
-                    <span>${active ? '▶ PLAY' : formatDuration(track.duration_ms)}</span>
+          <!-- Hero Playing Track Meta -->
+          <div class="dap-hero-track">
+            <img src="${topCover}" class="dap-album-art" alt="Album Cover">
+            <div class="dap-track-meta">
+              <span class="dap-track-rank">TOP FREQUENCY • ${rangeLabel.toUpperCase()}</span>
+              <h3 class="dap-track-title">${escapeHtml(topSong.name)}</h3>
+              <p class="dap-track-artist">${escapeHtml(topSong.artists?.map(a => a.name).join(', ') || 'Artist')}</p>
+              <div class="dap-audio-specs">
+                <span>FLAC 24-BIT / 192kHz</span>
+                <span>•</span>
+                <span>${stats.tempoBpm || 122} BPM</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Stereo VU Peak Level Meters -->
+          <div class="dap-vu-meters">
+            <div class="dap-vu-channel">
+              <span class="dap-vu-tag">L</span>
+              <div class="dap-vu-bar"><div class="dap-vu-level dap-vu-l"></div></div>
+              <span class="dap-vu-db">-3 dB</span>
+            </div>
+            <div class="dap-vu-channel">
+              <span class="dap-vu-tag">R</span>
+              <div class="dap-vu-bar"><div class="dap-vu-level dap-vu-r"></div></div>
+              <span class="dap-vu-db">-1 dB</span>
+            </div>
+          </div>
+
+          <!-- Top Tracks Playlist -->
+          <div class="dap-track-list">
+            <div class="dap-list-header">
+              <span>REFERENCE PLAYLIST (TAP TO STREAM)</span>
+              <span>TIME</span>
+            </div>
+            ${tracks.slice(0, 5).map((track, i) => {
+              const active = isTrackActive(track.id, playbackState);
+              return `
+                <div class="dap-track-row track-play-trigger ${active ? 'active' : ''}" data-track-id="${track.id}">
+                  <div class="dap-row-left">
+                    <span class="dap-row-num">0${i + 1}</span>
+                    <span class="dap-row-name">${escapeHtml(track.name)}</span>
                   </div>
-                `;
-              }).join('')}
-            </div>
-
-            <div class="gb-screen-footer">
-              <span>LV.${stats.obscurityScore || 85} ${escapeHtml(stats.obscurityTier || 'PRO CRATE')}</span>
-              <span>BPM:${stats.tempoBpm || 120}</span>
-            </div>
+                  <div class="dap-row-right">
+                    ${active ? '<span class="dap-playing-pulse">▶ PLAYING</span>' : `<span class="dap-row-time">${formatDuration(track.duration_ms)}</span>`}
+                  </div>
+                </div>
+              `;
+            }).join('')}
           </div>
         </div>
+      </div>
 
-        <div class="snob-meter-container" style="margin-top: 0.85rem;">
+      <!-- Audiophile Obscurity & Aura Chassis Footer -->
+      <div class="dap-chassis-footer">
+        <div class="snob-meter-container" style="margin-top:0.35rem;">
           <div class="snob-meter-header">
             <span>OBSCURITY SNOB RATING</span>
             <span class="snob-score-tag">${stats.obscurityScore || 85}% • ${escapeHtml(stats.obscurityTier || 'Ultra Crate Digger')}</span>
@@ -521,21 +563,20 @@ export function renderGameboyCard(data, timeRange, playbackState) {
           </div>
         </div>
 
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem;">
+        <div class="dap-footer-meta">
           <div class="snob-aura-pill">
             <span class="snob-aura-dot" style="background:${stats.auraColors?.[1] || '#c084fc'};"></span>
             <span>AURA: ${escapeHtml(stats.auraTitle || 'Subterranean Velvet').toUpperCase()}</span>
           </div>
-          <span style="font-family:'Press Start 2P', monospace; font-size:0.48rem; color:#71717a;">MADE IN JAPAN</span>
+          <span class="dap-certification">MASTER REFERENCE • DIRECT DAC</span>
         </div>
-      </div>
-
-      <div class="cartridge-screw-row">
-        <div class="cartridge-screw"></div>
       </div>
     </div>
   `;
 }
+
+// Export alias for seamless backwards compatibility
+export const renderGameboyCard = renderDapCard;
 
 /**
  * 7. THE ALL-ACCESS VIP FESTIVAL PASS (Holographic Band & Security RFID)

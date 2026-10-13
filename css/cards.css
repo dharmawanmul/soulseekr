@@ -1157,217 +1157,422 @@
 }
 
 /* ==========================================================================
-   9. THE 90S GAME BOY MEMORY CARTRIDGE (card-gameboy)
+/* ==========================================================================
+   9. THE TITANIUM STUDIO DAP (card-dap & card-gameboy)
+   Audiophile Studio Player with CNC Brushed Titanium & OLED Retina Display
    ========================================================================== */
+.card-dap,
 .card-gameboy {
-  background: #1c1c24;
-  border: 2px solid #323242;
-  border-radius: 14px 14px 24px 24px;
-  padding: 1.5rem 1.4rem 1.6rem;
+  background: linear-gradient(155deg, #16171d 0%, #242630 48%, #17181f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  padding: 1.25rem 1.35rem 1.45rem;
   color: #f4f4f5;
-  box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.85), inset 0 2px 0 rgba(255, 255, 255, 0.15);
+  box-shadow: 0 36px 72px -12px rgba(0, 0, 0, 0.95), 
+              inset 0 1px 0 rgba(255, 255, 255, 0.25),
+              inset 0 -1px 0 rgba(0, 0, 0, 0.6);
   position: relative;
   overflow: hidden;
 }
 
-/* Top Cartridge Grip Grooves */
-.gameboy-top-grip {
+/* Subtle Brushed Metallic Sheen Grain */
+.card-dap::before,
+.card-gameboy::before {
+  content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 16px;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  background: #16161d;
-  border-bottom: 1px solid #2a2a36;
-  padding-top: 3px;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.015) 0px,
+    rgba(255, 255, 255, 0.015) 1px,
+    transparent 1px,
+    transparent 4px
+  );
+  pointer-events: none;
+  border-radius: 18px;
 }
 
-.gameboy-top-grip span {
-  width: 28px;
-  height: 4px;
-  background: #0d0d12;
-  border-radius: 2px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Cartridge Notch */
-.gameboy-notch {
-  position: absolute;
-  top: 0;
-  right: 18px;
-  width: 24px;
-  height: 14px;
-  background: #09090b;
-  border-bottom-left-radius: 6px;
-  border-bottom-right-radius: 6px;
-  border: 1px solid #2a2a36;
-  border-top: none;
-}
-
-/* Metallic Label Sticker */
-.gameboy-label-sticker {
-  background: linear-gradient(135deg, #181822 0%, #272738 50%, #1a1a24 100%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 10px;
-  padding: 1rem 1.1rem;
-  margin-top: 0.8rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 4px 12px rgba(0, 0, 0, 0.4);
-  position: relative;
-}
-
-.gameboy-sticker-header {
+/* Top CNC Bevel & 4.4mm Balanced Jack Header */
+.dap-chassis-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.75rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 0.85rem;
 }
 
-.gb-brand-title {
+.dap-jack-group {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.dap-jack-rim {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, #09090b 45%, #f59e0b 55%, #b45309 85%, #78350f 100%);
+  border: 1px solid #d97706;
+  box-shadow: 0 0 10px rgba(245, 158, 11, 0.45), inset 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+
+.dap-jack-label {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fbbf24;
+}
+
+.dap-chassis-brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.dap-brand-name {
   font-family: var(--font-display);
-  font-size: 0.95rem;
+  font-size: 0.825rem;
   font-weight: 800;
+  letter-spacing: 0.14em;
+  color: #ffffff;
+}
+
+.dap-brand-model {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: #71717a;
+}
+
+.dap-volume-crown {
+  width: 22px;
+  height: 12px;
+  background: repeating-linear-gradient(90deg, #3f3f46 0px, #27272a 1px, #71717a 2px, #18181b 3px);
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+
+/* OLED Screen Bezel */
+.dap-screen-bezel {
+  background: #08080a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 0.95rem 1rem;
+  box-shadow: inset 0 2px 14px rgba(0, 0, 0, 0.95), 0 4px 16px rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+.dap-screen-oled {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  font-family: var(--font-sans);
+}
+
+/* Top OLED Status Bar */
+.dap-status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.dap-status-mode {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.04em;
+}
+
+.dap-hi-res-badge {
+  font-family: var(--font-mono);
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #facc15;
+  background: rgba(234, 179, 8, 0.14);
+  border: 1px solid rgba(234, 179, 8, 0.35);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+}
+
+.dap-battery-stat {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.dap-volt-val {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  color: #a1a1aa;
+}
+
+.dap-battery-icon {
+  width: 14px;
+  height: 8px;
+  border: 1px solid #a1a1aa;
+  border-radius: 2px;
+  padding: 1px;
+  display: flex;
+  align-items: center;
+}
+
+.dap-battery-cell {
+  width: 100%;
+  height: 100%;
+  background: #10b981;
+  border-radius: 1px;
+}
+
+/* Hero Track Playing View */
+.dap-hero-track {
+  display: flex;
+  align-items: center;
+  gap: 0.95rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 0.75rem;
+}
+
+.dap-album-art {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+  flex-shrink: 0;
+}
+
+.dap-track-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.18rem;
+  min-width: 0;
+}
+
+.dap-track-rank {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #10b981;
+}
+
+.dap-track-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   letter-spacing: -0.01em;
-  color: #fff;
+}
+
+.dap-track-artist {
+  font-size: 0.72rem;
+  color: #a1a1aa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dap-audio-specs {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: #71717a;
+  margin-top: 0.15rem;
+}
+
+/* Stereo VU Level Meters */
+.dap-vu-meters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 0.5rem 0.65rem;
+}
+
+.dap-vu-channel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dap-vu-tag {
+  font-family: var(--font-mono);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #71717a;
+  width: 10px;
+}
+
+.dap-vu-bar {
+  flex: 1;
+  height: 5px;
+  background: #18181b;
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+
+.dap-vu-level {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981 0%, #38bdf8 65%, #f59e0b 88%, #ef4444 100%);
+  border-radius: 2px;
+  transition: width 150ms ease;
+}
+
+.dap-vu-l {
+  width: 82%;
+  animation: dapVuJitterL 2.2s infinite ease-in-out;
+}
+
+.dap-vu-r {
+  width: 88%;
+  animation: dapVuJitterR 2.5s infinite ease-in-out;
+}
+
+@keyframes dapVuJitterL {
+  0%, 100% { width: 82%; }
+  30% { width: 94%; }
+  60% { width: 72%; }
+  85% { width: 89%; }
+}
+
+@keyframes dapVuJitterR {
+  0%, 100% { width: 88%; }
+  25% { width: 75%; }
+  55% { width: 96%; }
+  80% { width: 84%; }
+}
+
+.dap-vu-db {
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  color: #a1a1aa;
+  width: 32px;
+  text-align: right;
+}
+
+/* Tracklist */
+.dap-track-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.dap-list-header {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #71717a;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 0.25rem;
+}
+
+.dap-track-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.55rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.dap-track-row:hover,
+.dap-track-row.active {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.25);
+  transform: translateX(2px);
+}
+
+.dap-row-left {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.dap-row-num {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #38bdf8;
+}
+
+.dap-row-name {
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: #f4f4f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.dap-row-right {
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
 
-.gb-battery-row {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.5rem;
-  color: #a1a1aa;
+.dap-row-time {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  color: #71717a;
 }
 
-.gb-led {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #22c55e;
-  box-shadow: 0 0 8px #22c55e;
-}
-
-/* Dot-Matrix LCD Screen */
-.gameboy-screen-bezel {
-  background: #2e382b;
-  border: 3px solid #1a2218;
-  border-radius: 8px;
-  padding: 0.75rem;
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
-  position: relative;
-}
-
-.gameboy-screen-lcd {
-  background: #8b956d;
-  color: #1a2016;
-  border-radius: 4px;
-  padding: 0.75rem 0.65rem;
-  font-family: 'Press Start 2P', monospace;
+.dap-playing-pulse {
+  font-family: var(--font-mono);
   font-size: 0.58rem;
-  line-height: 1.6;
-  position: relative;
-  overflow: hidden;
-  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.35);
+  font-weight: 700;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.15);
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
 }
 
-/* Pixel Scanlines */
-.gameboy-screen-lcd::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.08) 0px, rgba(0, 0, 0, 0.08) 1px, transparent 1px, transparent 2px);
-  pointer-events: none;
-}
-
-.gb-screen-header {
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 2px dashed #3c4428;
-  padding-bottom: 0.35rem;
-  margin-bottom: 0.5rem;
-  font-size: 0.5rem;
-  color: #2b341f;
-}
-
-.gb-track-list {
+/* Chassis Footer */
+.dap-chassis-footer {
+  margin-top: 0.85rem;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.65rem;
 }
 
-.gb-track-row {
+.dap-footer-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  cursor: pointer;
-  padding: 0.2rem 0.25rem;
-  border-radius: 2px;
-  transition: background 100ms ease;
 }
 
-.gb-track-row:hover,
-.gb-track-row.active {
-  background: #737c56;
-  color: #0d120a;
-}
-
-.gb-track-name {
-  max-width: 230px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.gb-screen-footer {
-  border-top: 2px dashed #3c4428;
-  margin-top: 0.6rem;
-  padding-top: 0.4rem;
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.48rem;
-  color: #2b341f;
-}
-
-/* Cartridge Screw */
-.cartridge-screw-row {
-  display: flex;
-  justify-content: center;
-  margin-top: 1rem;
-}
-
-.cartridge-screw {
-  width: 14px;
-  height: 14px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #a1a1aa, #52525b);
-  border: 1px solid #3f3f46;
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.cartridge-screw::before {
-  content: "";
-  width: 8px;
-  height: 2px;
-  background: #27272a;
-}
-
-.cartridge-screw::after {
-  content: "";
-  position: absolute;
-  width: 2px;
-  height: 8px;
-  background: #27272a;
+.dap-certification {
+  font-family: var(--font-mono);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #71717a;
 }
 
 /* ==========================================================================

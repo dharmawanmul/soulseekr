@@ -283,6 +283,8 @@ export class WrappedExperience {
     this.timeRange = 'short_term';
 
     this.onKeyDown = this.handleKeyDown.bind(this);
+    this.onWheel = this.handleWheel.bind(this);
+    this.lastWheelTime = 0;
     this.setupListeners();
   }
 
@@ -350,6 +352,20 @@ export class WrappedExperience {
     }
   }
 
+  handleWheel(e) {
+    if (!this.modal.classList.contains('is-open')) return;
+    e.preventDefault();
+    const now = Date.now();
+    if (this.lastWheelTime && now - this.lastWheelTime < 450) return;
+    if (Math.abs(e.deltaY) < 15) return;
+    this.lastWheelTime = now;
+    if (e.deltaY > 0) {
+      this.nextSlide();
+    } else {
+      this.prevSlide();
+    }
+  }
+
   open(data, timeRange = 'short_term') {
     this.data = data;
     this.timeRange = timeRange;
@@ -375,6 +391,7 @@ export class WrappedExperience {
     this.modal.classList.add('is-open');
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', this.onKeyDown);
+    window.addEventListener('wheel', this.onWheel, { passive: false });
 
     // Initialize 3D Three.js Visualizer
     if (!this.visualizer && this.canvas) {
@@ -396,6 +413,7 @@ export class WrappedExperience {
     this.modal.classList.remove('is-open');
     document.body.style.overflow = '';
     window.removeEventListener('keydown', this.onKeyDown);
+    window.removeEventListener('wheel', this.onWheel);
     this.stopProgress();
 
     if (this.visualizer) {

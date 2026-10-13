@@ -150,7 +150,7 @@ To allow visitors or yourself to log in with real Spotify data:
 
 ## 🎨 Design Philosophy
 
-- **Zero Generic Templates**: Every card uses distinct typography pairings (`Outfit`, `Space Grotesk`, `Press Start 2P`, `Space Mono`, `Courier Prime`).
+- **Zero Generic Templates**: Every card uses distinct typography pairings (`Outfit`, `Space Grotesk`, `Plus Jakarta Sans`, `Space Mono`, `Courier Prime`).
 - **Physical Feedback & Micro-interactions**: Tactile button scaling (`:active { transform: scale(0.97); }`), custom cubic-bezier transitions, and spinning tape spools.
 - **Fail-proof & Robust**: Synthesizer fallback when preview audio is restricted; graceful fallbacks for missing artwork.
 

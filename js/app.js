@@ -17,6 +17,7 @@ import {
   renderPrismCard, 
   renderCassetteCard, 
   renderReceiptCard,
+  renderDapCard,
   renderGameboyCard,
   renderVipPassCard
 } from './card-renderer.js';
@@ -307,8 +308,9 @@ function renderCurrentCard() {
     case 'receipt':
       html = renderReceiptCard(data, state.timeRange, state.playbackState);
       break;
+    case 'dap':
     case 'gameboy':
-      html = renderGameboyCard(data, state.timeRange, state.playbackState);
+      html = renderDapCard(data, state.timeRange, state.playbackState);
       break;
     case 'vippass':
       html = renderVipPassCard(data, state.timeRange, state.playbackState);
