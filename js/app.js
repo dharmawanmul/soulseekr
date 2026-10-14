@@ -334,9 +334,21 @@ function updateAuthBadge(text, status) {
   if (status === 'active') {
     elements.btnLogout.style.display = 'inline-flex';
     elements.btnConnectSpotify.style.display = 'none';
+
+    // Unlock Wrapped and Dossier buttons for authenticated users
+    elements.btnOpenWrapped?.classList.remove('is-locked');
+    elements.btnOpenWrapped?.setAttribute('title', 'Open your personal 3D Wrapped Experience');
+    elements.btnOpenDossier?.classList.remove('is-locked');
+    elements.btnOpenDossier?.setAttribute('title', 'Open your Sonic Taste Dossier & Audio DNA');
   } else {
     elements.btnLogout.style.display = 'none';
     elements.btnConnectSpotify.style.display = 'inline-flex';
+
+    // Lock Wrapped and Dossier buttons for unauthenticated users
+    elements.btnOpenWrapped?.classList.add('is-locked');
+    elements.btnOpenWrapped?.setAttribute('title', 'Connect Spotify to unlock your 3D Wrapped Experience');
+    elements.btnOpenDossier?.classList.add('is-locked');
+    elements.btnOpenDossier?.setAttribute('title', 'Connect Spotify to unlock your Taste Dossier & Audio DNA');
   }
 }
 
@@ -467,13 +479,34 @@ function init3DCardTilt() {
   });
 }
 
+function triggerLockedButtonFeedback(button, message) {
+  if (button) {
+    button.classList.remove('is-shaking');
+    void button.offsetWidth; // Force DOM reflow to re-trigger CSS keyframe shake
+    button.classList.add('is-shaking');
+    setTimeout(() => {
+      button?.classList.remove('is-shaking');
+    }, 400);
+  }
+  showToast(message, 'warning', 3500);
+  showAuthGateway();
+}
+
 function setupEventListeners() {
   elements.btnOpenWrapped?.addEventListener('click', () => {
+    if (!state.spotifyToken) {
+      triggerLockedButtonFeedback(elements.btnOpenWrapped, '🔒 Connect Spotify to unlock your 3D Wrapped Experience');
+      return;
+    }
     const data = state.currentData || DEFAULT_CURATED_DATA;
     wrappedExperience.open(data, state.timeRange);
   });
 
   elements.btnOpenDossier?.addEventListener('click', () => {
+    if (!state.spotifyToken) {
+      triggerLockedButtonFeedback(elements.btnOpenDossier, '🔒 Connect Spotify to unlock your Taste Dossier & Audio DNA');
+      return;
+    }
     const data = state.currentData || DEFAULT_CURATED_DATA;
     sonicDossier.open(data, state.timeRange);
   });

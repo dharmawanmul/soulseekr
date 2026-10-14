@@ -255,6 +255,98 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   Locked Feature Buttons (Wrapped & Taste Dossier)
+   Unauthenticated preview state with Apple-grade shake on rejection
+   -------------------------------------------------------------------------- */
+.btn .btn-lock-icon {
+  display: none;
+}
+
+.btn .btn-unlocked-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.btn .btn-lock-badge {
+  display: none;
+}
+
+/* Locked Base Styles */
+.header-actions .btn.is-locked {
+  position: relative;
+  opacity: 0.65;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px dashed rgba(255, 255, 255, 0.18) !important;
+  color: #a1a1aa !important;
+  box-shadow: none !important;
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.header-actions .btn.is-locked::before {
+  display: none !important; /* Disable button shimmers when locked */
+}
+
+.header-actions .btn.is-locked:hover {
+  opacity: 0.95;
+  background: rgba(245, 158, 11, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.4) !important;
+  color: #f4f4f5 !important;
+  box-shadow: 0 0 16px rgba(245, 158, 11, 0.18) !important;
+  transform: translateY(-1px);
+}
+
+.header-actions .btn.is-locked .btn-lock-icon {
+  display: inline-flex;
+  align-items: center;
+  color: #f59e0b;
+}
+
+.header-actions .btn.is-locked .btn-unlocked-icon {
+  display: none !important;
+}
+
+.header-actions .btn.is-locked .wrapped-badge-pill,
+.header-actions .btn.is-locked .dossier-badge-pill {
+  display: none !important;
+}
+
+.header-actions .btn.is-locked .btn-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.55rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  line-height: 1;
+}
+
+/* Tactile Lock Rejection Shake (Fluid iOS/macOS Passcode Rejection Curve) */
+.btn.is-shaking {
+  animation: btnLockRejection 380ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes btnLockRejection {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  15%, 45%, 75% {
+    transform: translateX(-5px);
+    border-color: rgba(239, 68, 68, 0.7) !important;
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.3) !important;
+  }
+  30%, 60%, 90% {
+    transform: translateX(5px);
+    border-color: rgba(245, 158, 11, 0.7) !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
    Main Workspace Layout
    -------------------------------------------------------------------------- */
 .main-layout {
