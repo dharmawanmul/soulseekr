@@ -11,7 +11,9 @@ export const SPOTIFY_CONFIG = {
   scopes: [
     'user-top-read',
     'user-read-private',
-    'user-read-email'
+    'user-read-email',
+    'user-read-recently-played',
+    'user-library-read'
   ],
   storageKeys: {
     clientId: 'vibe_spotify_client_id',
@@ -288,13 +290,62 @@ export async function fetchTopArtists(token, timeRange = 'short_term', limit = 1
 }
 
 /**
+ * Fetch Recently Played Tracks (for 3 AM Confessional Clock)
+ */
+export async function fetchRecentlyPlayed(token, limit = 50) {
+  try {
+    return await spotifyFetch(`/me/player/recently-played?limit=${limit}`, token);
+  } catch (err) {
+    console.warn('Recently played fetch failed (scope or history empty):', err);
+    return { items: [] };
+  }
+}
+
+/**
+ * Fetch Saved / Liked Tracks (for Playlist Archaeology)
+ */
+export async function fetchSavedTracks(token, limit = 50) {
+  try {
+    return await spotifyFetch(`/me/tracks?limit=${limit}`, token);
+  } catch (err) {
+    console.warn('Saved tracks fetch failed (scope or library empty):', err);
+    return { items: [] };
+  }
+}
+
+/**
+ * Fetch Top Artists across short_term, medium_term, and long_term in parallel
+ * (for Taste Drift River Bump Chart)
+ */
+export async function fetchTopArtistsAcrossTimeRanges(token) {
+  try {
+    const [shortRes, medRes, longRes] = await Promise.all([
+      fetchTopArtists(token, 'short_term', 20),
+      fetchTopArtists(token, 'medium_term', 20),
+      fetchTopArtists(token, 'long_term', 20)
+    ]);
+    return {
+      short_term: shortRes.items || [],
+      medium_term: medRes.items || [],
+      long_term: longRes.items || []
+    };
+  } catch (err) {
+    console.warn('Multi-range artists fetch failed:', err);
+    return null;
+  }
+}
+
+/**
  * Fetch User Wrapped Data and compute Stats with intelligent fallback cascades
  */
 export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') {
-  const [user, tracksRes, artistsRes] = await Promise.all([
-    fetchUserProfile(token),
-    fetchTopTracks(token, timeRange, 10),
-    fetchTopArtists(token, timeRange, 10)
+  const [user, tracksRes, artistsRes, recentlyPlayedRes, savedTracksRes, multiRangeArtists] = await Promise.all([
+    fetchUserProfile(token).catch(err => ({ display_name: 'Spotify Listener' })),
+    fetchTopTracks(token, timeRange, 50).catch(() => ({ items: [] })),
+    fetchTopArtists(token, timeRange, 50).catch(() => ({ items: [] })),
+    fetchRecentlyPlayed(token, 50).catch(() => ({ items: [] })),
+    fetchSavedTracks(token, 50).catch(() => ({ items: [] })),
+    fetchTopArtistsAcrossTimeRanges(token).catch(() => null)
   ]);
 
   let topTracks = tracksRes.items || [];
@@ -304,7 +355,7 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
   if (topTracks.length < 5) {
     const fallbackRange = timeRange === 'short_term' ? 'medium_term' : 'long_term';
     try {
-      const fallbackTracks = await fetchTopTracks(token, fallbackRange, 10);
+      const fallbackTracks = await fetchTopTracks(token, fallbackRange, 50);
       if (fallbackTracks.items && fallbackTracks.items.length > topTracks.length) {
         topTracks = fallbackTracks.items;
       }
@@ -314,7 +365,7 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
   if (topArtists.length < 5) {
     const fallbackRange = timeRange === 'short_term' ? 'medium_term' : 'long_term';
     try {
-      const fallbackArtists = await fetchTopArtists(token, fallbackRange, 10);
+      const fallbackArtists = await fetchTopArtists(token, fallbackRange, 50);
       if (fallbackArtists.items && fallbackArtists.items.length > topArtists.length) {
         topArtists = fallbackArtists.items;
       }
@@ -366,6 +417,9 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
     topArtists,
     topAlbums,
     topGenres,
+    recentlyPlayed: recentlyPlayedRes?.items || [],
+    savedTracks: savedTracksRes?.items || [],
+    multiRangeArtists,
     stats: {
       ...rawStats,
       ...aura

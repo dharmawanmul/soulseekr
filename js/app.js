@@ -35,6 +35,19 @@ export const DEFAULT_CURATED_DATA = {
   timeRange: 'short_term',
   topTracks: [
     {
+      id: 'preview_radiohead_1',
+      name: 'Everything In Its Right Place',
+      artists: [{ name: 'Radiohead', id: 'art_radiohead' }],
+      album: {
+        name: 'Kid A',
+        release_date: '2000-10-02',
+        images: [{ url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80' }]
+      },
+      duration_ms: 251426,
+      popularity: 76,
+      preview_url: null
+    },
+    {
       id: 'preview_1',
       name: 'Starboy',
       artists: [{ name: 'The Weeknd', id: 'art_1' }, { name: 'Daft Punk', id: 'art_2' }],
@@ -101,6 +114,7 @@ export const DEFAULT_CURATED_DATA = {
     }
   ],
   topArtists: [
+    { name: 'Radiohead', popularity: 78, genres: ['alternative rock', 'art rock', 'electronic'], images: [{ url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=300&q=80' }] },
     { name: 'The Weeknd', popularity: 95, genres: ['canadian pop', 'r&b'], images: [{ url: 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80' }] },
     { name: 'M83', popularity: 72, genres: ['indie rock', 'synthpop', 'french touch'], images: [{ url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=300&q=80' }] },
     { name: 'Tame Impala', popularity: 84, genres: ['neo-psychedelia', 'aussie psych'], images: [{ url: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&w=300&q=80' }] },
@@ -157,16 +171,16 @@ export const DEFAULT_CURATED_DATA = {
     }
   ],
   topGenres: [
-    { name: 'Neo-Psychedelia', count: 9, percentage: 38 },
-    { name: 'Synthpop & Wave', count: 6, percentage: 24 },
-    { name: 'Indie Rock', count: 5, percentage: 19 },
-    { name: 'R&B / Soul', count: 3, percentage: 12 },
-    { name: 'Alternative Pop', count: 2, percentage: 7 }
+    { name: 'Alternative Rock', count: 12, percentage: 38 },
+    { name: 'Neo-Psychedelia', count: 9, percentage: 24 },
+    { name: 'Synthpop & Wave', count: 6, percentage: 19 },
+    { name: 'Indie Rock', count: 5, percentage: 12 },
+    { name: 'Classic Rock', count: 4, percentage: 7 }
   ],
   stats: {
-    dominantGenre: 'Neo-Psychedelia / Synthpop',
-    topGenre: 'Neo-Psychedelia / Synthpop',
-    obscurityScore: 78,
+    dominantGenre: 'Alternative Rock',
+    topGenre: 'Alternative Rock',
+    obscurityScore: 73,
     obscurityTier: 'Underground Crate Digger',
     totalMinutes: 48320,
     acousticEnergy: '74%',

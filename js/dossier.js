@@ -12,6 +12,7 @@ import { soundEngine } from './audio-player.js';
 import { showToast } from './app.js';
 import { exportCardAsImage, downloadDataUrl } from './exporter.js';
 import { escapeHtml, formatDuration } from './card-renderer.js';
+import { audioDna } from './audio-dna.js';
 
 export class SonicDossierEngine {
   constructor() {
@@ -19,7 +20,7 @@ export class SonicDossierEngine {
     this.isOpen = false;
     this.data = null;
     this.timeRange = 'short_term';
-    this.activeTab = 'overview';
+    this.activeTab = 'audiodna';
     this.analytics = null;
 
     this.onKeyDown = this.handleKeyDown.bind(this);
@@ -56,6 +57,7 @@ export class SonicDossierEngine {
   close() {
     if (!this.isOpen) return;
     this.isOpen = false;
+    audioDna.destroy();
     if (this.modal) this.modal.classList.remove('is-open');
     document.body.style.overflow = '';
     window.removeEventListener('keydown', this.onKeyDown);
@@ -283,6 +285,10 @@ export class SonicDossierEngine {
 
         <!-- Segmented Tab Navigation Rail -->
         <nav class="dossier-tabs-nav" role="tablist">
+          <button class="dossier-tab-btn ${this.activeTab === 'audiodna' ? 'active' : ''}" data-tab="audiodna">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12h2M6 6v12M10 9v6M14 4v16M18 8v8M22 12h2"/></svg>
+            <span>Audio DNA Explorer</span>
+          </button>
           <button class="dossier-tab-btn ${this.activeTab === 'overview' ? 'active' : ''}" data-tab="overview">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
             <span>Persona DNA</span>
@@ -320,6 +326,8 @@ export class SonicDossierEngine {
   // =========================================================================
   renderActiveTabContent() {
     switch (this.activeTab) {
+      case 'audiodna':
+        return '<div id="dna-mount-point" class="dna-container-mount"></div>';
       case 'timemachine':
         return this.renderTimeMachineTab();
       case 'circadian':
@@ -663,11 +671,22 @@ export class SonicDossierEngine {
       btn.onclick = () => {
         const tab = btn.getAttribute('data-tab');
         if (tab && tab !== this.activeTab) {
+          if (this.activeTab === 'audiodna') {
+            audioDna.destroy();
+          }
           this.activeTab = tab;
           this.render();
         }
       };
     });
+
+    // Mount Audio DNA engine if active tab is audiodna
+    if (this.activeTab === 'audiodna') {
+      const mount = this.modal.querySelector('#dna-mount-point');
+      if (mount) {
+        audioDna.init(mount, this.data, this.timeRange);
+      }
+    }
 
     // Track audio play triggers
     const trackTriggers = this.modal.querySelectorAll('.track-play-trigger');
@@ -687,6 +706,10 @@ export class SonicDossierEngine {
     const btnExportCard = this.modal.querySelector('#btn-dossier-export-card');
     if (btnExportCard) {
       btnExportCard.onclick = async () => {
+        if (this.activeTab === 'audiodna') {
+          audioDna.exportSnapshot();
+          return;
+        }
         try {
           showToast('Rendering high-DPI dossier image...', 'info', 2000);
           const stage = document.getElementById('dossier-exportable-stage');
