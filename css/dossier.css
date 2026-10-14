@@ -1460,3 +1460,1275 @@
   0% { height: 3px; }
   100% { height: 14px; }
 }
+
+/* ==========================================================================
+   Modular Dossier Department & Sub-Navigation Architecture
+   ========================================================================== */
+.dossier-dept-nav {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.35rem;
+  padding: 0.55rem 1.25rem 0.45rem 1.25rem;
+  background: #09090c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.dossier-dept-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.65rem;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #a1a1aa;
+  font-family: inherit;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 150ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.dossier-dept-btn:hover {
+  color: #f4f4f5;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.dossier-dept-btn.active {
+  color: #ffffff;
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.2);
+}
+
+.dept-icon {
+  font-size: 0.85rem;
+}
+
+/* Secondary Department Sub-Navigation Rail */
+.dossier-sub-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 1.25rem;
+  background: #0d0d12;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dossier-sub-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.dossier-sub-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.32rem 0.72rem;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #71717a;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 130ms ease;
+}
+
+.dossier-sub-pill:hover {
+  color: #d4d4d8;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.dossier-sub-pill.active {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.24);
+  font-weight: 600;
+}
+
+/* ==========================================================================
+   1. The Director's Cut & Criterion Collection Poster
+   ========================================================================== */
+.criterion-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.criterion-poster-card {
+  width: 100%;
+  max-width: 540px;
+  background: #0a0a0c;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-radius: 12px;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  position: relative;
+  overflow: hidden;
+  color: #f4f4f5;
+  display: flex;
+  flex-direction: column;
+}
+
+.criterion-art-wrapper {
+  position: relative;
+  width: 100%;
+  height: 380px;
+  overflow: hidden;
+}
+
+.criterion-still-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: contrast(110%) saturate(115%);
+}
+
+.criterion-grain-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 4px 4px;
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.criterion-vignette-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, transparent 40%, rgba(10, 10, 12, 0.95) 100%);
+  pointer-events: none;
+}
+
+.criterion-badge-c {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  z-index: 5;
+}
+
+.criterion-c-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #000000;
+  font-family: var(--font-display, sans-serif);
+  font-weight: 900;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+}
+
+.criterion-spine-tag {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #ffffff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
+}
+
+.criterion-spine-no {
+  color: #38bdf8;
+  font-size: 0.7rem;
+}
+
+.criterion-film-info {
+  padding: 1.4rem 1.8rem 1rem 1.8rem;
+  text-align: center;
+  position: relative;
+  margin-top: -30px;
+  z-index: 4;
+}
+
+.criterion-present-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: #38bdf8;
+  margin-bottom: 0.35rem;
+}
+
+.criterion-film-title {
+  font-family: var(--font-display, sans-serif);
+  font-size: 2.1rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  line-height: 1.1;
+  margin-bottom: 0.65rem;
+}
+
+.criterion-tagline {
+  font-size: 0.825rem;
+  color: #a1a1aa;
+  font-style: italic;
+  line-height: 1.45;
+  max-width: 440px;
+  margin: 0 auto;
+}
+
+.criterion-metadata-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  padding: 0.85rem 1.5rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.crit-meta-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.crit-meta-lbl {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #71717a;
+}
+
+.crit-meta-val {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #f4f4f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.criterion-billing-block {
+  padding: 1.25rem 1.8rem;
+  background: #08080a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.55rem;
+  color: #71717a;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.billing-line-lead {
+  font-size: 0.58rem;
+  letter-spacing: 0.12em;
+  color: #a1a1aa;
+}
+
+.billing-cast-row {
+  letter-spacing: 0.06em;
+  color: #d4d4d8;
+}
+
+.billing-cast-row b {
+  color: #ffffff;
+}
+
+.billing-credits-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.65rem;
+  font-size: 0.52rem;
+}
+
+.billing-symbols-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  color: #52525b;
+}
+
+.billing-dot {
+  color: #3f3f46;
+}
+
+/* ==========================================================================
+   2. The Synesthesia Canvas & Movie Barcode
+   ========================================================================== */
+.synesthesia-view-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.synesthesia-stage-card {
+  padding: 1.25rem 1.5rem;
+}
+
+.synesthesia-controls-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.85rem;
+}
+
+.synesthesia-stat-tag {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  color: #71717a;
+  letter-spacing: 0.06em;
+}
+
+.synesthesia-stat-tag b {
+  color: #38bdf8;
+}
+
+.synesthesia-sort-buttons {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.syn-sort-btn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #a1a1aa;
+  font-size: 0.72rem;
+  padding: 0.28rem 0.65rem;
+  cursor: pointer;
+  transition: all 130ms ease;
+}
+
+.syn-sort-btn.active {
+  background: #3b82f6;
+  border-color: #60a5fa;
+  color: #ffffff;
+}
+
+.barcode-canvas-container {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  background: #050508;
+  border-radius: 8px;
+  overflow: visible;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.8);
+}
+
+.barcode-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+.barcode-hud {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(13, 13, 17, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  z-index: 25;
+  width: 280px;
+}
+
+.hud-swatch-box {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.hud-track-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.hud-title {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-artist {
+  font-size: 0.68rem;
+  color: #a1a1aa;
+}
+
+.hud-hex {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6rem;
+  color: #38bdf8;
+}
+
+.barcode-footer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.85rem;
+}
+
+.barcode-hint-text {
+  font-size: 0.72rem;
+  color: #71717a;
+  font-style: italic;
+}
+
+/* Aura Rings Mesh Orb */
+.aura-mesh-showcase {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  padding: 1rem 0.5rem;
+}
+
+.aura-ring-orb-stage {
+  position: relative;
+  width: 200px;
+  height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.aura-ring-orb {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  filter: blur(28px);
+  opacity: 0.75;
+  animation: auraFloat 8s ease-in-out infinite alternate;
+}
+
+.aura-ring-orb.ring-2 {
+  animation-duration: 6s;
+  animation-direction: alternate-reverse;
+  opacity: 0.65;
+}
+
+.aura-ring-orb.ring-3 {
+  animation-duration: 10s;
+  opacity: 0.55;
+}
+
+@keyframes auraFloat {
+  0% { transform: scale(0.9) translate(-10px, -10px); }
+  50% { transform: scale(1.1) translate(12px, 8px); }
+  100% { transform: scale(0.95) translate(-8px, 12px); }
+}
+
+.aura-glass-disc {
+  position: relative;
+  z-index: 2;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: rgba(10, 10, 15, 0.7);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+.aura-disc-brand {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.75rem;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 0.04em;
+}
+
+.aura-disc-sub {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.45rem;
+  color: #38bdf8;
+  letter-spacing: 0.08em;
+}
+
+.aura-palette-extract {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.aura-palette-title {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #71717a;
+}
+
+.aura-swatches-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.aura-swatch-item {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 0.35rem 0.65rem;
+}
+
+.aura-swatch-circle {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.aura-swatch-code {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  color: #e4e4e7;
+}
+
+/* ==========================================================================
+   3. The Storm Chaser Report & Weather Timeline
+   ========================================================================== */
+.weather-view-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+.weather-station-card {
+  padding: 1.25rem 1.5rem;
+}
+
+.weather-telemetry-grid {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+
+.telemetry-main {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.telemetry-icon {
+  font-size: 2.2rem;
+}
+
+.telemetry-temp {
+  font-family: var(--font-display, sans-serif);
+  font-size: 1.6rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.telemetry-city {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #a1a1aa;
+}
+
+.telemetry-condition {
+  font-size: 0.78rem;
+  color: #d4d4d8;
+  margin-top: 0.15rem;
+}
+
+.telemetry-condition b {
+  color: #38bdf8;
+}
+
+.telemetry-specs-group {
+  display: flex;
+  gap: 1.25rem;
+}
+
+.telemetry-spec-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.telemetry-spec-lbl {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.52rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #71717a;
+}
+
+.telemetry-spec-val {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #f4f4f5;
+}
+
+.weather-split-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.25rem;
+}
+
+.weather-vibe-card {
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.card-sunny {
+  border-color: rgba(245, 158, 11, 0.25);
+  background: radial-gradient(circle at 10% 10%, rgba(245, 158, 11, 0.06) 0%, rgba(20, 20, 26, 0.75) 70%);
+}
+
+.card-rainy {
+  border-color: rgba(56, 189, 248, 0.25);
+  background: radial-gradient(circle at 10% 10%, rgba(56, 189, 248, 0.06) 0%, rgba(20, 20, 26, 0.75) 70%);
+}
+
+.weather-vibe-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.weather-vibe-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 0.18rem 0.5rem;
+  border-radius: 4px;
+}
+
+.badge-sun {
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-rain {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.weather-vibe-temp {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.58rem;
+  color: #71717a;
+}
+
+.weather-vibe-body {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+}
+
+.weather-track-art {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.weather-track-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.15rem;
+}
+
+.weather-vibe-type {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #71717a;
+  letter-spacing: 0.08em;
+}
+
+.weather-vibe-song {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weather-vibe-artist {
+  font-size: 0.78rem;
+  color: #a1a1aa;
+}
+
+.weather-metric-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+  color: #d4d4d8;
+  margin-top: 0.2rem;
+}
+
+.weather-vibe-note {
+  font-size: 0.75rem;
+  color: #a1a1aa;
+  line-height: 1.45;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 0.65rem;
+}
+
+.weather-timeline-card {
+  padding: 1.4rem;
+}
+
+.weather-timeline-container {
+  width: 100%;
+  height: 220px;
+  position: relative;
+}
+
+.weather-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.weather-timeline-legend {
+  display: flex;
+  justify-content: center;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+}
+
+.legend-chip {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  color: #a1a1aa;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.dot-temp { background: #f59e0b; }
+.dot-bpm { background: #10b981; }
+.dot-rain { background: #38bdf8; }
+
+/* ==========================================================================
+   4. The Musical Passport & Airline Boarding Pass Ticket
+   ========================================================================== */
+.boarding-pass-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.4rem;
+}
+
+.boarding-pass-card {
+  width: 100%;
+  max-width: 680px;
+  background: #0f1015;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  display: flex;
+  box-shadow: 0 32px 80px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  position: relative;
+  overflow: hidden;
+  color: #f4f4f5;
+}
+
+.pass-main {
+  flex: 1;
+  padding: 1.5rem 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.pass-header-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 0.65rem;
+}
+
+.pass-brand-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.825rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #ffffff;
+}
+
+.pass-plane-icon {
+  color: #38bdf8;
+  font-size: 0.95rem;
+}
+
+.pass-flight-type {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.55rem;
+  font-weight: 700;
+  color: #10b981;
+  letter-spacing: 0.08em;
+}
+
+.pass-corridor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+}
+
+.corridor-cell {
+  display: flex;
+  flex-direction: column;
+}
+
+.corridor-cell.destination {
+  text-align: right;
+}
+
+.corridor-code {
+  font-family: var(--font-display, sans-serif);
+  font-size: 2.5rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  line-height: 1;
+}
+
+.corridor-city {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #d4d4d8;
+  margin-top: 0.2rem;
+}
+
+.corridor-lbl {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.52rem;
+  color: #71717a;
+  letter-spacing: 0.08em;
+}
+
+.corridor-mid-flight {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  padding: 0 1.5rem;
+}
+
+.corridor-plane-track {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  gap: 4px;
+}
+
+.corridor-track-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #38bdf8;
+}
+
+.corridor-track-line {
+  flex: 1;
+  height: 1px;
+  background: dashed 1px rgba(56, 189, 248, 0.4);
+}
+
+.corridor-track-plane {
+  color: #38bdf8;
+  font-size: 0.9rem;
+}
+
+.corridor-miles {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.58rem;
+  font-weight: 700;
+  color: #38bdf8;
+  letter-spacing: 0.08em;
+}
+
+.pass-specs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 0.85rem;
+}
+
+.pass-spec-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.pass-spec-lbl {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.52rem;
+  font-weight: 700;
+  color: #71717a;
+  letter-spacing: 0.08em;
+}
+
+.pass-spec-val {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #f4f4f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pass-barcode-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.pass-barcode-lines {
+  font-family: var(--font-mono, monospace);
+  font-size: 1.15rem;
+  letter-spacing: 0.22em;
+  color: #d4d4d8;
+  user-select: none;
+}
+
+.pass-security-row {
+  display: flex;
+  gap: 0.45rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.48rem;
+  color: #52525b;
+}
+
+.pass-perforated-tear {
+  width: 1px;
+  background: dashed 1px rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.tear-notch {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #0d0d11;
+  left: -11px;
+}
+
+.notch-top { top: -11px; }
+.notch-bottom { bottom: -11px; }
+
+.pass-stub {
+  width: 160px;
+  background: #09090c;
+  padding: 1.5rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border-left: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.stub-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stub-brand {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.8rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.stub-class {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.5rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.stub-info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.stub-lbl {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.48rem;
+  color: #71717a;
+}
+
+.stub-val {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #f4f4f5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stub-seat-box {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  padding: 0.35rem;
+  text-align: center;
+}
+
+.stub-seat-lbl {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.48rem;
+  color: #10b981;
+  display: block;
+}
+
+.stub-seat-num {
+  font-family: var(--font-display, sans-serif);
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.stub-barcode-mini {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.75rem;
+  letter-spacing: 0.1em;
+  color: #71717a;
+  text-align: center;
+}
+
+/* Flight Map Canvas */
+.flight-map-stage-card {
+  padding: 1.25rem 1.5rem;
+}
+
+.flight-map-canvas-container {
+  width: 100%;
+  height: 340px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 2px 12px rgba(0, 0, 0, 0.9);
+}
+
+.flight-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ==========================================================================
+   5. The Subconscious Mind Map & Narrative Story Arc
+   ========================================================================== */
+.subconscious-view-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1.4rem;
+}
+
+.motifs-card, .story-arc-card {
+  padding: 1.4rem;
+}
+
+.motifs-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.85rem;
+  margin-top: 0.75rem;
+}
+
+.motif-item-box {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 8px;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.motif-top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.motif-keyword {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.motif-count {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.motif-theme-tag {
+  font-size: 0.72rem;
+  color: #a1a1aa;
+}
+
+.motif-progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-top: 0.2rem;
+}
+
+.motif-progress-fill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.story-arc-stages-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.85rem;
+  margin-top: 0.85rem;
+}
+
+.story-arc-stage-card {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  padding: 1rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.45rem;
+  position: relative;
+}
+
+.story-arc-stage-card.stage-climax {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: radial-gradient(circle at 50% 0%, rgba(245, 158, 11, 0.08) 0%, rgba(255, 255, 255, 0.03) 75%);
+}
+
+.arc-act-badge {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #38bdf8;
+}
+
+.arc-stage-title {
+  font-family: var(--font-display, sans-serif);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.arc-energy-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  margin: 0.35rem 0;
+}
+
+.arc-energy-val {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #10b981;
+}
+
+.arc-energy-bar {
+  width: 8px;
+  height: 50px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.arc-energy-fill {
+  width: 100%;
+  background: linear-gradient(180deg, #10b981 0%, #059669 100%);
+  border-radius: 4px;
+}
+
+.arc-track-anchor {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e4e4e7;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.arc-emotion-tag {
+  font-size: 0.68rem;
+  color: #a1a1aa;
+  font-style: italic;
+}
+

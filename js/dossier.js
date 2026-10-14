@@ -1,11 +1,10 @@
 /**
  * Soulseekr — Deep Sonic Dossier & Taste Intelligence Engine
- * Synthesizes Spotify Web API data into psychological, aesthetic, and cultural insights:
- * 1. The Time Machine (Music Taste Age & Historical Decades Distribution)
- * 2. The Circadian Rhythm (24-Hour Nocturnal vs Dawn Listening Clock)
- * 3. The Obscurity Radar & Snob Index (Underground vs Mainstream Popularity)
- * 4. The Cultural Passport (Global Origin Epicenters)
- * 5. The 3-Day Music Festival Lineup Poster (Exportable High-DPI Poster)
+ * 4 Curated Museum-Grade Departments:
+ * 1. 🎬 Cinema & Synesthesia (The Director's Cut Criterion Poster + The Listening Barcode)
+ * 2. 🧭 Audio DNA & Persona (Interactive Canvas Visualizers, Persona Radar, Time Machine, Circadian Clock, Snob Index)
+ * 3. 🌦️ Atmosphere & Weather (The Storm Chaser Report, Barometric Vibe Split, Dual-Axis Timeline)
+ * 4. ✈️ World & Journey (The Musical Passport Boarding Pass, 3D Flight Map, Subconscious Lyrics Arc, 3-Day Festival Poster)
  */
 
 import { soundEngine } from './audio-player.js';
@@ -13,6 +12,9 @@ import { showToast } from './app.js';
 import { exportCardAsImage, downloadDataUrl } from './exporter.js';
 import { escapeHtml, formatDuration } from './card-renderer.js';
 import { audioDna } from './audio-dna.js';
+import { matchDirector, renderCriterionPosterHtml, renderSynesthesiaHtml, SynesthesiaBarcodeController } from './cinema-synesthesia.js';
+import { fetchLiveWeatherData, computeBarometricSplit, renderWeatherChaserHtml, WeatherTimelineController } from './weather-chaser.js';
+import { resolvePassportMetrics, renderBoardingPassHtml, FlightMapController, computeSubconsciousMind, renderSubconsciousMindHtml } from './world-passport.js';
 
 export class SonicDossierEngine {
   constructor() {
@@ -20,9 +22,24 @@ export class SonicDossierEngine {
     this.isOpen = false;
     this.data = null;
     this.timeRange = 'short_term';
-    this.activeTab = 'audiodna';
-    this.analytics = null;
+    
+    // 4 Modular Departments: 'cinema', 'audiodna', 'weather', 'world'
+    this.activeDept = 'cinema';
+    this.activeSub = {
+      cinema: 'criterion',     // 'criterion' | 'synesthesia'
+      audiodna: 'explorer',    // 'explorer' | 'overview' | 'timemachine' | 'circadian' | 'obscurity'
+      weather: 'stormchaser',  // 'stormchaser'
+      world: 'boardingpass'    // 'boardingpass' | 'subconscious' | 'festival'
+    };
 
+    this.weatherData = null;
+    this.activeControllers = {
+      barcode: null,
+      weatherTimeline: null,
+      flightMap: null
+    };
+
+    this.analytics = null;
     this.onKeyDown = this.handleKeyDown.bind(this);
   }
 
@@ -39,7 +56,7 @@ export class SonicDossierEngine {
     }
   }
 
-  open(data, timeRange = 'short_term') {
+  async open(data, timeRange = 'short_term') {
     this.data = data;
     this.timeRange = timeRange;
     this.analytics = this.computeAnalytics(data, timeRange);
@@ -49,196 +66,207 @@ export class SonicDossierEngine {
     this.isOpen = true;
     document.body.style.overflow = 'hidden';
 
-    this.render();
+    // Start background weather fetch if not yet loaded
+    if (!this.weatherData) {
+      fetchLiveWeatherData().then(w => {
+        this.weatherData = w;
+        if (this.isOpen && this.activeDept === 'weather') {
+          this.render();
+        }
+      });
+    }
+
     window.addEventListener('keydown', this.onKeyDown);
-    showToast('✨ Sonic Dossier Unlocked: Explore Your Music DNA', 'info', 3200);
+    this.render();
   }
 
   close() {
-    if (!this.isOpen) return;
+    if (!this.modal) return;
+    this.cleanupControllers();
+
+    if (this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
+      audioDna.destroy();
+    }
+
+    this.modal.classList.remove('is-open');
     this.isOpen = false;
-    audioDna.destroy();
-    if (this.modal) this.modal.classList.remove('is-open');
     document.body.style.overflow = '';
     window.removeEventListener('keydown', this.onKeyDown);
-    soundEngine.stop();
+  }
+
+  cleanupControllers() {
+    if (this.activeControllers.flightMap) {
+      this.activeControllers.flightMap.destroy();
+      this.activeControllers.flightMap = null;
+    }
+    this.activeControllers.barcode = null;
+    this.activeControllers.weatherTimeline = null;
   }
 
   handleKeyDown(e) {
-    if (!this.isOpen) return;
-    if (e.key === 'Escape') {
+    if (e.key === 'Escape' && this.isOpen) {
       this.close();
     }
   }
 
   // =========================================================================
-  // ANALYTICS COMPUTATION ENGINE
+  // ANALYTICS & STATS ENGINE
   // =========================================================================
   computeAnalytics(data, timeRange) {
     const tracks = data.topTracks || [];
     const artists = data.topArtists || [];
+    const user = data.user || { display_name: 'Audiophile Explorer' };
     const stats = data.stats || {};
-    const user = data.user || { display_name: 'Soulseekr Archivist' };
 
-    // 1. CHRONOLOGICAL TIME MACHINE (Taste Age & Decades)
+    // 1. Taste Age & Vintage Drift
     const currentYear = 2026;
-    let totalWeightedYear = 0;
-    let totalWeight = 0;
-    const decadeCounts = { '60s/70s': 0, '80s': 0, '90s': 0, '00s': 0, '10s': 0, '20s': 0 };
-    let oldestTrack = null;
-    let newestTrack = null;
+    const releaseYears = tracks
+      .map(t => {
+        const d = t.album?.release_date;
+        return d ? parseInt(d.slice(0, 4), 10) : NaN;
+      })
+      .filter(y => !isNaN(y));
 
-    tracks.forEach((t, idx) => {
-      const yearStr = t.album?.release_date?.slice(0, 4) || t.album?.releaseYear || '2016';
-      const year = parseInt(yearStr, 10);
-      const weight = Math.max(1, 10 - idx);
-      totalWeightedYear += year * weight;
-      totalWeight += weight;
+    const avgReleaseYear = releaseYears.length
+      ? Math.round(releaseYears.reduce((a, b) => a + b, 0) / releaseYears.length)
+      : 2020;
 
-      if (!oldestTrack || year < oldestTrack.year) {
-        oldestTrack = { track: t, year };
-      }
-      if (!newestTrack || year > newestTrack.year) {
-        newestTrack = { track: t, year };
-      }
+    const vintageDrift = Math.max(0, currentYear - avgReleaseYear);
 
-      if (year < 1980) decadeCounts['60s/70s']++;
-      else if (year < 1990) decadeCounts['80s']++;
-      else if (year < 2000) decadeCounts['90s']++;
-      else if (year < 2010) decadeCounts['00s']++;
-      else if (year < 2020) decadeCounts['10s']++;
-      else decadeCounts['20s']++;
-    });
-
-    const tasteAge = Math.round(totalWeightedYear / (totalWeight || 1)) || 1996;
-    const vintageDrift = currentYear - tasteAge;
-    const totalTracks = Math.max(1, tracks.length);
-    const decadesPct = Object.entries(decadeCounts).map(([decade, count]) => ({
-      decade,
-      count,
-      pct: Math.round((count / totalTracks) * 100)
-    }));
-
-    // 2. CIRCADIAN RHYTHM (Nocturnal vs Dawn Listening Clock)
-    // Modeled from energy, tempo, and acoustic profile
-    const energy = stats.energyScore || 75;
-    const tempo = stats.tempoBpm || 120;
-    const isNocturnal = energy < 80 || stats.obscurityScore > 65;
-
-    // Hourly distribution curve (24 segments: 0 to 23)
-    const hourlyDistribution = [];
-    for (let h = 0; h < 24; h++) {
-      let weight = 0.15;
-      if (h >= 0 && h <= 4) {
-        // Vampire Hours
-        weight = isNocturnal ? 0.85 + Math.sin(h * 0.7) * 0.15 : 0.25;
-      } else if (h >= 5 && h <= 9) {
-        // Dawn Patrol
-        weight = !isNocturnal ? 0.75 : 0.35;
-      } else if (h >= 10 && h <= 17) {
-        // Daylight Momentum
-        weight = (energy / 100) * 0.8;
-      } else {
-        // Twilight / Golden Hour
-        weight = 0.7 + Math.sin((h - 18) * 0.5) * 0.2;
-      }
-      hourlyDistribution.push({
-        hour: h,
-        label: `${h.toString().padStart(2, '0')}:00`,
-        weight: Math.min(1.0, Math.max(0.08, weight))
-      });
+    // 2. Decades Distribution
+    const decadesCount = {};
+    for (const yr of releaseYears) {
+      const dec = `${Math.floor(yr / 10) * 10}s`;
+      decadesCount[dec] = (decadesCount[dec] || 0) + 1;
     }
 
-    const peakHour = isNocturnal ? '02:00 AM' : '10:00 AM';
-    const nocturnalPct = isNocturnal ? 68 : 34;
-    const circadianTitle = isNocturnal ? 'Vampire Hours Architect' : 'Dawn Patrol Pioneer';
+    const decadesPct = Object.entries(decadesCount)
+      .map(([decade, count]) => ({
+        decade,
+        pct: Math.round((count / (releaseYears.length || 1)) * 100)
+      }))
+      .sort((a, b) => b.pct - a.pct);
 
-    // 3. OBSCURITY RADAR & SNOB INDEX
-    let totalPop = 0;
-    let deepestGem = null;
-    let mainstreamStaple = null;
+    // 3. Circadian Analysis
+    const recent = data.recentlyPlayed || [];
+    const hourWeights = new Array(24).fill(0);
 
-    artists.forEach((a, idx) => {
-      // Popularity score (0-100)
-      const pop = typeof a.popularity === 'number' ? a.popularity : (idx === 0 ? 94 : Math.max(15, 88 - idx * 12));
-      totalPop += pop;
-
-      if (!deepestGem || pop < deepestGem.pop) {
-        deepestGem = { artist: a, pop };
+    for (const item of recent) {
+      if (item.played_at) {
+        const h = new Date(item.played_at).getHours();
+        hourWeights[h] += 1;
       }
-      if (!mainstreamStaple || pop > mainstreamStaple.pop) {
-        mainstreamStaple = { artist: a, pop };
+    }
+
+    let maxWeight = 0;
+    let peakHourIndex = 23;
+    for (let h = 0; h < 24; h++) {
+      if (hourWeights[h] > maxWeight) {
+        maxWeight = hourWeights[h];
+        peakHourIndex = h;
       }
+    }
+
+    if (maxWeight === 0) {
+      peakHourIndex = 1; // 1 AM default nocturnal peak
+      hourWeights[1] = 6;
+      hourWeights[2] = 5;
+      hourWeights[23] = 4;
+    }
+
+    const peakHour = `${peakHourIndex < 10 ? '0' : ''}${peakHourIndex}:00`;
+    let circadianTitle = "Midnight Dreamer";
+    if (peakHourIndex >= 0 && peakHourIndex < 5) circadianTitle = "Nocturnal Vampire";
+    else if (peakHourIndex >= 5 && peakHourIndex < 9) circadianTitle = "Dawn Patrol Pioneer";
+    else if (peakHourIndex >= 9 && peakHourIndex < 17) circadianTitle = "High-Noon Dynamo";
+    else if (peakHourIndex >= 17 && peakHourIndex < 21) circadianTitle = "Dusk Alchemist";
+
+    const nightPlays = hourWeights.slice(22).reduce((a, b) => a + b, 0) + hourWeights.slice(0, 5).reduce((a, b) => a + b, 0);
+    const totalPlays = hourWeights.reduce((a, b) => a + b, 0) || 1;
+    const nocturnalPct = Math.round((nightPlays / totalPlays) * 100);
+
+    const hourlyDistribution = hourWeights.map((w, h) => ({
+      hour: h,
+      label: `${h < 10 ? '0' : ''}${h}:00`,
+      weight: maxWeight ? w / maxWeight : 0.1
+    }));
+
+    // 4. Obscurity & Snob Index
+    const popValues = artists.map(a => a.popularity || 50);
+    const avgPopularity = popValues.length
+      ? Math.round(popValues.reduce((a, b) => a + b, 0) / popValues.length)
+      : 65;
+
+    const obscurityScore = Math.max(12, Math.min(99, 100 - avgPopularity + 15));
+    let snobTier = "Curator in Training";
+    if (obscurityScore >= 85) snobTier = "Subterranean Purist";
+    else if (obscurityScore >= 70) snobTier = "Crate Digger Elite";
+    else if (obscurityScore >= 50) snobTier = "Discriminating Listener";
+    else snobTier = "Mainstream Connoisseur";
+
+    // Most obscure crate discovery
+    const sortedByPop = [...artists].sort((a, b) => (a.popularity || 50) - (b.popularity || 50));
+    const rarestGem = sortedByPop[0] || { name: 'Underground Unit', popularity: 18, genres: ['slowcore', 'dream-pop'] };
+    const mainstreamStaple = [...artists].reverse().find(a => (a.popularity || 50) > 75);
+
+    // Oldest release vs newest release
+    const sortedTracksByYear = [...tracks].sort((a, b) => {
+      const ya = parseInt(a.album?.release_date?.slice(0, 4) || '2020', 10);
+      const yb = parseInt(b.album?.release_date?.slice(0, 4) || '2020', 10);
+      return ya - yb;
     });
 
-    const avgPop = Math.round(totalPop / Math.max(1, artists.length)) || 42;
-    const obscurityScore = 100 - avgPop;
+    const oldestTrack = sortedTracksByYear[0] || { name: 'Classic Relic', track: tracks[0], year: 1977 };
+    const newestTrack = sortedTracksByYear[sortedTracksByYear.length - 1] || { name: 'Contemporary Vanguard', track: tracks[0], year: 2026 };
 
-    let snobTier = 'Indie Connoisseur';
-    if (obscurityScore >= 80) snobTier = 'Ultra Underground Crate Digger';
-    else if (obscurityScore >= 65) snobTier = 'Subterranean Purist';
-    else if (obscurityScore >= 45) snobTier = 'Curated Tastemaker';
-    else snobTier = 'Arena Chart Navigator';
-
-    // 4. SONIC GEOGRAPHY & CULTURAL EPICENTERS
+    // 5. Geographic Epicenters
     const epicenters = [
-      { name: 'United Kingdom & Hibernia', pct: 36, genre: 'Post-Punk & UK Garage', flag: '🇬🇧' },
-      { name: 'North America (West Coast)', pct: 28, genre: 'Neo-Psychedelia & Desert Rock', flag: '🇺🇸' },
-      { name: 'Continental Europe', pct: 18, genre: 'French Touch & Berlin Minimal', flag: '🇪🇺' },
-      { name: 'Asia-Pacific', pct: 12, genre: 'Tokyo City Pop & Sydney Psych', flag: '🇯🇵' },
-      { name: 'Global South', pct: 6, genre: 'Afrobeats & Bossa Nova', flag: '🌍' }
+      { name: 'London / Manchester', country: 'United Kingdom', flag: '🇬🇧', genre: 'Post-Punk / Shoegaze', pct: 42 },
+      { name: 'Tokyo / Shibuya', country: 'Japan', flag: '🇯🇵', genre: 'City Pop / Math Rock', pct: 28 },
+      { name: 'Toronto / Montreal', country: 'Canada', flag: '🇨🇦', genre: 'Indie Pop / R&B Noir', pct: 18 },
+      { name: 'Reykjavik / Berlin', country: 'Iceland / DE', flag: '🇮🇸', genre: 'Ambient Minimal / Techno', pct: 12 }
     ];
 
-    // 5. 3-DAY FESTIVAL POSTER LINEUP
-    const fullArtistList = artists.length >= 6 ? artists : [
-      ...(data.topArtists || []),
-      { name: 'Beach House' },
-      { name: 'Boy Harsher' },
-      { name: 'Men I Trust' },
-      { name: 'The Japanese House' },
-      { name: 'Alvvays' },
-      { name: 'Yves Tumor' },
-      { name: 'Slowdive' }
-    ];
-
+    // 6. Festival Lineup Generation
     const festivalDays = [
       {
-        day: 'FRIDAY // DAY 01',
-        theme: 'SYNTH & HYPERDRIVE',
-        headliner: fullArtistList[0]?.name || 'THE WEEKND',
-        undercard: [fullArtistList[3]?.name || 'ARCTIC MONKEYS', fullArtistList[6]?.name || 'BEACH HOUSE', fullArtistList[9]?.name || 'ALVVAYS']
+        day: 'FRIDAY // NIGHT ZERO',
+        theme: 'Subterranean Echoes & Neon Reverbs',
+        headliner: artists[0]?.name || 'THE HEADLINER',
+        undercard: artists.slice(1, 6).map(a => a.name)
       },
       {
-        day: 'SATURDAY // DAY 02',
-        theme: 'PSYCHEDELIC HORIZON',
-        headliner: fullArtistList[2]?.name || 'TAME IMPALA',
-        undercard: [fullArtistList[4]?.name || 'FLEETWOOD MAC', fullArtistList[7]?.name || 'BOY HARSHER', fullArtistList[10]?.name || 'YVES TUMOR']
+        day: 'SATURDAY // APEX DRIFT',
+        theme: 'High-Voltage Psych & Groove Catharsis',
+        headliner: artists[6]?.name || artists[1]?.name || 'THE SATURDAY ICON',
+        undercard: artists.slice(7, 12).map(a => a.name)
       },
       {
-        day: 'SUNDAY // DAY 03',
-        theme: 'NOCTURNAL VOYAGE',
-        headliner: fullArtistList[1]?.name || 'M83',
-        undercard: [fullArtistList[5]?.name || 'MEN I TRUST', fullArtistList[8]?.name || 'THE JAPANESE HOUSE', fullArtistList[11]?.name || 'SLOWDIVE']
+        day: 'SUNDAY // TWILIGHT CODA',
+        theme: 'Meditative Ambient & 70s Analog Masters',
+        headliner: artists[12]?.name || artists[2]?.name || 'THE CLOSING LEGEND',
+        undercard: artists.slice(13, 18).map(a => a.name)
       }
     ];
 
     return {
       user,
-      tasteAge,
       vintageDrift,
+      tasteAge: avgReleaseYear,
       decadesPct,
-      oldestTrack,
-      newestTrack,
-      circadianTitle,
       peakHour,
+      circadianTitle,
       nocturnalPct,
       hourlyDistribution,
       obscurityScore,
       snobTier,
-      deepestGem: deepestGem?.artist || artists[0],
-      deepestGemPop: deepestGem?.pop || 24,
-      mainstreamStaple: mainstreamStaple?.artist || artists[0],
-      mainstreamStaplePop: mainstreamStaple?.pop || 94,
+      rarestGem: rarestGem.name,
+      rarestGemPop: rarestGem.popularity || 18,
+      rarestGemGenres: rarestGem.genres ? rarestGem.genres.slice(0, 2).join(' • ') : 'indie / underground',
+      oldestTrack: { track: oldestTrack, year: oldestTrack.album?.release_date?.slice(0, 4) || '1977' },
+      newestTrack: { track: newestTrack, year: newestTrack.album?.release_date?.slice(0, 4) || '2026' },
+      mainstreamStaple: mainstreamStaple?.name || artists[0]?.name || 'Global Staple',
+      mainstreamStaplePop: mainstreamStaple?.popularity || 94,
       epicenters,
       festivalDays,
       dominantGenre: stats.dominantGenre || 'Neo-Psychedelia / Synthpop',
@@ -248,12 +276,11 @@ export class SonicDossierEngine {
   }
 
   // =========================================================================
-  // VIEW RENDERER
+  // VIEW RENDERER (Department Navigation Architecture)
   // =========================================================================
   render() {
     if (!this.modal) return;
     const a = this.analytics;
-    const d = this.data;
 
     this.modal.innerHTML = `
       <div class="dossier-backdrop" id="dossier-backdrop"></div>
@@ -273,7 +300,7 @@ export class SonicDossierEngine {
           </div>
 
           <div class="dossier-header-actions">
-            <button class="dossier-btn-export" id="btn-dossier-export-card" title="Download High-Res Dossier Card">
+            <button class="dossier-btn-export" id="btn-dossier-export-card" title="Download High-Res Dossier Poster">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               <span>Export Poster</span>
             </button>
@@ -283,37 +310,32 @@ export class SonicDossierEngine {
           </div>
         </header>
 
-        <!-- Segmented Tab Navigation Rail -->
-        <nav class="dossier-tabs-nav" role="tablist">
-          <button class="dossier-tab-btn ${this.activeTab === 'audiodna' ? 'active' : ''}" data-tab="audiodna">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12h2M6 6v12M10 9v6M14 4v16M18 8v8M22 12h2"/></svg>
-            <span>Audio DNA Explorer</span>
+        <!-- Primary Modular Department Navigation Rail -->
+        <nav class="dossier-dept-nav" role="tablist" aria-label="Dossier Departments">
+          <button class="dossier-dept-btn ${this.activeDept === 'cinema' ? 'active' : ''}" data-dept="cinema">
+            <span class="dept-icon">🎬</span>
+            <span>Cinema &amp; Synesthesia</span>
           </button>
-          <button class="dossier-tab-btn ${this.activeTab === 'overview' ? 'active' : ''}" data-tab="overview">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg>
-            <span>Persona DNA</span>
+          <button class="dossier-dept-btn ${this.activeDept === 'audiodna' ? 'active' : ''}" data-dept="audiodna">
+            <span class="dept-icon">🧭</span>
+            <span>Audio DNA &amp; Persona</span>
           </button>
-          <button class="dossier-tab-btn ${this.activeTab === 'timemachine' ? 'active' : ''}" data-tab="timemachine">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            <span>Time Machine (${a.tasteAge})</span>
+          <button class="dossier-dept-btn ${this.activeDept === 'weather' ? 'active' : ''}" data-dept="weather">
+            <span class="dept-icon">🌦️</span>
+            <span>Atmosphere &amp; Weather</span>
           </button>
-          <button class="dossier-tab-btn ${this.activeTab === 'circadian' ? 'active' : ''}" data-tab="circadian">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
-            <span>Circadian Clock</span>
-          </button>
-          <button class="dossier-tab-btn ${this.activeTab === 'obscurity' ? 'active' : ''}" data-tab="obscurity">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-            <span>Underground Radar</span>
-          </button>
-          <button class="dossier-tab-btn ${this.activeTab === 'festival' ? 'active' : ''}" data-tab="festival">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
-            <span>Festival Poster</span>
+          <button class="dossier-dept-btn ${this.activeDept === 'world' ? 'active' : ''}" data-dept="world">
+            <span class="dept-icon">✈️</span>
+            <span>World &amp; Journey</span>
           </button>
         </nav>
 
+        <!-- Secondary Sub-Navigation Pill Strip -->
+        ${this.renderSubNavPillStrip()}
+
         <!-- Main Tab Content Body (Exportable Container) -->
         <main class="dossier-main" id="dossier-exportable-stage">
-          ${this.renderActiveTabContent()}
+          ${this.renderActiveDepartmentContent()}
         </main>
       </div>
     `;
@@ -321,28 +343,159 @@ export class SonicDossierEngine {
     this.attachEventListeners();
   }
 
-  // =========================================================================
-  // TAB CONTENT RENDERERS
-  // =========================================================================
-  renderActiveTabContent() {
-    switch (this.activeTab) {
-      case 'audiodna':
-        return '<div id="dna-mount-point" class="dna-container-mount"></div>';
-      case 'timemachine':
-        return this.renderTimeMachineTab();
-      case 'circadian':
-        return this.renderCircadianTab();
-      case 'obscurity':
-        return this.renderObscurityTab();
-      case 'festival':
-        return this.renderFestivalTab();
-      case 'overview':
-      default:
-        return this.renderOverviewTab();
+  renderSubNavPillStrip() {
+    if (this.activeDept === 'cinema') {
+      const active = this.activeSub.cinema;
+      return `
+        <div class="dossier-sub-nav">
+          <button class="dossier-sub-pill ${active === 'criterion' ? 'active' : ''}" data-sub="criterion">
+            <span>The Director's Cut (Criterion Poster)</span>
+          </button>
+          <button class="dossier-sub-pill ${active === 'synesthesia' ? 'active' : ''}" data-sub="synesthesia">
+            <span>The Synesthesia Canvas (Listening Barcode)</span>
+          </button>
+        </div>
+      `;
     }
+
+    if (this.activeDept === 'audiodna') {
+      const active = this.activeSub.audiodna;
+      return `
+        <div class="dossier-sub-nav">
+          <button class="dossier-sub-pill ${active === 'explorer' ? 'active' : ''}" data-sub="explorer">
+            <span>Audio DNA Explorer (6 Visualizers)</span>
+          </button>
+          <button class="dossier-sub-pill ${active === 'overview' ? 'active' : ''}" data-sub="overview">
+            <span>Persona DNA Archetype</span>
+          </button>
+          <button class="dossier-sub-pill ${active === 'timemachine' ? 'active' : ''}" data-sub="timemachine">
+            <span>Time Machine (${this.analytics.tasteAge})</span>
+          </button>
+          <button class="dossier-sub-pill ${active === 'circadian' ? 'active' : ''}" data-sub="circadian">
+            <span>Circadian Clock (24h)</span>
+          </button>
+          <button class="dossier-sub-pill ${active === 'obscurity' ? 'active' : ''}" data-sub="obscurity">
+            <span>Underground Radar</span>
+          </button>
+        </div>
+      `;
+    }
+
+    if (this.activeDept === 'weather') {
+      return `
+        <div class="dossier-sub-nav">
+          <button class="dossier-sub-pill active" data-sub="stormchaser">
+            <span>The Storm Chaser Report (Barometric Vibe Split &amp; 24h Timeline)</span>
+          </button>
+        </div>
+      `;
+    }
+
+    if (this.activeDept === 'world') {
+      const active = this.activeSub.world;
+      return `
+        <div class="dossier-sub-nav">
+          <button class="dossier-sub-pill ${active === 'boardingpass' ? 'active' : ''}" data-sub="boardingpass">
+            <span>Airline Boarding Pass &amp; Flight Map</span>
+          </button>
+          <button class="dossier-sub-pill ${active === 'subconscious' ? 'active' : ''}" data-sub="subconscious">
+            <span>The Subconscious Mind Map (Lyrics Arc)</span>
+          </button>
+          <button class="dossier-sub-pill ${active === 'festival' ? 'active' : ''}" data-sub="festival">
+            <span>3-Day Festival Poster</span>
+          </button>
+        </div>
+      `;
+    }
+
+    return '';
   }
 
-  // 1. OVERVIEW & PERSONA DNA
+  // =========================================================================
+  // DEPARTMENT CONTENT DISPATCHER
+  // =========================================================================
+  renderActiveDepartmentContent() {
+    // 1. Cinema & Synesthesia
+    if (this.activeDept === 'cinema') {
+      if (this.activeSub.cinema === 'criterion') {
+        const director = matchDirector(this.analytics);
+        return renderCriterionPosterHtml(director, this.analytics.user, this.data.topTracks);
+      }
+      return renderSynesthesiaHtml(this.data.topTracks, this.analytics.auraColors);
+    }
+
+    // 2. Audio DNA & Persona
+    if (this.activeDept === 'audiodna') {
+      const sub = this.activeSub.audiodna;
+      if (sub === 'explorer') {
+        return '<div id="dna-mount-point" class="dna-container-mount"></div>';
+      }
+      if (sub === 'timemachine') return this.renderTimeMachineTab();
+      if (sub === 'circadian') return this.renderCircadianTab();
+      if (sub === 'obscurity') return this.renderObscurityTab();
+      return this.renderOverviewTab();
+    }
+
+    // 3. Atmosphere & Weather
+    if (this.activeDept === 'weather') {
+      const weather = this.weatherData || {
+        city: 'Tokyo, JP (GPS Syncing)',
+        temp: 18,
+        apparentTemp: 17,
+        humidity: 68,
+        pressure: 1014,
+        windSpeed: 10,
+        precipitation: 1.2,
+        condition: 'Atmospheric Drizzle',
+        icon: '🌧️',
+        vibeMood: 'Late-Night Solitude',
+        hourly: Array.from({ length: 24 }, (_, i) => ({
+          hour: `${i < 10 ? '0' : ''}${i}:00`,
+          temp: Math.round(15 + Math.sin(i / 3) * 6),
+          precip: i > 12 ? 40 : 10
+        }))
+      };
+      const split = computeBarometricSplit(this.data.topTracks);
+      return renderWeatherChaserHtml(weather, split);
+    }
+
+    // 4. World & Journey
+    if (this.activeDept === 'world') {
+      const sub = this.activeSub.world;
+      if (sub === 'subconscious') {
+        const subc = computeSubconsciousMind(this.data.topTracks);
+        return renderSubconsciousMindHtml(subc);
+      }
+      if (sub === 'festival') {
+        return this.renderFestivalTab();
+      }
+
+      // Default: Airline Boarding Pass + Interactive Flight Map
+      const passport = resolvePassportMetrics(this.analytics.user, this.data.topArtists, this.data.topTracks);
+      return `
+        <div style="display:flex; flex-direction:column; gap:1.5rem;">
+          ${renderBoardingPassHtml(this.analytics.user, passport)}
+          
+          <!-- Interactive Flight Map Canvas Card -->
+          <div class="dossier-card flight-map-stage-card">
+            <div class="dossier-card-header">
+              <span class="dossier-card-title">GLOBAL FLIGHT CORRIDORS // MUSICBRAINZ ARTIST ORIGINS</span>
+              <span class="dossier-card-sub">${passport.destinationHubs.length} GLOBAL CAPITALS VISITED</span>
+            </div>
+            <div class="flight-map-canvas-container">
+              <canvas id="flight-map-canvas" class="flight-canvas"></canvas>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    return this.renderOverviewTab();
+  }
+
+  // =========================================================================
+  // SUB-TAB RENDERERS (Persona, Time Machine, Circadian, Obscurity, Festival)
+  // =========================================================================
   renderOverviewTab() {
     const a = this.analytics;
     const tracks = this.data.topTracks || [];
@@ -422,7 +575,6 @@ export class SonicDossierEngine {
     `;
   }
 
-  // 2. THE CHRONOLOGICAL TIME MACHINE
   renderTimeMachineTab() {
     const a = this.analytics;
 
@@ -434,7 +586,6 @@ export class SonicDossierEngine {
           <p class="dossier-view-sub">Your musical soul is offset by <b>+${a.vintageDrift} years</b> into the catalog. Here is how your listening breaks down by era:</p>
         </div>
 
-        <!-- Decades Histogram Bar Graph -->
         <div class="dossier-card dossier-card-histogram">
           <div class="dossier-histogram-grid">
             ${a.decadesPct.map(d => `
@@ -450,7 +601,6 @@ export class SonicDossierEngine {
           </div>
         </div>
 
-        <!-- Oldest Relic vs Newest Vanguard Discovery -->
         <div class="dossier-relic-split">
           <div class="dossier-card dossier-relic-card">
             <span class="dossier-relic-tag">THE ANCHOR RELIC (OLDEST RELEASE)</span>
@@ -480,7 +630,6 @@ export class SonicDossierEngine {
     `;
   }
 
-  // 3. THE CIRCADIAN RHYTHM CLOCK
   renderCircadianTab() {
     const a = this.analytics;
 
@@ -493,7 +642,6 @@ export class SonicDossierEngine {
         </div>
 
         <div class="dossier-card dossier-circadian-wheel-card">
-          <!-- 24-Hour Circular Radial Architecture -->
           <div class="dossier-circadian-dial-container">
             <div class="dossier-dial-center">
               <span class="dossier-dial-icon">🌙</span>
@@ -518,22 +666,22 @@ export class SonicDossierEngine {
             <div class="dossier-quad-cell">
               <span class="dossier-quad-time">00:00 – 05:00</span>
               <span class="dossier-quad-name">Vampire Hours</span>
-              <span class="dossier-quad-desc">Shoegaze, darkwave, ambient introspection</span>
+              <span class="dossier-quad-desc">Slowcore &amp; IDM</span>
             </div>
             <div class="dossier-quad-cell">
               <span class="dossier-quad-time">06:00 – 11:00</span>
-              <span class="dossier-quad-name">Dawn Patrol</span>
-              <span class="dossier-quad-desc">Acoustic clarity & morning ignition</span>
+              <span class="dossier-quad-name">Morning Awakening</span>
+              <span class="dossier-quad-desc">Acoustic &amp; Modern Jazz</span>
             </div>
             <div class="dossier-quad-cell">
               <span class="dossier-quad-time">12:00 – 17:00</span>
-              <span class="dossier-quad-name">Daylight Flow</span>
-              <span class="dossier-quad-desc">High tempo, driving rhythms, hyperfocus</span>
+              <span class="dossier-quad-name">Deep Focus Engine</span>
+              <span class="dossier-quad-desc">High-Tempo Synthpop</span>
             </div>
             <div class="dossier-quad-cell">
               <span class="dossier-quad-time">18:00 – 23:00</span>
-              <span class="dossier-quad-name">Twilight Descent</span>
-              <span class="dossier-quad-desc">Warm grooves, neo-psychedelia, unwind</span>
+              <span class="dossier-quad-name">Twilight Euphoria</span>
+              <span class="dossier-quad-desc">Post-Punk &amp; Psychedelia</span>
             </div>
           </div>
         </div>
@@ -541,54 +689,54 @@ export class SonicDossierEngine {
     `;
   }
 
-  // 4. UNDERGROUND OBSCURITY RADAR
   renderObscurityTab() {
     const a = this.analytics;
 
     return `
       <section class="dossier-view-obscurity">
         <div class="dossier-view-banner">
-          <div class="dossier-badge-label">UNDERGROUND TASTEMAKER INDEX</div>
-          <h2 class="dossier-view-title">${a.obscurityScore}% Obscurity // ${a.snobTier}</h2>
-          <p class="dossier-view-sub">Only <b>${100 - a.obscurityScore}%</b> of your regular rotation overlaps with global mainstream charts. You listen deeper in the underground than 88% of Spotify users.</p>
+          <div class="dossier-badge-label">OBSCURITY RADAR &amp; SNOB INDEX</div>
+          <h2 class="dossier-view-title">${a.snobTier}</h2>
+          <p class="dossier-view-sub">Your music catalog registers an obscurity snob rating of <b>${a.obscurityScore}%</b>. Only a tiny fraction overlaps with standard global Top 50 hits.</p>
         </div>
 
-        <div class="dossier-card dossier-obscurity-spectrum-card">
-          <div class="dossier-spectrum-header">
-            <span>UNDERGROUND DEEP CUTS (0)</span>
-            <span>INDIE CONNOISSEUR (50)</span>
-            <span>GLOBAL BILLBOARD (100)</span>
-          </div>
-
-          <div class="dossier-spectrum-bar">
-            <div class="dossier-spectrum-fill" style="width: ${100 - a.obscurityScore}%;"></div>
-            <div class="dossier-spectrum-needle" style="left: ${100 - a.obscurityScore}%;">
-              <span class="dossier-needle-tag">YOUR TASTE: ${100 - a.obscurityScore}%</span>
+        <div class="dossier-card dossier-snob-meter-card">
+          <div class="dossier-meter-bar-wrap">
+            <div class="dossier-meter-fill-glow" style="width: ${a.obscurityScore}%;"></div>
+            <div class="dossier-meter-pin" style="left: ${a.obscurityScore}%;">
+              <span class="dossier-pin-val">${a.obscurityScore}%</span>
             </div>
           </div>
+          <div class="dossier-meter-labels">
+            <span>CHART TOPPER (0%)</span>
+            <span>CRATE DIGGER (50%)</span>
+            <span>SUBTERRANEAN VOID (100%)</span>
+          </div>
         </div>
 
-        <div class="dossier-gem-comparison">
-          <div class="dossier-card dossier-gem-card">
-            <span class="dossier-gem-badge">💎 DEEPEST UNDERGROUND TREASURE</span>
-            <div class="dossier-gem-body">
-              <h3 class="dossier-gem-name">${escapeHtml(a.deepestGem.name)}</h3>
-              <p class="dossier-gem-genres">${a.deepestGem.genres?.slice(0, 2).join(' • ') || 'Sonic Vanguard'}</p>
+        <div class="dossier-card dossier-obscure-gems-card">
+          <div class="dossier-card-header">
+            <span class="dossier-card-title">DEEPEST CRATE FIND VS MAINSTREAM ANCHOR</span>
+            <span class="dossier-card-sub">POPULARITY DIFFERENTIAL</span>
+          </div>
+          <div class="dossier-gem-comparison">
+            <div class="dossier-gem-card">
+              <span class="dossier-gem-badge">RAREST CRATE GEM</span>
+              <h3 class="dossier-gem-name">${escapeHtml(a.rarestGem)}</h3>
+              <p class="dossier-gem-genres">${a.rarestGemGenres}</p>
               <div class="dossier-gem-metric">
-                <span>POPULARITY SCORE: <b>${a.deepestGemPop} / 100</b></span>
-                <span style="color:#10b981;">DEEP CUT</span>
+                <span>SPOTIFY POPULARITY:</span>
+                <b style="color: #38bdf8;">${a.rarestGemPop}/100</b>
               </div>
             </div>
-          </div>
 
-          <div class="dossier-card dossier-gem-card">
-            <span class="dossier-gem-badge">🔥 MAINSTREAM STAPLE (GUILTY PLEASURE)</span>
-            <div class="dossier-gem-body">
-              <h3 class="dossier-gem-name">${escapeHtml(a.mainstreamStaple.name)}</h3>
-              <p class="dossier-gem-genres">${a.mainstreamStaple.genres?.slice(0, 2).join(' • ') || 'Global Chart Headliner'}</p>
+            <div class="dossier-gem-card">
+              <span class="dossier-gem-badge" style="color:#fbbf24;">MAINSTREAM ANCHOR</span>
+              <h3 class="dossier-gem-name">${escapeHtml(a.mainstreamStaple)}</h3>
+              <p class="dossier-gem-genres">Global Hit Rotation</p>
               <div class="dossier-gem-metric">
-                <span>POPULARITY SCORE: <b>${a.mainstreamStaplePop} / 100</b></span>
-                <span style="color:#f59e0b;">ARENA GIANT</span>
+                <span>SPOTIFY POPULARITY:</span>
+                <b style="color: #fbbf24;">${a.mainstreamStaplePop}/100</b>
               </div>
             </div>
           </div>
@@ -597,19 +745,17 @@ export class SonicDossierEngine {
     `;
   }
 
-  // 5. 3-DAY MUSIC FESTIVAL POSTER
   renderFestivalTab() {
     const a = this.analytics;
 
     return `
       <section class="dossier-view-festival">
         <div class="dossier-view-banner">
-          <div class="dossier-badge-label">LINEUP GENERATOR</div>
-          <h2 class="dossier-view-title">Soulseekr 3-Day Music Festival</h2>
-          <p class="dossier-view-sub">Your ultimate dream festival lineup curated exclusively from your listening rotation. Download and share as your personal concert poster.</p>
+          <div class="dossier-badge-label">SILKSCREEN MUSIC FESTIVAL POSTER</div>
+          <h2 class="dossier-view-title">The Obsidian Gathering</h2>
+          <p class="dossier-view-sub">Generated entirely from your top streaming rotations across 3 themed days and stages.</p>
         </div>
 
-        <!-- Silkscreen Screenprint Festival Poster Artifact -->
         <div class="festival-poster-artifact" id="festival-export-poster">
           <div class="fest-header">
             <span class="fest-presents">SOULSEEKR &amp; SOUND ARCHIVE PRESENT</span>
@@ -653,10 +799,11 @@ export class SonicDossierEngine {
   }
 
   // =========================================================================
-  // INTERACTION WIRING
+  // INTERACTION WIRING & MOUNTING
   // =========================================================================
   attachEventListeners() {
     if (!this.modal) return;
+    this.cleanupControllers();
 
     // Close buttons
     const btnClose = this.modal.querySelector('#btn-dossier-close');
@@ -665,34 +812,146 @@ export class SonicDossierEngine {
     const backdrop = this.modal.querySelector('#dossier-backdrop');
     if (backdrop) backdrop.onclick = () => this.close();
 
-    // Tab buttons
-    const tabs = this.modal.querySelectorAll('.dossier-tab-btn');
-    tabs.forEach(btn => {
+    // 1. Department Navigation Tabs
+    const deptBtns = this.modal.querySelectorAll('.dossier-dept-btn');
+    deptBtns.forEach(btn => {
       btn.onclick = () => {
-        const tab = btn.getAttribute('data-tab');
-        if (tab && tab !== this.activeTab) {
-          if (this.activeTab === 'audiodna') {
+        const dept = btn.getAttribute('data-dept');
+        if (dept && dept !== this.activeDept) {
+          if (this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
             audioDna.destroy();
           }
-          this.activeTab = tab;
+          this.activeDept = dept;
           this.render();
-          const activeBtn = this.modal.querySelector(`.dossier-tab-btn[data-tab="${tab}"]`);
-          if (activeBtn) {
-            activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
-          }
         }
       };
     });
 
-    // Mount Audio DNA engine if active tab is audiodna
-    if (this.activeTab === 'audiodna') {
+    // 2. Sub-Navigation Pills
+    const subPills = this.modal.querySelectorAll('.dossier-sub-pill');
+    subPills.forEach(pill => {
+      pill.onclick = () => {
+        const sub = pill.getAttribute('data-sub');
+        if (sub && sub !== this.activeSub[this.activeDept]) {
+          if (this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
+            audioDna.destroy();
+          }
+          this.activeSub[this.activeDept] = sub;
+          this.render();
+        }
+      };
+    });
+
+    // 3. Audio DNA Explorer Mount
+    if (this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
       const mount = this.modal.querySelector('#dna-mount-point');
       if (mount) {
         audioDna.init(mount, this.data, this.timeRange);
       }
     }
 
-    // Track audio play triggers
+    // 4. Cinema & Synesthesia Mount
+    if (this.activeDept === 'cinema') {
+      if (this.activeSub.cinema === 'synesthesia') {
+        const canvas = this.modal.querySelector('#synesthesia-barcode-canvas');
+        if (canvas) {
+          this.activeControllers.barcode = new SynesthesiaBarcodeController(canvas, this.data.topTracks || []);
+        }
+
+        // Sort buttons
+        const sortBtns = this.modal.querySelectorAll('#barcode-sort-group button');
+        sortBtns.forEach(sb => {
+          sb.onclick = () => {
+            sortBtns.forEach(b => b.classList.remove('active'));
+            sb.classList.add('active');
+            const sortMode = sb.getAttribute('data-sort');
+            this.activeControllers.barcode?.setSortMode(sortMode);
+          };
+        });
+
+        // Export Barcode
+        const btnExportBarcode = this.modal.querySelector('#btn-export-barcode-png');
+        if (btnExportBarcode) {
+          btnExportBarcode.onclick = () => {
+            if (canvas) {
+              const dataUrl = canvas.toDataURL('image/png');
+              downloadDataUrl(dataUrl, 'soulseekr-listening-barcode.png');
+              showToast('Saved Synesthesia Barcode Tapestry!', 'success', 2200);
+            }
+          };
+        }
+      }
+
+      if (this.activeSub.cinema === 'criterion') {
+        const btnExportCrit = this.modal.querySelector('#btn-export-criterion-poster');
+        if (btnExportCrit) {
+          btnExportCrit.onclick = async () => {
+            try {
+              showToast('Rendering 35mm Criterion poster...', 'info', 2000);
+              const frame = document.getElementById('criterion-export-frame');
+              const dataUrl = await exportCardAsImage('card', frame);
+              downloadDataUrl(dataUrl, 'soulseekr-criterion-collection-poster.png');
+              showToast('Criterion Poster Downloaded!', 'success', 2500);
+            } catch (err) {
+              showToast(err.message, 'error', 3500);
+            }
+          };
+        }
+      }
+    }
+
+    // 5. Weather Chaser Mount
+    if (this.activeDept === 'weather') {
+      const canvas = this.modal.querySelector('#weather-timeline-canvas');
+      if (canvas && this.weatherData) {
+        this.activeControllers.weatherTimeline = new WeatherTimelineController(canvas, this.weatherData);
+      }
+    }
+
+    // 6. World & Passport Mount
+    if (this.activeDept === 'world') {
+      if (this.activeSub.world === 'boardingpass') {
+        const canvas = this.modal.querySelector('#flight-map-canvas');
+        const passport = resolvePassportMetrics(this.analytics.user, this.data.topArtists, this.data.topTracks);
+        if (canvas) {
+          this.activeControllers.flightMap = new FlightMapController(canvas, passport);
+        }
+
+        const btnExportPass = this.modal.querySelector('#btn-export-boarding-pass');
+        if (btnExportPass) {
+          btnExportPass.onclick = async () => {
+            try {
+              showToast('Printing international boarding pass...', 'info', 2000);
+              const frame = document.getElementById('boarding-pass-export-frame');
+              const dataUrl = await exportCardAsImage('card', frame);
+              downloadDataUrl(dataUrl, 'soulseekr-first-class-boarding-pass.png');
+              showToast('Airline Boarding Pass Saved!', 'success', 2500);
+            } catch (err) {
+              showToast(err.message, 'error', 3500);
+            }
+          };
+        }
+      }
+
+      if (this.activeSub.world === 'festival') {
+        const btnDownloadFest = this.modal.querySelector('#btn-download-festival-poster');
+        if (btnDownloadFest) {
+          btnDownloadFest.onclick = async () => {
+            try {
+              showToast('Printing festival poster artifact...', 'info', 2000);
+              const festEl = document.getElementById('festival-export-poster');
+              const dataUrl = await exportCardAsImage('card', festEl);
+              downloadDataUrl(dataUrl, 'soulseekr-festival-lineup-2026.png');
+              showToast('Festival Poster Downloaded!', 'success', 2500);
+            } catch (err) {
+              showToast(err.message, 'error', 3500);
+            }
+          };
+        }
+      }
+    }
+
+    // 7. Track audio play triggers
     const trackTriggers = this.modal.querySelectorAll('.track-play-trigger');
     trackTriggers.forEach(el => {
       el.onclick = (e) => {
@@ -706,11 +965,11 @@ export class SonicDossierEngine {
       };
     });
 
-    // Export Poster Buttons
+    // 8. General Export Poster Button
     const btnExportCard = this.modal.querySelector('#btn-dossier-export-card');
     if (btnExportCard) {
       btnExportCard.onclick = async () => {
-        if (this.activeTab === 'audiodna') {
+        if (this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
           audioDna.exportSnapshot();
           return;
         }
@@ -718,23 +977,8 @@ export class SonicDossierEngine {
           showToast('Rendering high-DPI dossier image...', 'info', 2000);
           const stage = document.getElementById('dossier-exportable-stage');
           const dataUrl = await exportCardAsImage('card', stage);
-          downloadDataUrl(dataUrl, `soulseekr-taste-dossier-${this.activeTab}.png`);
+          downloadDataUrl(dataUrl, `soulseekr-taste-dossier-${this.activeDept}.png`);
           showToast('Downloaded Taste Dossier Poster!', 'success', 2500);
-        } catch (err) {
-          showToast(err.message, 'error', 3500);
-        }
-      };
-    }
-
-    const btnDownloadFest = this.modal.querySelector('#btn-download-festival-poster');
-    if (btnDownloadFest) {
-      btnDownloadFest.onclick = async () => {
-        try {
-          showToast('Printing festival poster artifact...', 'info', 2000);
-          const festEl = document.getElementById('festival-export-poster');
-          const dataUrl = await exportCardAsImage('card', festEl);
-          downloadDataUrl(dataUrl, 'soulseekr-festival-lineup-2026.png');
-          showToast('Festival Poster Downloaded!', 'success', 2500);
         } catch (err) {
           showToast(err.message, 'error', 3500);
         }
