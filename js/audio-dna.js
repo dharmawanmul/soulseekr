@@ -775,11 +775,12 @@ export class AudioDnaEngine {
             <button class="dna-sub-btn ${this.clockMode === 'polar' ? 'active' : ''}" data-mode="polar">24h Polar Ring</button>
             <button class="dna-sub-btn ${this.clockMode === 'matrix' ? 'active' : ''}" data-mode="matrix">7-Day Matrix</button>
           </div>
+        </div>
 
-          <!-- Bottom interactive hint -->
-          <div class="dna-stage-hint" id="dna-stage-hint">
-            ${this.getStageHintText()}
-          </div>
+        <!-- Stage Interactive Guidance Strip (Positioned outside canvas to prevent text collision) -->
+        <div class="dna-stage-hint" id="dna-stage-hint">
+          <span class="dna-hint-sparkle">✦</span>
+          <span id="dna-stage-hint-text">${this.getStageHintText()}</span>
         </div>
 
         <!-- Bottom Track Inspector Card (Matches attached preview screenshot) -->
@@ -841,7 +842,7 @@ export class AudioDnaEngine {
       case 'archaeology':
         return 'Scrub across 2021–2026 to reveal your evolving musical eras • Liked tracks transition over time';
       case 'compass':
-        return '4-Quadrant Emotional Compass: Valence (Positiveness) vs Energy (Intensity) via MeloData/Essentia';
+        return '4-Quadrant Emotional Matrix • Top-Right: Euphoria & Party • Bottom-Left: Introspective Melancholy • Tap nodes to preview';
       default:
         return 'Tap any element to stream genuine 30s studio master audio';
     }
@@ -988,8 +989,13 @@ export class AudioDnaEngine {
             subToggle.classList.toggle('is-visible', v === 'clock');
           }
 
-          const hintEl = document.getElementById('dna-stage-hint');
-          if (hintEl) hintEl.textContent = this.getStageHintText();
+          const hintTextEl = document.getElementById('dna-stage-hint-text');
+          if (hintTextEl) {
+            hintTextEl.textContent = this.getStageHintText();
+          } else {
+            const hintEl = document.getElementById('dna-stage-hint');
+            if (hintEl) hintEl.textContent = this.getStageHintText();
+          }
 
           if (v === 'constellation') {
             this.initConstellationGraph();
@@ -1957,7 +1963,7 @@ export class AudioDnaEngine {
   // VISUALIZATION 6: THE SONIC EMOTIONAL COMPASS (4-Quadrant Valence vs Energy)
   // =========================================================================
   renderEmotionalCompass(ctx, w, h) {
-    const pad = { left: 55, right: 35, top: 35, bottom: 45 };
+    const pad = { left: 60, right: 35, top: 35, bottom: 48 };
     const plotW = w - pad.left - pad.right;
     const plotH = h - pad.top - pad.bottom;
     const midX = pad.left + plotW / 2;
@@ -2025,7 +2031,14 @@ export class AudioDnaEngine {
     ctx.font = '10px "Space Mono", monospace';
     ctx.fillStyle = '#71717a';
     ctx.textAlign = 'center';
-    ctx.fillText('← Low Valence (Melancholy) • Valence (Musical Positiveness) • High Valence (Euphoria) →', pad.left + plotW / 2, pad.top + plotH + 25);
+    ctx.fillText('← Low Valence (Melancholy) • Valence (Musical Positiveness) • High Valence (Euphoria) →', pad.left + plotW / 2, pad.top + plotH + 26);
+
+    ctx.save();
+    ctx.translate(pad.left - 42, pad.top + plotH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.fillText('← Low Energy (Calm) • Energy (Intensity) • High Energy (Dynamic) →', 0, 0);
+    ctx.restore();
 
     // Plot Track Nodes
     const tracks = this.getTracksList();

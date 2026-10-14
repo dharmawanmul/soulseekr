@@ -676,6 +676,10 @@ export class SonicDossierEngine {
           }
           this.activeTab = tab;
           this.render();
+          const activeBtn = this.modal.querySelector(`.dossier-tab-btn[data-tab="${tab}"]`);
+          if (activeBtn) {
+            activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+          }
         }
       };
     });
