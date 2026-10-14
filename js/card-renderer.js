@@ -22,6 +22,18 @@ export function escapeHtml(str) {
   );
 }
 
+export function getTrackArtistNames(track) {
+  if (!track) return 'Unknown Artist';
+  if (Array.isArray(track.artists) && track.artists.length) {
+    return track.artists
+      .map(a => (a && typeof a === 'object' ? a.name : a) || '')
+      .filter(Boolean)
+      .join(', ') || 'Unknown Artist';
+  }
+  if (track.artistName) return track.artistName;
+  return 'Unknown Artist';
+}
+
 export function getTimeRangeLabel(timeRange) {
   switch (timeRange) {
     case 'short_term': return 'PAST 4 WEEKS';
@@ -128,7 +140,7 @@ export function renderVinylCard(data, timeRange, playbackState) {
             <span>MASTER RECORDING // SIDE A</span>
             <span>${rangeLabel}</span>
           </div>
-          <h2 class="vinyl-album-title">${escapeHtml(user.display_name).toUpperCase()}</h2>
+          <h2 class="vinyl-album-title">${escapeHtml(user?.display_name || user?.id || 'Audiophile').toUpperCase()}</h2>
           <div class="vinyl-curator">${escapeHtml(dominantGenre).toUpperCase()} ARCHIVE</div>
         </div>
 
@@ -140,7 +152,7 @@ export function renderVinylCard(data, timeRange, playbackState) {
                 <span class="v-idx">A-0${i + 1}</span>
                 <div class="v-info">
                   <span class="v-title">${escapeHtml(track.name)}</span>
-                  <span class="v-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
+                  <span class="v-artist">${escapeHtml(getTrackArtistNames(track))}</span>
                 </div>
                 <span class="v-dur">${formatDuration(track.duration_ms)}</span>
                 ${getIndicator(track.id, playbackState)}
@@ -182,7 +194,7 @@ export function renderSwissCard(data, timeRange, playbackState) {
       <div class="swiss-title-block">
         <h1 class="swiss-super-title">SOULSEEKR 26</h1>
         <div class="swiss-meta-coords">
-          <span>CURATOR: ${escapeHtml(user.display_name).toUpperCase()}</span>
+          <span>CURATOR: ${escapeHtml(user?.display_name || user?.id || 'Curator').toUpperCase()}</span>
           <span>VENUE: MAIN STAGE // HEADPHONES</span>
         </div>
       </div>
@@ -203,7 +215,7 @@ export function renderSwissCard(data, timeRange, playbackState) {
                 <span class="s-num">0${i + 1}</span>
                 <div class="s-text">
                   <span class="s-name">${escapeHtml(track.name)}</span>
-                  <span class="s-sub">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
+                  <span class="s-sub">${escapeHtml(getTrackArtistNames(track))}</span>
                 </div>
                 <span class="s-dur">${formatDuration(track.duration_ms)}</span>
                 ${getIndicator(track.id, playbackState)}
@@ -236,7 +248,7 @@ export function renderPrismCard(data, timeRange, playbackState) {
         <div class="prism-user-badge">
           <img src="${(user.images && user.images[0]?.url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'}" alt="Avatar" class="prism-avatar" />
           <div class="prism-user-text">
-            <span class="prism-name">${escapeHtml(user.display_name)}</span>
+            <span class="prism-name">${escapeHtml(user?.display_name || user?.id || 'Explorer')}</span>
             <span class="prism-subtitle">SOUND MATRIX • ${rangeLabel}</span>
           </div>
         </div>
@@ -283,7 +295,7 @@ export function renderPrismCard(data, timeRange, playbackState) {
               ${imgUrl ? `<img src="${imgUrl}" class="prism-art-thumb" alt="art" />` : ''}
               <div class="prism-track-meta">
                 <span class="prism-tname">${escapeHtml(track.name)}</span>
-                <span class="prism-tartist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
+                <span class="prism-tartist">${escapeHtml(getTrackArtistNames(track))}</span>
               </div>
               <span class="prism-tdur" style="font-family:var(--font-mono); font-size:0.65rem; color:#a1a1aa;">${formatDuration(track.duration_ms)}</span>
               ${getIndicator(track.id, playbackState)}
@@ -321,7 +333,7 @@ export function renderCassetteCard(data, timeRange, playbackState) {
           <div class="label-top-row">
             <span class="tape-side-chip">A</span>
             <div class="tape-curator-title">
-              <span>MIXTAPE: ${escapeHtml(user.display_name).toUpperCase()}</span>
+              <span>MIXTAPE: ${escapeHtml(user?.display_name || user?.id || 'Tape Head').toUpperCase()}</span>
               <span style="font-size:0.6rem; color:#71717a;">${rangeLabel}</span>
             </div>
             <span style="font-size:0.6rem; font-weight:700;">TYPE-II</span>
@@ -351,7 +363,7 @@ export function renderCassetteCard(data, timeRange, playbackState) {
               <div class="jcard-item track-play-trigger ${active ? 'playing' : ''}" data-track-id="${track.id}">
                 <span class="j-num">0${i + 1}.</span>
                 <span class="j-title">${escapeHtml(track.name)}</span>
-                <span class="j-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
+                <span class="j-artist">${escapeHtml(getTrackArtistNames(track))}</span>
                 <span class="j-time">${formatDuration(track.duration_ms)}</span>
                 ${getIndicator(track.id, playbackState)}
               </div>
@@ -412,7 +424,7 @@ export function renderReceiptCard(data, timeRange, playbackState) {
               <span class="r-col-qty">0${i + 1}</span>
               <div class="r-col-desc">
                 <span class="r-track-t">${escapeHtml(track.name)}</span>
-                <span class="r-artist-t">${escapeHtml(track.artists.map(a => a.name).join(', '))}</span>
+                <span class="r-artist-t">${escapeHtml(getTrackArtistNames(track))}</span>
               </div>
               <span class="r-col-amt">${formatDuration(track.duration_ms)}</span>
               ${getIndicator(track.id, playbackState)}
@@ -504,7 +516,7 @@ export function renderDapCard(data, timeRange, playbackState) {
             <div class="dap-track-meta">
               <span class="dap-track-rank">TOP FREQUENCY • ${rangeLabel.toUpperCase()}</span>
               <h3 class="dap-track-title">${escapeHtml(topSong.name)}</h3>
-              <p class="dap-track-artist">${escapeHtml(topSong.artists?.map(a => a.name).join(', ') || 'Artist')}</p>
+              <p class="dap-track-artist">${escapeHtml(getTrackArtistNames(topSong))}</p>
               <div class="dap-audio-specs">
                 <span>FLAC 24-BIT / 192kHz</span>
                 <span>•</span>
@@ -608,7 +620,7 @@ export function renderVipPassCard(data, timeRange, playbackState) {
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
             <div class="vip-holder-label">CREDENTIAL ISSUED TO:</div>
-            <div class="vip-holder-name">${escapeHtml(user.display_name).toUpperCase()}</div>
+            <div class="vip-holder-name">${escapeHtml(user?.display_name || user?.id || 'VIP Guest').toUpperCase()}</div>
           </div>
           <img src="${avatarUrl}" alt="Pass Holder" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid #10b981; object-fit: cover;" />
         </div>
@@ -632,7 +644,7 @@ export function renderVipPassCard(data, timeRange, playbackState) {
               <span class="vip-set-time">${setTimes[i] || '20:00'}</span>
               <div class="vip-set-info">
                 <div class="vip-set-song">${escapeHtml(track.name)}</div>
-                <div class="vip-set-artist">${escapeHtml(track.artists.map(a => a.name).join(', '))} • ${stages[i]}</div>
+                <div class="vip-set-artist">${escapeHtml(getTrackArtistNames(track))} • ${stages[i]}</div>
               </div>
               ${getIndicator(track.id, playbackState)}
             </div>

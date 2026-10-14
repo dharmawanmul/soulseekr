@@ -532,7 +532,7 @@ export class WrappedExperience {
           <div class="top-track-info">
             <span class="top-track-badge">#1 MOST PLAYED</span>
             <span class="top-track-name">${topTrack.name}</span>
-            <span class="top-track-artist">${topTrack.artists?.map(a => a.name).join(', ')}</span>
+            <span class="top-track-artist">${Array.isArray(topTrack.artists) ? topTrack.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (topTrack.artistName || 'Unknown Artist')}</span>
             <span class="top-track-play-btn">▶ Play Studio Snippet</span>
           </div>
         </div>
@@ -545,7 +545,7 @@ export class WrappedExperience {
               <img class="ladder-thumb" src="${track.album?.images?.[0]?.url || ''}" alt="art">
               <div class="ladder-meta">
                 <span class="ladder-title">${track.name}</span>
-                <span class="ladder-artist">${track.artists?.map(a => a.name).join(', ')}</span>
+                <span class="ladder-artist">${Array.isArray(track.artists) ? track.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (track.artistName || 'Unknown Artist')}</span>
               </div>
               <span style="font-size:0.75rem; color:#10b981; opacity:0.7;">▶</span>
             </div>

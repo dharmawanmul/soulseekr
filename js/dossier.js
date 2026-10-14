@@ -411,7 +411,7 @@ export class SonicDossierEngine {
                 <img src="${t.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=150&q=80'}" class="dossier-track-art" alt="art">
                 <div class="dossier-track-info">
                   <div class="dossier-track-name">${escapeHtml(t.name)}</div>
-                  <div class="dossier-track-artist">${escapeHtml(t.artists?.map(art => art.name).join(', '))}</div>
+                  <div class="dossier-track-artist">${escapeHtml(Array.isArray(t.artists) ? t.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (t.artistName || 'Artist'))}</div>
                 </div>
                 <button class="dossier-btn-play" title="Play Preview">▶</button>
               </div>
@@ -458,7 +458,7 @@ export class SonicDossierEngine {
               <img src="${a.oldestTrack?.track?.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=150&q=80'}" class="dossier-relic-art" alt="Relic">
               <div>
                 <h3 class="dossier-relic-title">${escapeHtml(a.oldestTrack?.track?.name || 'Classic Master')}</h3>
-                <p class="dossier-relic-artist">${escapeHtml(a.oldestTrack?.track?.artists?.map(art => art.name).join(', ') || 'Artist')}</p>
+                <p class="dossier-relic-artist">${escapeHtml(Array.isArray(a.oldestTrack?.track?.artists) ? a.oldestTrack.track.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (a.oldestTrack?.track?.artistName || 'Artist'))}</p>
                 <span class="dossier-relic-year">RELEASED: ${a.oldestTrack?.year || '1977'}</span>
               </div>
             </div>
@@ -470,7 +470,7 @@ export class SonicDossierEngine {
               <img src="${a.newestTrack?.track?.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=150&q=80'}" class="dossier-relic-art" alt="Vanguard">
               <div>
                 <h3 class="dossier-relic-title">${escapeHtml(a.newestTrack?.track?.name || 'Contemporary Track')}</h3>
-                <p class="dossier-relic-artist">${escapeHtml(a.newestTrack?.track?.artists?.map(art => art.name).join(', ') || 'Artist')}</p>
+                <p class="dossier-relic-artist">${escapeHtml(Array.isArray(a.newestTrack?.track?.artists) ? a.newestTrack.track.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (a.newestTrack?.track?.artistName || 'Artist'))}</p>
                 <span class="dossier-relic-year">RELEASED: ${a.newestTrack?.year || '2024'}</span>
               </div>
             </div>

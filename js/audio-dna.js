@@ -788,7 +788,7 @@ export class AudioDnaEngine {
             <div class="dna-inspector-track-row">
               <span class="dna-inspector-title" id="dna-insp-title">${escapeHtml(t.name)}</span>
               <span class="dna-inspector-sep">—</span>
-              <span class="dna-inspector-artist" id="dna-insp-artist">${escapeHtml(t.artists?.map(a => a.name).join(', ') || 'Artist')}</span>
+              <span class="dna-inspector-artist" id="dna-insp-artist">${escapeHtml(Array.isArray(t.artists) ? t.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (t.artistName || 'Artist'))}</span>
             </div>
             <div class="dna-inspector-sub">
               <span>Genre: <b id="dna-insp-genre">${t.genre || 'Alternative Rock'}</b></span>
@@ -1056,7 +1056,7 @@ export class AudioDnaEngine {
     const rankEl = document.getElementById('dna-insp-rank');
 
     if (titleEl) titleEl.textContent = t.name;
-    if (artistEl) artistEl.textContent = t.artists?.map(a => a.name).join(', ') || 'Artist';
+    if (artistEl) artistEl.textContent = Array.isArray(t.artists) ? t.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (t.artistName || 'Artist');
     if (genreEl) genreEl.textContent = t.genre || 'Alternative Rock';
     if (durEl) durEl.textContent = t.durationFormatted || formatDuration(t.duration_ms || 240000);
     if (yearEl) yearEl.textContent = t.releaseYear || t.album?.release_date?.slice(0, 4) || '2000';
@@ -1125,7 +1125,7 @@ export class AudioDnaEngine {
     } else if (this.hoveredItem && this.hoveredItem.artistObj) {
       const art = this.hoveredItem.artistObj;
       const matched = this.getTracksList().find(t => 
-        t.artists?.some(a => a.name.toLowerCase() === art.name.toLowerCase())
+        t.artists?.some(a => a?.name && art?.name && a.name.toLowerCase() === art.name.toLowerCase())
       ) || this.activeTrack;
       this.updateInspectorCard(matched);
       soundEngine.playTrack(matched);

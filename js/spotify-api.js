@@ -152,6 +152,7 @@ export async function handleAuthCallback() {
     if (data.refresh_token) {
       localStorage.setItem(SPOTIFY_CONFIG.storageKeys.refreshToken, data.refresh_token);
     }
+    localStorage.setItem(SPOTIFY_CONFIG.storageKeys.clientId, clientId);
     const expiresAt = Date.now() + (data.expires_in * 1000);
     localStorage.setItem(SPOTIFY_CONFIG.storageKeys.expiresAt, expiresAt.toString());
 
@@ -170,7 +171,7 @@ export async function handleAuthCallback() {
  */
 export async function refreshAccessToken() {
   const refreshToken = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.refreshToken);
-  const clientId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
+  const clientId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId) || SPOTIFY_CONFIG.defaultClientId;
 
   if (!refreshToken || !clientId) {
     logoutSpotify();

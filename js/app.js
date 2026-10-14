@@ -241,11 +241,37 @@ function initElements() {
 }
 
 /**
- * Toast Notification System
+ * Toast Notification System (Smooth Queue & Deduplication)
  */
 export function showToast(message, type = 'info', duration = 2800) {
   const container = elements.toastContainer || document.getElementById('toast-container');
   if (!container) return;
+
+  // Prevent duplicate notifications of the exact same message
+  const existingToasts = container.querySelectorAll('.toast');
+  for (const t of existingToasts) {
+    if (t.textContent.trim() === message.trim()) {
+      return;
+    }
+  }
+
+  // When a terminal state toast (success or error) arrives, smoothly dismiss any previous loading toast
+  if (type === 'success' || type === 'error') {
+    existingToasts.forEach(t => {
+      if (t.textContent.includes('Authenticating') || t.textContent.includes('Redirecting')) {
+        t.classList.remove('toast-visible');
+        setTimeout(() => t.remove(), 160);
+      }
+    });
+  }
+
+  // Keep at most 2 visible toasts at a time to prevent notification stacking
+  if (existingToasts.length >= 2) {
+    const oldest = existingToasts[0];
+    oldest.classList.remove('toast-visible');
+    setTimeout(() => oldest.remove(), 160);
+  }
+
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
   toast.innerHTML = `<span>${message}</span>`;
@@ -276,8 +302,11 @@ async function loadData() {
   }
 
   // User is authenticated with genuine Spotify account
+  state.spotifyToken = token;
+  sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
   if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'none';
   hideAuthGateway();
+  updateAuthBadge('SPOTIFY CONNECTED', 'active');
 
   if (state.cachedRealData[state.timeRange]) {
     state.currentData = state.cachedRealData[state.timeRange];
@@ -300,17 +329,26 @@ async function loadData() {
     renderCurrentCard();
   } catch (err) {
     console.error('Fetch wrapped error:', err);
-    showToast(`Spotify API: ${err.message}`, 'error', 4500);
-    state.currentData = DEFAULT_CURATED_DATA;
-    updateAuthBadge('DEMO MODE • CONNECT SPOTIFY', 'unauth');
-    if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
+    // Only demote session to unauth if token was genuinely expired/invalidated
+    if (err.message && err.message.toLowerCase().includes('session expired')) {
+      state.spotifyToken = null;
+      updateAuthBadge('DEMO MODE • CONNECT SPOTIFY', 'unauth');
+      if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
+      showToast('Spotify session expired. Please reconnect.', 'error', 4500);
+    } else {
+      // Non-auth error: keep authenticated state in UI
+      updateAuthBadge('SPOTIFY CONNECTED', 'active');
+      showToast(`Spotify API Notice: ${err.message}`, 'warning', 4000);
+    }
+    state.currentData = state.currentData || DEFAULT_CURATED_DATA;
     renderCurrentCard();
   }
 }
 
 export function checkAndShowAuthGateway() {
   const isDismissed = sessionStorage.getItem('soulseekr_auth_gateway_dismissed');
-  if (!isDismissed && !state.spotifyToken) {
+  const storedToken = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.token);
+  if (!isDismissed && !state.spotifyToken && !storedToken) {
     showAuthGateway();
   }
 }
@@ -431,7 +469,9 @@ soundEngine.onStateChange(({ isPlaying, isLoading, currentTrackId }) => {
     if (track) {
       elements.nowPlayingBar.classList.add('active');
       elements.npTrackName.textContent = track.name;
-      elements.npArtistName.textContent = track.artists.map(a => a.name).join(', ');
+      elements.npArtistName.textContent = Array.isArray(track.artists)
+        ? track.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ')
+        : (track.artistName || 'Unknown Artist');
       
       const imgUrl = (track.album && track.album.images && track.album.images[0]?.url) || '';
       if (imgUrl) elements.dockThumb.src = imgUrl;
@@ -494,20 +534,24 @@ function triggerLockedButtonFeedback(button, message) {
 }
 
 function setupEventListeners() {
-  elements.btnOpenWrapped?.addEventListener('click', () => {
-    if (!state.spotifyToken) {
+  elements.btnOpenWrapped?.addEventListener('click', async () => {
+    const token = state.spotifyToken || (await getValidAccessToken());
+    if (!token) {
       triggerLockedButtonFeedback(elements.btnOpenWrapped, '🔒 Connect Spotify to unlock your 3D Wrapped Experience');
       return;
     }
+    state.spotifyToken = token;
     const data = state.currentData || DEFAULT_CURATED_DATA;
     wrappedExperience.open(data, state.timeRange);
   });
 
-  elements.btnOpenDossier?.addEventListener('click', () => {
-    if (!state.spotifyToken) {
+  elements.btnOpenDossier?.addEventListener('click', async () => {
+    const token = state.spotifyToken || (await getValidAccessToken());
+    if (!token) {
       triggerLockedButtonFeedback(elements.btnOpenDossier, '🔒 Connect Spotify to unlock your Taste Dossier & Audio DNA');
       return;
     }
+    state.spotifyToken = token;
     const data = state.currentData || DEFAULT_CURATED_DATA;
     sonicDossier.open(data, state.timeRange);
   });
@@ -633,10 +677,15 @@ function setupEventListeners() {
   });
 }
 
+let isAppInitialized = false;
+
 /**
  * Application Bootstrap
  */
 async function initApp() {
+  if (isAppInitialized) return;
+  isAppInitialized = true;
+
   initElements();
   setupEventListeners();
   init3DCardTilt();
@@ -648,6 +697,9 @@ async function initApp() {
       const token = await handleAuthCallback();
       if (token) {
         state.spotifyToken = token;
+        sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+        hideAuthGateway();
+        updateAuthBadge('SPOTIFY CONNECTED', 'active');
         showToast('Connected to Spotify! Generating artifacts...', 'success');
       }
     } catch (err) {
@@ -658,6 +710,9 @@ async function initApp() {
     const existingToken = await getValidAccessToken();
     if (existingToken) {
       state.spotifyToken = existingToken;
+      sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+      hideAuthGateway();
+      updateAuthBadge('SPOTIFY CONNECTED', 'active');
     }
   }
 
