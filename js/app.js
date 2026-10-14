@@ -235,6 +235,7 @@ function initElements() {
   elements.btnDemoStageConnect = document.getElementById('btn-demo-stage-connect');
   elements.authGatewayModal = document.getElementById('auth-gateway-modal');
   elements.authGatewayBackdrop = document.getElementById('auth-gateway-backdrop');
+  elements.btnGatewayClose = document.getElementById('btn-gateway-close');
   elements.btnGatewayConnect = document.getElementById('btn-gateway-connect');
   elements.btnGatewayDemo = document.getElementById('btn-gateway-demo');
 }
@@ -602,6 +603,11 @@ function setupEventListeners() {
   });
 
   elements.authGatewayBackdrop?.addEventListener('click', () => {
+    sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+    hideAuthGateway();
+  });
+
+  elements.btnGatewayClose?.addEventListener('click', () => {
     sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
     hideAuthGateway();
   });
