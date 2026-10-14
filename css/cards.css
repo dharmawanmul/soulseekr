@@ -178,17 +178,22 @@
 
 .vinyl-album-title {
   font-family: var(--font-display);
-  font-size: 1.75rem;
+  font-size: clamp(1.35rem, 4.5vw, 1.75rem);
   font-weight: 900;
   letter-spacing: -0.03em;
-  line-height: 1.05;
+  line-height: 1.1;
   text-transform: uppercase;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .vinyl-curator {
   font-size: 0.75rem;
   color: #a1a1aa;
   margin-top: 0.2rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .vinyl-tracklist {
@@ -232,6 +237,7 @@
 
 .v-info {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -314,11 +320,13 @@
 
 .swiss-super-title {
   font-family: 'Syne', sans-serif;
-  font-size: 3.25rem;
+  font-size: clamp(2rem, 7vw, 3.25rem);
   font-weight: 900;
   letter-spacing: -0.04em;
-  line-height: 0.9;
+  line-height: 0.95;
   text-transform: uppercase;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .swiss-meta-coords {
@@ -338,12 +346,14 @@
 }
 
 .swiss-headliner {
-  font-size: 2rem;
+  font-size: clamp(1.35rem, 4.5vw, 2rem);
   font-weight: 800;
   letter-spacing: -0.025em;
-  line-height: 1;
+  line-height: 1.05;
   text-transform: uppercase;
   color: #09090b;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .swiss-subs {
@@ -351,12 +361,14 @@
   font-weight: 700;
   letter-spacing: -0.01em;
   color: #27272a;
+  overflow-wrap: break-word;
 }
 
 .swiss-support {
   font-size: 0.85rem;
   font-weight: 600;
   color: #52525b;
+  overflow-wrap: break-word;
 }
 
 .swiss-setlist-section {
@@ -400,7 +412,7 @@
 .swiss-track-item.playing .s-sub { color: #a1a1aa; }
 
 .s-num { font-size: 0.65rem; font-weight: 700; width: 20px; }
-.s-text { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.s-text { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
 .s-name { font-size: 0.775rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .s-sub { font-size: 0.65rem; color: #71717a; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .s-dur { font-family: var(--font-mono); font-size: 0.65rem; font-weight: 600; }
@@ -469,17 +481,22 @@
   height: 38px;
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
   box-shadow: 0 0 0 1.5px rgba(255, 255, 255, 0.3);
 }
 
 .prism-user-text {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .prism-name {
   font-size: 0.925rem;
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .prism-subtitle {
@@ -578,6 +595,7 @@
 
 .prism-track-meta {
   flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -668,6 +686,10 @@
   text-align: center;
   font-weight: 700;
   font-size: 0.75rem;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .spool-window {
@@ -769,10 +791,30 @@
   color: #fdba74;
 }
 
-.j-num { color: #f97316; font-weight: 700; }
-.j-title { font-weight: 600; max-width: 160px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.j-artist { color: #71717a; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.j-time { margin-left: auto; color: #52525b; font-size: 0.65rem; }
+.j-num { color: #f97316; font-weight: 700; flex-shrink: 0; width: 18px; }
+.j-title {
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.j-artist {
+  color: #71717a;
+  flex: 0 1 auto;
+  max-width: 42%;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.j-time {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #52525b;
+  font-size: 0.65rem;
+}
 
 /* --------------------------------------------------------------------------
    5. TOKYO ARCHIVAL THERMAL RECEIPT
@@ -896,7 +938,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .r-artist-t {
@@ -906,7 +950,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .receipt-totals {
@@ -1358,6 +1404,7 @@
   flex-direction: column;
   gap: 0.18rem;
   min-width: 0;
+  flex: 1;
 }
 
 .dap-track-rank {
@@ -1512,6 +1559,7 @@
   align-items: center;
   gap: 0.55rem;
   min-width: 0;
+  flex: 1;
 }
 
 .dap-row-num {
@@ -1519,6 +1567,7 @@
   font-size: 0.62rem;
   font-weight: 700;
   color: #38bdf8;
+  flex-shrink: 0;
 }
 
 .dap-row-name {
@@ -1528,7 +1577,9 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  flex: 1;
+  min-width: 0;
+  max-width: 100%;
 }
 
 .dap-row-right {
@@ -1645,6 +1696,7 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 0.85rem;
+  gap: 0.5rem;
 }
 
 .vip-event-meta {
@@ -1653,6 +1705,10 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   color: #10b981;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vip-all-access-tag {
@@ -1666,6 +1722,7 @@
   border-radius: 6px;
   text-transform: uppercase;
   box-shadow: 0 2px 8px rgba(250, 204, 21, 0.4);
+  flex-shrink: 0;
 }
 
 .vip-holder-box {
@@ -1690,6 +1747,9 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .vip-timetable {

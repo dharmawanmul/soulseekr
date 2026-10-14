@@ -378,7 +378,7 @@ body {
 .segmented-toolbar {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   background: rgba(20, 20, 22, 0.85);
   border: 1px solid var(--card-border);
   border-radius: 10px;
@@ -388,6 +388,7 @@ body {
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
   padding: 3px;
 }
 
@@ -412,6 +413,7 @@ body {
   transition: color 130ms ease, background-color 130ms var(--ease-snappy), box-shadow 130ms ease, transform 110ms ease;
   user-select: none;
   flex-shrink: 0;
+  scroll-snap-align: start;
   letter-spacing: -0.01em;
   position: relative;
 }
@@ -872,7 +874,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   Responsive
+   Responsive Layout Engineering
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
   .app-header {
@@ -885,15 +887,19 @@ body {
   .auth-badge {
     display: none;
   }
+  .header-actions {
+    gap: 0.45rem;
+  }
   .main-layout {
     padding: 1.25rem 0.75rem 6.5rem;
   }
   .segmented-toolbar {
     justify-content: flex-start;
     border-radius: 9px;
+    padding: 4px 6px;
   }
   .seg-btn {
-    padding: 0.35rem 0.65rem;
+    padding: 0.38rem 0.68rem;
     font-size: 0.725rem;
   }
   .timeframe-bar {
@@ -909,6 +915,106 @@ body {
   .btn-export {
     padding: 0.5rem 0.85rem;
     font-size: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    padding: 0 0.85rem;
+    height: 50px;
+  }
+  .brand-title {
+    font-size: 1rem;
+  }
+  .header-actions {
+    gap: 0.35rem;
+  }
+  .header-actions .btn {
+    padding: 0.38rem 0.6rem;
+    font-size: 0.725rem;
+    gap: 0.3rem;
+    border-radius: 6px;
+  }
+  .header-actions .btn.is-locked .btn-lock-badge {
+    font-size: 0.5rem;
+    padding: 0.1rem 0.32rem;
+  }
+  .wrapped-badge-pill,
+  .dossier-badge-pill {
+    font-size: 0.5rem;
+    padding: 0.1rem 0.32rem;
+  }
+  .demo-mode-indicator {
+    margin-bottom: 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 0 0.65rem;
+    height: 48px;
+  }
+  .brand-wrapper {
+    gap: 0.45rem;
+  }
+  .brand-badge-icon {
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+  }
+  .brand-badge-icon svg {
+    width: 14px;
+    height: 14px;
+  }
+  .brand-title {
+    font-size: 0.92rem;
+    letter-spacing: -0.02em;
+  }
+  .header-actions {
+    gap: 0.28rem;
+  }
+  .header-actions .btn {
+    padding: 0.32rem 0.52rem;
+    font-size: 0.69rem;
+    gap: 0.25rem;
+  }
+  .demo-indicator-bar-wrapper {
+    padding: 0 0.5rem;
+  }
+  .demo-mode-indicator {
+    max-width: 100%;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.68rem;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    border-radius: 12px;
+    text-align: center;
+    line-height: 1.35;
+  }
+  .export-dock {
+    width: 100%;
+    max-width: 440px;
+    padding: 0 0.25rem;
+    gap: 0.45rem;
+  }
+  .btn-export {
+    flex: 1 1 calc(50% - 0.45rem);
+    justify-content: center;
+    font-size: 0.725rem;
+    padding: 0.52rem 0.65rem;
+  }
+  .btn-export-primary {
+    flex: 1 1 100%;
+  }
+  .dynamic-audio-dock {
+    max-width: calc(100vw - 1.5rem);
+    bottom: 1rem;
+    padding: 0.45rem 0.75rem 0.45rem 0.55rem;
+    gap: 0.55rem;
+  }
+  .dock-meta {
+    max-width: 140px;
   }
 }
 

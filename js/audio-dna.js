@@ -1361,10 +1361,11 @@ export class AudioDnaEngine {
     const plotW = w - pad.left - pad.right;
     const plotH = h - pad.top - pad.bottom;
 
+    const isNarrow = w < 560;
     const stages = [
-      { id: 'long_term', label: '1 Year (All Time)', x: pad.left },
-      { id: 'medium_term', label: '6 Months', x: pad.left + plotW * 0.5 },
-      { id: 'short_term', label: '4 Weeks (Now)', x: pad.left + plotW }
+      { id: 'long_term', label: isNarrow ? '1 Year' : '1 Year (All Time)', x: pad.left },
+      { id: 'medium_term', label: isNarrow ? '6 Mos' : '6 Months', x: pad.left + plotW * 0.5 },
+      { id: 'short_term', label: isNarrow ? '4 Wks' : '4 Weeks (Now)', x: pad.left + plotW }
     ];
 
     const artists = TASTE_DRIFT_ARTISTS;
@@ -2007,37 +2008,61 @@ export class AudioDnaEngine {
     // Quadrant Labels in corners
     ctx.font = '700 10px "Inter", sans-serif';
 
+    const isCompact = plotW < 480;
+    const isTiny = plotW < 340;
+
+    const q1Label = isTiny ? 'EUPHORIA' : (isCompact ? 'EUPHORIC (22%)' : 'EUPHORIC / PARTY (22%)');
+    const q2Label = isTiny ? 'INTENSE' : (isCompact ? 'INTENSE (16%)' : 'ANGRY / INTENSE (16%)');
+    const q3Label = isTiny ? 'MELANCHOLY' : (isCompact ? 'MELANCHOLY (34%)' : 'SAD / MELANCHOLIC (34%)');
+    const q4Label = isTiny ? 'CHILL' : (isCompact ? 'CHILL (28%)' : 'CHILL / PEACEFUL (28%)');
+
     // Q1: Euphoric
     ctx.fillStyle = '#f59e0b';
     ctx.textAlign = 'right';
-    ctx.fillText('EUPHORIC / PARTY (22%)', pad.left + plotW - 12, pad.top + 16);
+    ctx.fillText(q1Label, pad.left + plotW - 12, pad.top + 16);
 
     // Q2: Angry / Intense
     ctx.fillStyle = '#ef4444';
     ctx.textAlign = 'left';
-    ctx.fillText('ANGRY / INTENSE (16%)', pad.left + 12, pad.top + 16);
+    ctx.fillText(q2Label, pad.left + 12, pad.top + 16);
 
     // Q3: Sad / Melancholic
     ctx.fillStyle = '#8b5cf6';
     ctx.textAlign = 'left';
-    ctx.fillText('SAD / MELANCHOLIC (34%)', pad.left + 12, pad.top + plotH - 12);
+    ctx.fillText(q3Label, pad.left + 12, pad.top + plotH - 12);
 
     // Q4: Chill / Peaceful
     ctx.fillStyle = '#10b981';
     ctx.textAlign = 'right';
-    ctx.fillText('CHILL / PEACEFUL (28%)', pad.left + plotW - 12, pad.top + plotH - 12);
+    ctx.fillText(q4Label, pad.left + plotW - 12, pad.top + plotH - 12);
 
     // Axis Labels
     ctx.font = '10px "Space Mono", monospace';
     ctx.fillStyle = '#71717a';
     ctx.textAlign = 'center';
-    ctx.fillText('← Low Valence (Melancholy) • Valence (Musical Positiveness) • High Valence (Euphoria) →', pad.left + plotW / 2, pad.top + plotH + 26);
+
+    let xLabel = '← Low Valence (Melancholy) • Valence (Musical Positiveness) • High Valence (Euphoria) →';
+    if (plotW < 520) {
+      xLabel = '← Melancholy • Valence • Euphoria →';
+    }
+    if (plotW < 360) {
+      xLabel = '← Valence →';
+    }
+    ctx.fillText(xLabel, pad.left + plotW / 2, pad.top + plotH + 26);
+
+    let yLabel = '← Low Energy (Calm) • Energy (Intensity) • High Energy (Dynamic) →';
+    if (plotH < 320) {
+      yLabel = '← Calm • Energy • Dynamic →';
+    }
+    if (plotH < 220) {
+      yLabel = '← Energy →';
+    }
 
     ctx.save();
-    ctx.translate(pad.left - 42, pad.top + plotH / 2);
+    ctx.translate(Math.max(16, pad.left - 42), pad.top + plotH / 2);
     ctx.rotate(-Math.PI / 2);
     ctx.textAlign = 'center';
-    ctx.fillText('← Low Energy (Calm) • Energy (Intensity) • High Energy (Dynamic) →', 0, 0);
+    ctx.fillText(yLabel, 0, 0);
     ctx.restore();
 
     // Plot Track Nodes
