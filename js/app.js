@@ -231,6 +231,12 @@ function initElements() {
   elements.npTrackName = document.getElementById('np-track-name');
   elements.npArtistName = document.getElementById('np-artist-name');
   elements.npStopBtn = document.getElementById('np-stop-btn');
+  elements.demoModeIndicator = document.getElementById('demo-mode-indicator');
+  elements.btnDemoStageConnect = document.getElementById('btn-demo-stage-connect');
+  elements.authGatewayModal = document.getElementById('auth-gateway-modal');
+  elements.authGatewayBackdrop = document.getElementById('auth-gateway-backdrop');
+  elements.btnGatewayConnect = document.getElementById('btn-gateway-connect');
+  elements.btnGatewayDemo = document.getElementById('btn-gateway-demo');
 }
 
 /**
@@ -261,10 +267,16 @@ async function loadData() {
   const token = state.spotifyToken || (await getValidAccessToken());
   if (!token) {
     state.currentData = DEFAULT_CURATED_DATA;
-    updateAuthBadge('PREVIEW • CONNECT SPOTIFY', 'unauth');
+    updateAuthBadge('DEMO MODE • CONNECT SPOTIFY', 'unauth');
+    if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
     renderCurrentCard();
+    checkAndShowAuthGateway();
     return;
   }
+
+  // User is authenticated with genuine Spotify account
+  if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'none';
+  hideAuthGateway();
 
   if (state.cachedRealData[state.timeRange]) {
     state.currentData = state.cachedRealData[state.timeRange];
@@ -289,8 +301,30 @@ async function loadData() {
     console.error('Fetch wrapped error:', err);
     showToast(`Spotify API: ${err.message}`, 'error', 4500);
     state.currentData = DEFAULT_CURATED_DATA;
-    updateAuthBadge('PREVIEW • CONNECT SPOTIFY', 'unauth');
+    updateAuthBadge('DEMO MODE • CONNECT SPOTIFY', 'unauth');
+    if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
     renderCurrentCard();
+  }
+}
+
+export function checkAndShowAuthGateway() {
+  const isDismissed = sessionStorage.getItem('soulseekr_auth_gateway_dismissed');
+  if (!isDismissed && !state.spotifyToken) {
+    showAuthGateway();
+  }
+}
+
+export function showAuthGateway() {
+  if (elements.authGatewayModal) {
+    elements.authGatewayModal.classList.add('is-open');
+    elements.authGatewayModal.setAttribute('aria-hidden', 'false');
+  }
+}
+
+export function hideAuthGateway() {
+  if (elements.authGatewayModal) {
+    elements.authGatewayModal.classList.remove('is-open');
+    elements.authGatewayModal.setAttribute('aria-hidden', 'true');
   }
 }
 
@@ -523,9 +557,36 @@ function setupEventListeners() {
 
   elements.btnConnectSpotify?.addEventListener('click', startSpotifyAuth);
 
+  elements.btnGatewayConnect?.addEventListener('click', () => {
+    hideAuthGateway();
+    startSpotifyAuth();
+  });
+
+  elements.btnGatewayDemo?.addEventListener('click', () => {
+    sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+    hideAuthGateway();
+    showToast('Demo Mode: Exploring curated sample artifacts. Click "Connect Spotify" anytime to load your personal music history.', 'info', 4000);
+  });
+
+  elements.authGatewayBackdrop?.addEventListener('click', () => {
+    sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+    hideAuthGateway();
+  });
+
+  elements.btnDemoStageConnect?.addEventListener('click', () => {
+    startSpotifyAuth();
+  });
+
+  elements.authStatusBadge?.addEventListener('click', () => {
+    if (!state.spotifyToken) {
+      showAuthGateway();
+    }
+  });
+
   elements.btnLogout?.addEventListener('click', () => {
     logoutSpotify();
     state.spotifyToken = null;
+    sessionStorage.removeItem('soulseekr_auth_gateway_dismissed');
     state.currentData = DEFAULT_CURATED_DATA; // keep preview rather than flashing blank
     state.cachedRealData = {};
     showToast('Logged out of Spotify', 'info');
