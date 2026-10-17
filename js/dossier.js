@@ -1,10 +1,5 @@
 /**
- * Soulseekr — Deep Sonic Dossier & Taste Intelligence Engine
- * 4 Curated Museum-Grade Departments:
- * 1. 🎬 Cinema & Synesthesia (The Director's Cut Criterion Poster + The Listening Barcode)
- * 2. 🧭 Audio DNA & Persona (Interactive Canvas Visualizers, Persona Radar, Time Machine, Circadian Clock, Snob Index)
- * 3. 🌦️ Atmosphere & Weather (The Storm Chaser Report, Barometric Vibe Split, Dual-Axis Timeline)
- * 4. ✈️ World & Journey (The Musical Passport Boarding Pass, 3D Flight Map, Subconscious Lyrics Arc, 3-Day Festival Poster)
+ * Soulseekr listening dossier and its four analysis departments.
  */
 
 import { soundEngine } from './audio-player.js';
@@ -40,6 +35,7 @@ export class SonicDossierEngine {
     };
 
     this.analytics = null;
+    this.returnFocus = null;
     this.onKeyDown = this.handleKeyDown.bind(this);
   }
 
@@ -57,12 +53,14 @@ export class SonicDossierEngine {
   }
 
   async open(data, timeRange = 'short_term') {
+    this.returnFocus = document.activeElement;
     this.data = data;
     this.timeRange = timeRange;
     this.analytics = this.computeAnalytics(data, timeRange);
 
     this.ensureDom();
     this.modal.classList.add('is-open');
+    this.modal.setAttribute('aria-hidden', 'false');
     this.isOpen = true;
     document.body.style.overflow = 'hidden';
 
@@ -78,6 +76,7 @@ export class SonicDossierEngine {
 
     window.addEventListener('keydown', this.onKeyDown);
     this.render();
+    requestAnimationFrame(() => this.modal.querySelector('#btn-dossier-close')?.focus());
   }
 
   close() {
@@ -89,9 +88,12 @@ export class SonicDossierEngine {
     }
 
     this.modal.classList.remove('is-open');
+    this.modal.setAttribute('aria-hidden', 'true');
     this.isOpen = false;
     document.body.style.overflow = '';
     window.removeEventListener('keydown', this.onKeyDown);
+    if (this.returnFocus instanceof HTMLElement) this.returnFocus.focus();
+    this.returnFocus = null;
   }
 
   cleanupControllers() {
@@ -104,8 +106,24 @@ export class SonicDossierEngine {
   }
 
   handleKeyDown(e) {
-    if (e.key === 'Escape' && this.isOpen) {
+    if (!this.isOpen) return;
+    if (e.key === 'Escape') {
       this.close();
+      return;
+    }
+    if (e.key !== 'Tab') return;
+
+    const focusable = [...this.modal.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')]
+      .filter(element => !element.disabled);
+    if (!focusable.length) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
     }
   }
 
@@ -281,6 +299,8 @@ export class SonicDossierEngine {
   render() {
     if (!this.modal) return;
     const a = this.analytics;
+    const profileImage = a.user.images?.[0]?.url || '';
+    const profileInitial = (a.user.display_name || 'Soulseekr').trim().charAt(0).toUpperCase();
 
     this.modal.innerHTML = `
       <div class="dossier-backdrop" id="dossier-backdrop"></div>
@@ -289,7 +309,9 @@ export class SonicDossierEngine {
         <!-- Top Sticky Header Chrome -->
         <header class="dossier-header">
           <div class="dossier-user-card">
-            <img src="${(a.user.images && a.user.images[0]?.url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'}" class="dossier-user-avatar" alt="User Avatar">
+            ${profileImage
+              ? `<img src="${escapeHtml(profileImage)}" class="dossier-user-avatar" alt="Spotify profile">`
+              : `<span class="dossier-user-avatar dossier-user-avatar-placeholder" aria-hidden="true">${escapeHtml(profileInitial)}</span>`}
             <div class="dossier-user-meta">
               <div class="dossier-title-row">
                 <h2 class="dossier-user-name">${escapeHtml(a.user.display_name)}</h2>
@@ -304,7 +326,7 @@ export class SonicDossierEngine {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               <span>Export Poster</span>
             </button>
-            <button class="dossier-btn-close" id="btn-dossier-close" title="Close Dossier (Esc)">
+            <button class="dossier-btn-close" id="btn-dossier-close" title="Close Dossier (Esc)" aria-label="Close Taste Dossier">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
@@ -312,23 +334,25 @@ export class SonicDossierEngine {
 
         <!-- Primary Modular Department Navigation Rail -->
         <nav class="dossier-dept-nav" role="tablist" aria-label="Dossier Departments">
-          <button class="dossier-dept-btn ${this.activeDept === 'cinema' ? 'active' : ''}" data-dept="cinema">
-            <span class="dept-icon">🎬</span>
+          <button class="dossier-dept-btn ${this.activeDept === 'cinema' ? 'active' : ''}" data-dept="cinema" role="tab" aria-selected="${this.activeDept === 'cinema'}">
+            <span class="dept-icon" aria-hidden="true">CIN</span>
             <span>Cinema &amp; Synesthesia</span>
           </button>
-          <button class="dossier-dept-btn ${this.activeDept === 'audiodna' ? 'active' : ''}" data-dept="audiodna">
-            <span class="dept-icon">🧭</span>
+          <button class="dossier-dept-btn ${this.activeDept === 'audiodna' ? 'active' : ''}" data-dept="audiodna" role="tab" aria-selected="${this.activeDept === 'audiodna'}">
+            <span class="dept-icon" aria-hidden="true">DNA</span>
             <span>Audio DNA &amp; Persona</span>
           </button>
-          <button class="dossier-dept-btn ${this.activeDept === 'weather' ? 'active' : ''}" data-dept="weather">
-            <span class="dept-icon">🌦️</span>
+          <button class="dossier-dept-btn ${this.activeDept === 'weather' ? 'active' : ''}" data-dept="weather" role="tab" aria-selected="${this.activeDept === 'weather'}">
+            <span class="dept-icon" aria-hidden="true">ATM</span>
             <span>Atmosphere &amp; Weather</span>
           </button>
-          <button class="dossier-dept-btn ${this.activeDept === 'world' ? 'active' : ''}" data-dept="world">
-            <span class="dept-icon">✈️</span>
-            <span>World &amp; Journey</span>
+          <button class="dossier-dept-btn ${this.activeDept === 'world' ? 'active' : ''}" data-dept="world" role="tab" aria-selected="${this.activeDept === 'world'}">
+            <span class="dept-icon" aria-hidden="true">MAP</span>
+            <span>Influence Map</span>
           </button>
         </nav>
+
+        <p class="dossier-method-note">Interpretive archive. Scores, scenes, and maps are creative readings of your catalog metadata, not Spotify measurements.</p>
 
         <!-- Secondary Sub-Navigation Pill Strip -->
         ${this.renderSubNavPillStrip()}
@@ -532,8 +556,8 @@ export class SonicDossierEngine {
         <!-- Sonic Passport Geographic Footprint -->
         <div class="dossier-card dossier-card-passport">
           <div class="dossier-card-header">
-            <span class="dossier-card-title">SONIC PASSPORT // GLOBAL EPICENTERS</span>
-            <span class="dossier-card-sub">MICRO-GENRE GEOGRAPHY</span>
+            <span class="dossier-card-title">SONIC PASSPORT // INFLUENCE MAP</span>
+            <span class="dossier-card-sub">AN INTERPRETIVE MICRO-GENRE STUDY</span>
           </div>
           <div class="dossier-epicenter-list">
             ${a.epicenters.map(e => `
@@ -554,19 +578,21 @@ export class SonicDossierEngine {
         <!-- Top Reference Rotation with 30s Studio Audio Previews -->
         <div class="dossier-card dossier-card-tracks">
           <div class="dossier-card-header">
-            <span class="dossier-card-title">DOMINANT ROTATION // STUDIO MASTERS</span>
-            <span class="dossier-card-sub">TAP TO STREAM PREVIEWS</span>
+            <span class="dossier-card-title">DOMINANT ROTATION // AUDIO PREVIEWS</span>
+            <span class="dossier-card-sub">SELECT A TRACK TO PLAY</span>
           </div>
           <div class="dossier-tracks-stream">
             ${tracks.slice(0, 4).map((t, idx) => `
               <div class="dossier-track-item track-play-trigger" data-track-id="${t.id}">
                 <span class="dossier-track-rank">0${idx + 1}</span>
-                <img src="${t.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=150&q=80'}" class="dossier-track-art" alt="art">
+                ${t.album?.images?.[0]?.url
+                  ? `<img src="${escapeHtml(t.album.images[0].url)}" class="dossier-track-art" alt="Album cover">`
+                  : '<span class="dossier-track-art artwork-placeholder">No artwork</span>'}
                 <div class="dossier-track-info">
                   <div class="dossier-track-name">${escapeHtml(t.name)}</div>
                   <div class="dossier-track-artist">${escapeHtml(Array.isArray(t.artists) ? t.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (t.artistName || 'Artist'))}</div>
                 </div>
-                <button class="dossier-btn-play" title="Play Preview">▶</button>
+                <span class="dossier-btn-play" aria-hidden="true">▶</span>
               </div>
             `).join('')}
           </div>
@@ -605,7 +631,9 @@ export class SonicDossierEngine {
           <div class="dossier-card dossier-relic-card">
             <span class="dossier-relic-tag">THE ANCHOR RELIC (OLDEST RELEASE)</span>
             <div class="dossier-relic-body">
-              <img src="${a.oldestTrack?.track?.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=150&q=80'}" class="dossier-relic-art" alt="Relic">
+              ${a.oldestTrack?.track?.album?.images?.[0]?.url
+                ? `<img src="${escapeHtml(a.oldestTrack.track.album.images[0].url)}" class="dossier-relic-art" alt="Album cover">`
+                : '<span class="dossier-relic-art artwork-placeholder">No artwork</span>'}
               <div>
                 <h3 class="dossier-relic-title">${escapeHtml(a.oldestTrack?.track?.name || 'Classic Master')}</h3>
                 <p class="dossier-relic-artist">${escapeHtml(Array.isArray(a.oldestTrack?.track?.artists) ? a.oldestTrack.track.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (a.oldestTrack?.track?.artistName || 'Artist'))}</p>
@@ -617,7 +645,9 @@ export class SonicDossierEngine {
           <div class="dossier-card dossier-relic-card">
             <span class="dossier-relic-tag">THE MODERN VANGUARD (NEWEST DISCOVERY)</span>
             <div class="dossier-relic-body">
-              <img src="${a.newestTrack?.track?.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=150&q=80'}" class="dossier-relic-art" alt="Vanguard">
+              ${a.newestTrack?.track?.album?.images?.[0]?.url
+                ? `<img src="${escapeHtml(a.newestTrack.track.album.images[0].url)}" class="dossier-relic-art" alt="Album cover">`
+                : '<span class="dossier-relic-art artwork-placeholder">No artwork</span>'}
               <div>
                 <h3 class="dossier-relic-title">${escapeHtml(a.newestTrack?.track?.name || 'Contemporary Track')}</h3>
                 <p class="dossier-relic-artist">${escapeHtml(Array.isArray(a.newestTrack?.track?.artists) ? a.newestTrack.track.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (a.newestTrack?.track?.artistName || 'Artist'))}</p>
@@ -753,7 +783,7 @@ export class SonicDossierEngine {
         <div class="dossier-view-banner">
           <div class="dossier-badge-label">SILKSCREEN MUSIC FESTIVAL POSTER</div>
           <h2 class="dossier-view-title">The Obsidian Gathering</h2>
-          <p class="dossier-view-sub">Generated entirely from your top streaming rotations across 3 themed days and stages.</p>
+          <p class="dossier-view-sub">An imagined three-day bill composed from your top streaming rotations.</p>
         </div>
 
         <div class="festival-poster-artifact" id="festival-export-poster">
@@ -784,7 +814,7 @@ export class SonicDossierEngine {
               <span>PHOSPHOR HORIZON</span>
               <span>SUBTERRANEAN VOID</span>
             </div>
-            <div class="fest-legal">PASSES AVAILABLE SOULSEEKR.FM • ALL AGES • POWERED BY SPOTIFY API</div>
+            <div class="fest-legal">IMAGINED FESTIVAL STUDY • NOT A REAL EVENT • DERIVED FROM CATALOG METADATA</div>
           </div>
         </div>
 
@@ -954,13 +984,24 @@ export class SonicDossierEngine {
     // 7. Track audio play triggers
     const trackTriggers = this.modal.querySelectorAll('.track-play-trigger');
     trackTriggers.forEach(el => {
-      el.onclick = (e) => {
+      const playTrack = (e) => {
         e.stopPropagation();
         const trId = el.getAttribute('data-track-id');
         const tr = this.data?.topTracks?.find(t => t.id === trId);
         if (tr) {
           soundEngine.playTrack(tr);
-          showToast(`Playing Studio Preview: ${tr.name}`, 'info', 2200);
+          showToast(`Playing preview: ${tr.name}`, 'info', 2200);
+        }
+      };
+      const tr = this.data?.topTracks?.find(t => t.id === el.getAttribute('data-track-id'));
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', tr ? `Play preview for ${tr.name}` : 'Play track preview');
+      el.onclick = playTrack;
+      el.onkeydown = e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          playTrack(e);
         }
       };
     });

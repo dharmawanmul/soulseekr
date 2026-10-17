@@ -17,14 +17,16 @@ export async function exportCardAsImage(format = 'card', target = null) {
     throw new Error('Export engine is loading. Please wait 2 seconds and try again.');
   }
 
-  // Clone or capture with high resolution scaling
-  const scale = 2.5; // High-DPI crisp export
+  await document.fonts?.ready;
+
+  const scale = 2.5;
   const canvas = await window.html2canvas(cardElement, {
     scale: scale,
     useCORS: true,
-    allowTaint: true,
+    allowTaint: false,
     backgroundColor: null,
-    logging: false
+    logging: false,
+    imageTimeout: 8000
   });
 
   if (format === 'story') {
@@ -36,15 +38,15 @@ export async function exportCardAsImage(format = 'card', target = null) {
 
     // Create rich dark backdrop
     const grad = ctx.createLinearGradient(0, 0, 1080, 1920);
-    grad.addColorStop(0, '#0a0a0f');
-    grad.addColorStop(0.5, '#12121a');
-    grad.addColorStop(1, '#08080c');
+    grad.addColorStop(0, '#171510');
+    grad.addColorStop(0.58, '#11100d');
+    grad.addColorStop(1, '#0c0b09');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1080, 1920);
 
     // Subtle glow circles in background
     const radial = ctx.createRadialGradient(540, 960, 50, 540, 960, 600);
-    radial.addColorStop(0, 'rgba(99, 102, 241, 0.15)');
+    radial.addColorStop(0, 'rgba(237, 106, 69, 0.14)');
     radial.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = radial;
     ctx.fillRect(0, 0, 1080, 1920);
@@ -64,10 +66,10 @@ export async function exportCardAsImage(format = 'card', target = null) {
 
     // Add watermark
     ctx.shadowColor = 'transparent';
-    ctx.font = '600 24px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.font = '500 24px "IBM Plex Mono", monospace';
+    ctx.fillStyle = 'rgba(242, 234, 217, 0.62)';
     ctx.textAlign = 'center';
-    ctx.fillText('SOULSEEKR // SPOTIFY EXPERIENCE', 540, 1850);
+    ctx.fillText('SOULSEEKR / LISTENING ARCHIVE', 540, 1850);
 
     return storyCanvas.toDataURL('image/png');
   } else if (format === 'square') {
@@ -79,8 +81,8 @@ export async function exportCardAsImage(format = 'card', target = null) {
 
     // Dark gradient — correct direction: top-to-bottom
     const grad = ctx.createLinearGradient(0, 0, 0, 1200);
-    grad.addColorStop(0, '#0c0d14');
-    grad.addColorStop(1, '#050608');
+    grad.addColorStop(0, '#171510');
+    grad.addColorStop(1, '#0c0b09');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1200, 1200);
 
@@ -120,11 +122,19 @@ export async function copyCardToClipboard(target = null) {
     ? document.getElementById(target)
     : (target || document.getElementById('exportable-card'));
   if (!cardElement) throw new Error('Card not found');
+  if (typeof window.html2canvas === 'undefined') {
+    throw new Error('Export engine is loading. Please wait 2 seconds and try again.');
+  }
+
+  await document.fonts?.ready;
 
   const canvas = await window.html2canvas(cardElement, {
     scale: 2,
     useCORS: true,
-    backgroundColor: null
+    allowTaint: false,
+    backgroundColor: null,
+    logging: false,
+    imageTimeout: 8000
   });
 
   return new Promise((resolve, reject) => {

@@ -3,49 +3,27 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Soulseekr — Aesthetic Music Artifacts</title>
-  <meta name="description" content="Beyond flat receipts. Turn your Spotify top tracks into museum-grade physical artifacts: Vinyl master sleeves, Swiss posters, spatial sound prisms, and teenage engineering cassettes.">
-  <meta name="theme-color" content="#09090b">
+  <title>Soulseekr: Music artifacts from your listening history</title>
+  <meta name="description" content="Turn your Spotify listening history into collectible vinyl sleeves, posters, cassettes, and other exportable music artifacts.">
+  <meta name="theme-color" content="#171510">
+  <link rel="icon" href="data:,">
 
   <!-- OpenGraph Metadata -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Soulseekr — Aesthetic Music Wrapped Artifacts">
-  <meta property="og:description" content="Turn your music into tangible design artifacts with 3D tilt, real 30s studio audio previews, and high-DPI export.">
-
-  <!-- Tailwind CSS via CDN with customized configuration -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            background: '#09090b',
-            foreground: '#fafafa',
-            card: '#121215',
-            border: 'rgba(255, 255, 255, 0.08)',
-            spotify: '#10b981'
-          },
-          fontFamily: {
-            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-            display: ['Outfit', 'Syne', 'sans-serif'],
-            mono: ['Space Mono', 'Courier Prime', 'monospace']
-          }
-        }
-      }
-    }
-  </script>
+  <meta property="og:title" content="Soulseekr: Music artifacts from your listening history">
+  <meta property="og:description" content="Turn your Spotify listening history into collectible, exportable music artifacts.">
 
   <!-- Google Fonts: Editorial & Physical Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400..700&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
 
   <!-- Design System & Artifact Stylesheets -->
   <link rel="stylesheet" href="css/style.css?v=3.0">
   <link rel="stylesheet" href="css/cards.css?v=3.0">
   <link rel="stylesheet" href="css/wrapped.css?v=3.0">
   <link rel="stylesheet" href="css/dossier.css?v=3.0">
+  <link rel="stylesheet" href="css/design.css?v=4.0">
 
   <!-- Three.js WebGL Engine for 3D Wrapped Visualizer -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -53,13 +31,13 @@
   <!-- html2canvas for High-DPI Export -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 </head>
-<body class="bg-[#09090b] text-[#fafafa]">
+<body>
 
-  <!-- Architectural Background Grid & Vignette Texture -->
+  <a class="skip-link" href="#main-content">Skip to the studio</a>
+
   <div class="bg-canvas-texture" aria-hidden="true"></div>
   <div class="bg-vignette" aria-hidden="true"></div>
 
-  <!-- Apple-Style Translucent Navigation Bar -->
   <header class="app-header">
     <div class="brand-wrapper">
       <div class="brand-badge-icon">
@@ -73,9 +51,8 @@
       </div>
     </div>
 
-    <div class="header-actions">
-      <!-- 3D Spotify Wrapped Experience Trigger -->
-      <button id="btn-open-wrapped" class="btn btn-wrapped is-locked" title="Connect Spotify to unlock your 3D Wrapped Experience">
+    <nav class="header-primary" aria-label="Personal listening views">
+      <button id="btn-open-wrapped" class="btn btn-wrapped is-locked" title="Connect Spotify to open your Year in Music">
         <svg class="btn-lock-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -83,13 +60,12 @@
         <svg class="btn-unlocked-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
           <path d="M2 12h2M6 6v12M10 9v6M14 4v16M18 8v8M22 12h2"/>
         </svg>
-        <span>Wrapped</span>
+        <span>Year in Music</span>
         <span class="wrapped-badge-pill">3D</span>
         <span class="btn-lock-badge">LOCKED</span>
       </button>
 
-      <!-- Sonic Taste Dossier & Deep Analytics Trigger -->
-      <button id="btn-open-dossier" class="btn btn-dossier is-locked" title="Connect Spotify to unlock your Taste Dossier & Audio DNA">
+      <button id="btn-open-dossier" class="btn btn-dossier is-locked" title="Connect Spotify to open your Taste Dossier">
         <svg class="btn-lock-icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
           <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -104,7 +80,10 @@
         <span class="btn-lock-badge">LOCKED</span>
       </button>
 
-      <span id="auth-status-badge" class="auth-badge badge-unauth">NOT CONNECTED</span>
+    </nav>
+
+    <div class="session-actions">
+      <button id="auth-status-badge" class="auth-badge badge-unauth" type="button" aria-label="Open Spotify connection options">NOT CONNECTED</button>
 
       <button id="btn-connect-spotify" class="btn btn-spotify" title="Connect your Spotify account via PKCE">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
@@ -120,11 +99,27 @@
   </header>
 
   <!-- Main Experience Studio -->
-  <main class="main-layout">
+  <main class="main-layout" id="main-content">
+    <section class="studio-intro" aria-labelledby="studio-title">
+      <div class="studio-intro-heading">
+        <p class="studio-index">Listening archive / Issue 01</p>
+        <h2 id="studio-title">Your music,<br><em>pressed into form.</em></h2>
+      </div>
+      <p class="studio-intro-copy">Choose an edition, set the listening window, then export the artifact that feels most like your collection.</p>
+    </section>
+
+    <div class="studio-workbench">
     
     <!-- Segmented Inspector & Archetype Switcher -->
-    <section class="controls-hub" aria-label="Controls">
-      <!-- 7 Physical Card Archetypes — editorial tab bar, no emoji -->
+    <aside class="controls-hub" aria-label="Artifact controls">
+      <div class="control-heading">
+        <span class="control-number">01</span>
+        <div>
+          <h3>Choose an edition</h3>
+          <p>Seven formats for the same listening history.</p>
+        </div>
+      </div>
+      <!-- Artifact formats -->
       <div class="segmented-toolbar" role="tablist" aria-label="Card Archetype">
         <button class="seg-btn active" data-style="vinyl" role="tab" aria-selected="true">
           <!-- Vinyl / record groove lines icon -->
@@ -194,27 +189,35 @@
         </button>
       </div>
 
+      <div class="control-heading control-heading-time">
+        <span class="control-number">02</span>
+        <div>
+          <h3>Set the listening window</h3>
+          <p>Personal data unlocks every timeframe.</p>
+        </div>
+      </div>
+
       <!-- Timeframe Segmented Filter -->
       <div class="timeframe-bar" aria-label="Listening Timeframe">
-        <span class="timeframe-label">TIMEFRAME</span>
+        <span class="timeframe-label">Window</span>
         <div class="time-segmented-group" role="radiogroup">
           <button class="time-btn active" data-range="short_term" role="radio" aria-checked="true">4 Weeks</button>
           <button class="time-btn" data-range="medium_term" role="radio" aria-checked="false">6 Months</button>
           <button class="time-btn" data-range="long_term" role="radio" aria-checked="false">All Time</button>
         </div>
       </div>
-    </section>
+    </aside>
 
-    <!-- Demo Mode Archival Status Ribbon (Centered, isolated from 3D card flex stage) -->
+    <div class="studio-preview">
+
+    <!-- Sample archive status -->
     <div class="demo-indicator-bar-wrapper">
       <div id="demo-mode-indicator" class="demo-mode-indicator" style="display: none;">
-        <span class="demo-dot" aria-hidden="true"></span>
-        <span class="demo-badge-tag">ARCHIVE PREVIEW</span>
-        <span class="demo-sep">•</span>
-        <span class="demo-text">Curated Sample Data</span>
+        <span class="demo-badge-tag">Sample archive</span>
+        <span class="demo-sep" aria-hidden="true">/</span>
+        <span class="demo-text">Showing clearly labelled sample listening data</span>
         <button id="btn-demo-stage-connect" class="demo-connect-link" type="button">
           <span>Connect Spotify</span>
-          <span class="demo-link-arrow">→</span>
         </button>
       </div>
     </div>
@@ -254,12 +257,15 @@
       </button>
     </section>
 
+    </div>
+    </div>
+
   </main>
 
-  <!-- Apple Music Style Dynamic Island Floating Audio Dock -->
+  <!-- Floating audio preview -->
   <aside id="now-playing-bar" class="dynamic-audio-dock" aria-live="polite">
     <div class="dock-disc-art">
-      <img id="dock-thumb" src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=100&q=80" alt="art" />
+      <img id="dock-thumb" alt="Album artwork" />
     </div>
     <div class="mini-eq" style="color: #10b981;">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
@@ -268,7 +274,7 @@
       <span id="np-track-name" class="dock-title">Track Name</span>
       <span id="np-artist-name" class="dock-artist">Artist Name</span>
     </div>
-    <button id="np-stop-btn" class="btn-dock-close" title="Stop Audio">
+    <button id="np-stop-btn" class="btn-dock-close" title="Stop Audio" aria-label="Stop audio preview">
       <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor">
         <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
       </svg>
@@ -305,7 +311,7 @@
         <div class="wrapped-progress-track" id="wrapped-progress-track"></div>
         <div class="wrapped-user-row">
           <div class="wrapped-user-identity">
-            <img id="wrapped-user-avatar" class="wrapped-user-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="avatar">
+            <img id="wrapped-user-avatar" class="wrapped-user-avatar" alt="Spotify profile">
             <div class="wrapped-user-meta">
               <span id="wrapped-user-name" class="wrapped-user-name">Soulseekr Archivist</span>
               <span id="wrapped-user-tag" class="wrapped-user-tag">2026 Archive</span>
@@ -347,7 +353,6 @@
   <div id="auth-gateway-modal" class="auth-gateway-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Connect with Spotify">
     <div class="auth-gateway-backdrop" id="auth-gateway-backdrop"></div>
     <div class="auth-gateway-card">
-      <!-- Tactile Apple-Style Close Button -->
       <button id="btn-gateway-close" class="auth-gateway-close" aria-label="Close dialog and explore demo mode" title="Explore in demo mode">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"/>
@@ -355,8 +360,6 @@
         </svg>
       </button>
 
-      <div class="auth-gateway-glow" aria-hidden="true"></div>
-      
       <!-- Precision Hi-Fi Turntable Spindle Emblem -->
       <div class="auth-gateway-disc" aria-hidden="true">
         <div class="auth-disc-grooves"></div>
@@ -367,28 +370,27 @@
         </div>
       </div>
 
-      <!-- Editorial Tag & Typography -->
-      <div class="auth-gateway-badge">SOULSEEKR // ARCHIVAL ENGINE</div>
-      <h2 class="auth-gateway-title">Turn your listening habits into physical artifacts</h2>
+      <p class="auth-gateway-index">Listening archive / Issue 01</p>
+      <h2 class="auth-gateway-title">Make something worth keeping from the music you repeat.</h2>
       <p class="auth-gateway-desc">
-        Connect your Spotify account to personalize custom vinyl sleeves, cassette tapes, Swiss posters, and deep Audio DNA from your authentic music history.
+        Connect Spotify to turn your listening history into seven exportable print objects and a private taste dossier.
       </p>
 
       <!-- Clean Privacy & Trust Strip -->
       <div class="auth-security-badges">
         <span class="auth-sec-item">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          Client-Side PKCE
+          Client-side PKCE
         </span>
         <span class="auth-sec-dot">•</span>
         <span class="auth-sec-item">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
-          Read-Only
+          Read-only access
         </span>
         <span class="auth-sec-dot">•</span>
         <span class="auth-sec-item">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>
-          Zero Credentials Stored
+          No Spotify password stored
         </span>
       </div>
 
@@ -409,12 +411,8 @@
 
         <button id="btn-gateway-demo" class="btn-gateway-secondary" type="button">
           <span class="demo-btn-lead">
-            <svg class="demo-btn-sparkle" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-            </svg>
-            <span>Explore with Curated Sample Archive</span>
+            <span>Open the sample archive</span>
           </span>
-          <span class="demo-btn-arrow" aria-hidden="true">→</span>
         </button>
       </div>
     </div>

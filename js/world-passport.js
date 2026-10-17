@@ -164,7 +164,7 @@ export function renderBoardingPassHtml(user = {}, passport = {}) {
   const flightNo = 'SLSK-2026';
   const gate = 'GATE 04';
   const seat = '01A FIRST';
-  const terminal = 'TERMINAL 3 // HI-RES';
+  const terminal = 'TERMINAL 3 // LISTENING';
 
   return `
     <div class="boarding-pass-wrapper">

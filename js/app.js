@@ -30,7 +30,7 @@ import { sonicDossier } from './dossier.js';
 export const DEFAULT_CURATED_DATA = {
   user: {
     display_name: 'Soulseekr Archivist',
-    images: [{ url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80' }]
+    images: []
   },
   timeRange: 'short_term',
   topTracks: [
@@ -210,6 +210,7 @@ const state = {
 
 // DOM References (Queried on DOM ready)
 const elements = {};
+let gatewayReturnFocus = null;
 
 function initElements() {
   elements.cardContainer = document.getElementById('card-display-container');
@@ -274,7 +275,9 @@ export function showToast(message, type = 'info', duration = 2800) {
 
   const toast = document.createElement('div');
   toast.className = `toast toast-${type}`;
-  toast.innerHTML = `<span>${message}</span>`;
+  const toastText = document.createElement('span');
+  toastText.textContent = message;
+  toast.appendChild(toastText);
   container.appendChild(toast);
 
   requestAnimationFrame(() => {
@@ -294,7 +297,7 @@ async function loadData() {
   const token = state.spotifyToken || (await getValidAccessToken());
   if (!token) {
     state.currentData = DEFAULT_CURATED_DATA;
-    updateAuthBadge('DEMO MODE • CONNECT SPOTIFY', 'unauth');
+    updateAuthBadge('SAMPLE / CONNECT SPOTIFY', 'unauth');
     if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
     renderCurrentCard();
     checkAndShowAuthGateway();
@@ -317,9 +320,10 @@ async function loadData() {
 
   try {
     elements.cardContainer.innerHTML = `
-      <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; padding: 6rem 2rem; color: #a1a1aa; gap: 1rem;">
+      <div class="studio-state" role="status" aria-live="polite">
         <div class="loading-spinner"></div>
-        <p style="font-size:0.875rem;">Crafting your Spotify physical artifact...</p>
+        <h3>Preparing your artifact</h3>
+        <p>Reading your Spotify history for this listening window.</p>
       </div>
     `;
     const wrapped = await fetchCompleteUserWrapped(token, state.timeRange);
@@ -332,13 +336,13 @@ async function loadData() {
     // Only demote session to unauth if token was genuinely expired/invalidated
     if (err.message && err.message.toLowerCase().includes('session expired')) {
       state.spotifyToken = null;
-      updateAuthBadge('DEMO MODE • CONNECT SPOTIFY', 'unauth');
+      updateAuthBadge('SAMPLE / CONNECT SPOTIFY', 'unauth');
       if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
       showToast('Spotify session expired. Please reconnect.', 'error', 4500);
     } else {
       // Non-auth error: keep authenticated state in UI
       updateAuthBadge('SPOTIFY CONNECTED', 'active');
-      showToast(`Spotify API Notice: ${err.message}`, 'warning', 4000);
+      showToast(`Spotify could not refresh this view: ${err.message}. Showing the last available archive.`, 'warning', 5000);
     }
     state.currentData = state.currentData || DEFAULT_CURATED_DATA;
     renderCurrentCard();
@@ -355,8 +359,11 @@ export function checkAndShowAuthGateway() {
 
 export function showAuthGateway() {
   if (elements.authGatewayModal) {
+    gatewayReturnFocus = document.activeElement;
     elements.authGatewayModal.classList.add('is-open');
     elements.authGatewayModal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    requestAnimationFrame(() => elements.btnGatewayConnect?.focus());
   }
 }
 
@@ -364,6 +371,35 @@ export function hideAuthGateway() {
   if (elements.authGatewayModal) {
     elements.authGatewayModal.classList.remove('is-open');
     elements.authGatewayModal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    if (gatewayReturnFocus instanceof HTMLElement) gatewayReturnFocus.focus();
+    gatewayReturnFocus = null;
+  }
+}
+
+function handleGatewayKeydown(event) {
+  if (!elements.authGatewayModal?.classList.contains('is-open')) return;
+
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+    hideAuthGateway();
+    return;
+  }
+
+  if (event.key !== 'Tab') return;
+  const focusable = [...elements.authGatewayModal.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')]
+    .filter(element => !element.disabled && element.getAttribute('aria-hidden') !== 'true');
+  if (!focusable.length) return;
+
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
   }
 }
 
@@ -371,6 +407,8 @@ function updateAuthBadge(text, status) {
   elements.authStatusBadge.textContent = text;
   elements.authStatusBadge.className = `auth-badge badge-${status}`;
   if (status === 'active') {
+    elements.authStatusBadge.disabled = true;
+    elements.authStatusBadge.setAttribute('aria-label', 'Spotify connected');
     elements.btnLogout.style.display = 'inline-flex';
     elements.btnConnectSpotify.style.display = 'none';
 
@@ -380,14 +418,16 @@ function updateAuthBadge(text, status) {
     elements.btnOpenDossier?.classList.remove('is-locked');
     elements.btnOpenDossier?.setAttribute('title', 'Open your Sonic Taste Dossier & Audio DNA');
   } else {
+    elements.authStatusBadge.disabled = false;
+    elements.authStatusBadge.setAttribute('aria-label', 'Open Spotify connection options');
     elements.btnLogout.style.display = 'none';
     elements.btnConnectSpotify.style.display = 'inline-flex';
 
     // Lock Wrapped and Dossier buttons for unauthenticated users
     elements.btnOpenWrapped?.classList.add('is-locked');
-    elements.btnOpenWrapped?.setAttribute('title', 'Connect Spotify to unlock your 3D Wrapped Experience');
+    elements.btnOpenWrapped?.setAttribute('title', 'Connect Spotify to open your Year in Music');
     elements.btnOpenDossier?.classList.add('is-locked');
-    elements.btnOpenDossier?.setAttribute('title', 'Connect Spotify to unlock your Taste Dossier & Audio DNA');
+    elements.btnOpenDossier?.setAttribute('title', 'Connect Spotify to open your Taste Dossier');
   }
 }
 
@@ -406,6 +446,16 @@ async function startSpotifyAuth() {
  */
 function renderCurrentCard() {
   const data = state.currentData || DEFAULT_CURATED_DATA;
+  if (!Array.isArray(data.topTracks) || data.topTracks.length === 0) {
+    elements.cardContainer.innerHTML = `
+      <div class="studio-state" role="status">
+        <span class="studio-state-index">No listening data</span>
+        <h3>This window has no tracks yet.</h3>
+        <p>Choose another listening window or return after Spotify has more history to share.</p>
+      </div>
+    `;
+    return;
+  }
   let html = '';
 
   switch (state.cardStyle) {
@@ -447,11 +497,23 @@ function attachTrackListeners() {
   const triggerElements = elements.cardContainer.querySelectorAll('.track-play-trigger');
   const data = state.currentData || DEFAULT_CURATED_DATA;
   triggerElements.forEach(el => {
-    el.addEventListener('click', async () => {
+    const activateTrack = async () => {
       const trackId = el.getAttribute('data-track-id');
       const track = data.topTracks.find(t => t.id === trackId);
       if (track) {
         await soundEngine.playTrack(track);
+      }
+    };
+    const trackId = el.getAttribute('data-track-id');
+    const track = data.topTracks.find(t => t.id === trackId);
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('aria-label', track ? `Play preview for ${track.name}` : 'Play track preview');
+    el.addEventListener('click', activateTrack);
+    el.addEventListener('keydown', event => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        activateTrack();
       }
     });
   });
@@ -477,7 +539,7 @@ soundEngine.onStateChange(({ isPlaying, isLoading, currentTrackId }) => {
       if (imgUrl) elements.dockThumb.src = imgUrl;
 
       if (isPlaying) {
-        showToast(`Playing Studio Preview: ${track.name}`, 'info', 2000);
+        showToast(`Playing preview: ${track.name}`, 'info', 2000);
       }
     }
   } else if (!isPlaying && !isLoading) {
@@ -537,7 +599,7 @@ function setupEventListeners() {
   elements.btnOpenWrapped?.addEventListener('click', async () => {
     const token = state.spotifyToken || (await getValidAccessToken());
     if (!token) {
-      triggerLockedButtonFeedback(elements.btnOpenWrapped, '🔒 Connect Spotify to unlock your 3D Wrapped Experience');
+      triggerLockedButtonFeedback(elements.btnOpenWrapped, 'Connect Spotify to open your Year in Music');
       return;
     }
     state.spotifyToken = token;
@@ -548,7 +610,7 @@ function setupEventListeners() {
   elements.btnOpenDossier?.addEventListener('click', async () => {
     const token = state.spotifyToken || (await getValidAccessToken());
     if (!token) {
-      triggerLockedButtonFeedback(elements.btnOpenDossier, '🔒 Connect Spotify to unlock your Taste Dossier & Audio DNA');
+      triggerLockedButtonFeedback(elements.btnOpenDossier, 'Connect Spotify to open your Taste Dossier');
       return;
     }
     state.spotifyToken = token;
@@ -573,17 +635,42 @@ function setupEventListeners() {
     });
   });
 
+  elements.cardStyleTabs?.forEach((btn, index) => {
+    btn.addEventListener('keydown', event => {
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      event.preventDefault();
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      const next = elements.cardStyleTabs[(index + direction + elements.cardStyleTabs.length) % elements.cardStyleTabs.length];
+      next.focus();
+      next.click();
+    });
+  });
+
   elements.timeRangePills?.forEach(pill => {
     pill.addEventListener('click', () => {
       if (!state.spotifyToken) {
         showToast('Connect Spotify to explore different timeframes', 'info');
-        startSpotifyAuth();
+        showAuthGateway();
         return;
       }
-      elements.timeRangePills.forEach(p => p.classList.remove('active'));
+      elements.timeRangePills.forEach(p => {
+        p.classList.remove('active');
+        p.setAttribute('aria-checked', 'false');
+      });
       pill.classList.add('active');
+      pill.setAttribute('aria-checked', 'true');
       state.timeRange = pill.getAttribute('data-range');
       loadData();
+    });
+  });
+
+  elements.timeRangePills?.forEach((pill, index) => {
+    pill.addEventListener('keydown', event => {
+      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      event.preventDefault();
+      const direction = event.key === 'ArrowRight' ? 1 : -1;
+      const next = elements.timeRangePills[(index + direction + elements.timeRangePills.length) % elements.timeRangePills.length];
+      next.focus();
     });
   });
 
@@ -643,7 +730,7 @@ function setupEventListeners() {
   elements.btnGatewayDemo?.addEventListener('click', () => {
     sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
     hideAuthGateway();
-    showToast('Demo Mode: Exploring curated sample artifacts. Click "Connect Spotify" anytime to load your personal music history.', 'info', 4000);
+    showToast('Sample archive opened. Connect Spotify when you want to use your own listening history.', 'info', 4000);
   });
 
   elements.authGatewayBackdrop?.addEventListener('click', () => {
@@ -665,6 +752,8 @@ function setupEventListeners() {
       showAuthGateway();
     }
   });
+
+  document.addEventListener('keydown', handleGatewayKeydown);
 
   elements.btnLogout?.addEventListener('click', () => {
     logoutSpotify();

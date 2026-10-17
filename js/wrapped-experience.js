@@ -1,20 +1,19 @@
 /**
- * Soulseekr — Spotify Wrapped 3D Interactive Story Experience
- * Powered by Three.js WebGL particle field & Apple-grade fluid story transitions
+ * Soulseekr interactive listening story.
  */
 
 import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 import { showToast } from './app.js';
+import { escapeHtml } from './card-renderer.js';
 
-// Slide Theme Palettes for Three.js & Stage Glow
 const SLIDE_THEMES = [
-  { primary: '#10b981', secondary: '#8b5cf6', threeColors: [0x10b981, 0x8b5cf6] }, // Slide 0: Emerald & Violet
-  { primary: '#ec4899', secondary: '#06b6d4', threeColors: [0xec4899, 0x06b6d4] }, // Slide 1: Pink & Cyan
-  { primary: '#f59e0b', secondary: '#6366f1', threeColors: [0xf59e0b, 0x6366f1] }, // Slide 2: Amber & Indigo
-  { primary: '#10b981', secondary: '#14b8a6', threeColors: [0x10b981, 0x14b8a6] }, // Slide 3: Electric Emerald & Teal
-  { primary: '#8b5cf6', secondary: '#f43f5e', threeColors: [0x8b5cf6, 0xf43f5e] }, // Slide 4: Velvet Violet & Rose
-  { primary: '#facc15', secondary: '#3b82f6', threeColors: [0xfacc15, 0x3b82f6] }  // Slide 5: Cosmic Gold & Royal Blue
+  { primary: '#ed6a45', secondary: '#d8c9aa', threeColors: [0xed6a45, 0xd8c9aa] },
+  { primary: '#8aa29b', secondary: '#ed6a45', threeColors: [0x8aa29b, 0xed6a45] },
+  { primary: '#d8c9aa', secondary: '#8aa29b', threeColors: [0xd8c9aa, 0x8aa29b] },
+  { primary: '#ed6a45', secondary: '#8aa29b', threeColors: [0xed6a45, 0x8aa29b] },
+  { primary: '#8aa29b', secondary: '#d8c9aa', threeColors: [0x8aa29b, 0xd8c9aa] },
+  { primary: '#d8c9aa', secondary: '#ed6a45', threeColors: [0xd8c9aa, 0xed6a45] }
 ];
 
 /**
@@ -36,10 +35,10 @@ class ThreeWrappedVisualizer {
     this.mouse = { x: 0, y: 0, targetX: 0, targetY: 0 };
     this.currentSlide = 0;
     this.colorProgress = 1.0;
-    this.activeColor1 = new (window.THREE ? THREE.Color : Object)(0x10b981);
-    this.activeColor2 = new (window.THREE ? THREE.Color : Object)(0x8b5cf6);
-    this.targetColor1 = new (window.THREE ? THREE.Color : Object)(0x10b981);
-    this.targetColor2 = new (window.THREE ? THREE.Color : Object)(0x8b5cf6);
+    this.activeColor1 = new (window.THREE ? THREE.Color : Object)(0xed6a45);
+    this.activeColor2 = new (window.THREE ? THREE.Color : Object)(0xd8c9aa);
+    this.targetColor1 = new (window.THREE ? THREE.Color : Object)(0xed6a45);
+    this.targetColor2 = new (window.THREE ? THREE.Color : Object)(0xd8c9aa);
 
     this.onResize = this.handleResize.bind(this);
     this.onMouseMove = this.handleMouseMove.bind(this);
@@ -56,11 +55,22 @@ class ThreeWrappedVisualizer {
       this.camera = new THREE.PerspectiveCamera(65, window.innerWidth / window.innerHeight, 0.1, 1000);
       this.camera.position.z = 28;
 
-      this.renderer = new THREE.WebGLRenderer({
-        canvas: this.canvas,
+      const contextOptions = {
         alpha: true,
         antialias: true,
         powerPreference: 'high-performance'
+      };
+      const context = this.canvas.getContext('webgl2', contextOptions)
+        || this.canvas.getContext('webgl', contextOptions);
+      if (!context) {
+        console.warn('WebGL is unavailable, continuing without the 3D background');
+        return false;
+      }
+
+      this.renderer = new THREE.WebGLRenderer({
+        ...contextOptions,
+        canvas: this.canvas,
+        context
       });
       this.renderer.setSize(window.innerWidth, window.innerHeight);
       this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -281,6 +291,7 @@ export class WrappedExperience {
     this.isMuted = false;
     this.data = null;
     this.timeRange = 'short_term';
+    this.returnFocus = null;
 
     this.onKeyDown = this.handleKeyDown.bind(this);
     this.onWheel = this.handleWheel.bind(this);
@@ -340,7 +351,27 @@ export class WrappedExperience {
   handleKeyDown(e) {
     if (!this.modal.classList.contains('is-open')) return;
 
-    if (e.key === 'ArrowRight' || e.key === 'Space') {
+    if (e.key === 'Tab') {
+      const focusable = [...this.modal.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')]
+        .filter(element => {
+          const slide = element.closest('.wrapped-slide');
+          return !element.disabled && (!slide || slide.classList.contains('is-active'));
+        });
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+      return;
+    }
+
+    const isInteractive = e.target.closest('button, [role="button"], a');
+    if (e.key === 'ArrowRight' || ((e.key === ' ' || e.key === 'Space') && !isInteractive)) {
       e.preventDefault();
       this.nextSlide();
     } else if (e.key === 'ArrowLeft') {
@@ -367,6 +398,7 @@ export class WrappedExperience {
   }
 
   open(data, timeRange = 'short_term') {
+    this.returnFocus = document.activeElement;
     this.data = data;
     this.timeRange = timeRange;
 
@@ -374,7 +406,12 @@ export class WrappedExperience {
     const user = data.user || { display_name: 'Soulseekr Archivist' };
     if (this.userName) this.userName.textContent = user.display_name;
     if (this.userAvatar) {
-      this.userAvatar.src = (user.images && user.images[0]?.url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
+      const avatarUrl = user.images && user.images[0]?.url;
+      if (avatarUrl) {
+        this.userAvatar.src = avatarUrl;
+      } else {
+        this.userAvatar.removeAttribute('src');
+      }
     }
     if (this.userTag) {
       const rangeText = timeRange === 'long_term' ? 'All Time' : timeRange === 'medium_term' ? '6 Months' : '4 Weeks';
@@ -389,6 +426,7 @@ export class WrappedExperience {
 
     // Open Modal
     this.modal.classList.add('is-open');
+    this.modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('wheel', this.onWheel, { passive: false });
@@ -404,6 +442,7 @@ export class WrappedExperience {
 
     // Go to first slide
     this.goToSlide(0);
+    requestAnimationFrame(() => this.btnClose?.focus());
 
     // Try playing top track audio snippet
     this.playSlideAudio();
@@ -411,6 +450,7 @@ export class WrappedExperience {
 
   close() {
     this.modal.classList.remove('is-open');
+    this.modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('wheel', this.onWheel);
@@ -422,6 +462,8 @@ export class WrappedExperience {
 
     // Stop sound if playing
     soundEngine.stop();
+    if (this.returnFocus instanceof HTMLElement) this.returnFocus.focus();
+    this.returnFocus = null;
   }
 
   toggleMute() {
@@ -431,6 +473,7 @@ export class WrappedExperience {
         ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>`
         : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>`;
       this.btnMute.title = this.isMuted ? 'Unmute Audio' : 'Mute Audio';
+      this.btnMute.setAttribute('aria-label', this.isMuted ? 'Unmute audio' : 'Mute audio');
     }
 
     if (this.isMuted) {
@@ -482,45 +525,54 @@ export class WrappedExperience {
     const albums = data.topAlbums || [];
     const genres = data.topGenres || [];
 
-    const topTrack = tracks[0] || { name: 'Starboy', artists: [{ name: 'The Weeknd' }], album: { images: [{ url: '' }] } };
-    const topAlbum = albums[0] || { name: 'Starboy', artistName: 'The Weeknd', releaseYear: '2016', images: [{ url: '' }] };
-    const userImg = (data.user?.images && data.user.images[0]?.url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
-    const totalMinutesFormatted = Number(stats.totalMinutes || 48320).toLocaleString();
-    const daysEquivalent = ((stats.totalMinutes || 48320) / 1440).toFixed(1);
+    const topTrack = tracks[0] || { name: 'No track available', artists: [], album: { images: [] } };
+    const topAlbum = albums[0] || { name: 'No album available', artistName: '', releaseYear: '', images: [] };
+    const userImg = data.user?.images?.[0]?.url || '';
+    const userInitial = (data.user?.display_name || 'Soulseekr').trim().charAt(0).toUpperCase();
+    const avatarMarkup = userImg
+      ? `<img class="prologue-avatar-img" src="${escapeHtml(userImg)}" alt="Spotify profile">`
+      : `<span class="prologue-avatar-img avatar-initial" aria-hidden="true">${escapeHtml(userInitial)}</span>`;
+    const totalMinutes = Number.isFinite(Number(stats.totalMinutes)) ? Number(stats.totalMinutes) : null;
+    const totalMinutesFormatted = totalMinutes === null ? 'Not available' : totalMinutes.toLocaleString();
+    const daysEquivalent = totalMinutes === null ? '' : ` (${(totalMinutes / 1440).toFixed(1)} full days)`;
+    const tempo = Number.isFinite(Number(stats.tempoBpm)) ? Number(stats.tempoBpm) : null;
+    const energy = Number.isFinite(Number(stats.energyScore)) ? Number(stats.energyScore) : null;
+    const dance = Number.isFinite(Number(stats.danceScore)) ? Number(stats.danceScore) : null;
+    const obscurity = Number.isFinite(Number(stats.obscurityScore)) ? Number(stats.obscurityScore) : null;
 
     this.viewport.innerHTML = `
       <!-- Slide 0: Prologue / Cosmic Identity -->
       <div class="wrapped-slide" data-slide="0">
         <div>
-          <span class="slide-eyebrow">✨ 2026 ARCHIVE • UNSEALED</span>
+          <span class="slide-eyebrow">Listening archive / 2026</span>
           <h2 class="slide-title">Your Year in Music</h2>
-          <p class="slide-desc">A journey across genres, late nights, and defining frequencies.</p>
+          <p class="slide-desc">The artists, albums, and patterns that stayed in rotation.</p>
         </div>
 
         <div class="prologue-center">
           <div class="prologue-avatar-orb">
-            <img class="prologue-avatar-img" src="${userImg}" alt="Avatar">
+            ${avatarMarkup}
           </div>
           <div class="prologue-stat-box">
             <span class="prologue-big-number">${totalMinutesFormatted}</span>
             <span class="prologue-stat-label">Total Minutes Listened</span>
           </div>
           <div class="prologue-vibe-pill">
-            <span>🔮</span> ${stats.vibeLabel || 'Cinematic Dreamer'}
+            ${escapeHtml(stats.vibeLabel || 'Profile unavailable')}
           </div>
         </div>
 
         <div class="prologue-prompt">
-          Tap or press Space to explore →
+          Tap the right side or press Space to continue
         </div>
       </div>
 
       <!-- Slide 1: Top 5 Tracks (The Anthems) -->
       <div class="wrapped-slide" data-slide="1">
         <div>
-          <span class="slide-eyebrow">👑 TOP 5 SONGS</span>
-          <h2 class="slide-title">The Anthems</h2>
-          <p class="slide-desc">The track you ran through the ground and couldn't get enough of.</p>
+          <span class="slide-eyebrow">Most played / Tracks</span>
+          <h2 class="slide-title">Kept in Rotation</h2>
+          <p class="slide-desc">The tracks you returned to most.</p>
         </div>
 
         <!-- #1 Hero Track Card -->
@@ -530,10 +582,10 @@ export class WrappedExperience {
             <div class="top-track-vinyl"></div>
           </div>
           <div class="top-track-info">
-            <span class="top-track-badge">#1 MOST PLAYED</span>
+            <span class="top-track-badge">01 / Most played</span>
             <span class="top-track-name">${topTrack.name}</span>
             <span class="top-track-artist">${Array.isArray(topTrack.artists) ? topTrack.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (topTrack.artistName || 'Unknown Artist')}</span>
-            <span class="top-track-play-btn">▶ Play Studio Snippet</span>
+            <span class="top-track-play-btn">Play preview</span>
           </div>
         </div>
 
@@ -560,9 +612,9 @@ export class WrappedExperience {
       <!-- Slide 2: Top 5 Albums (Heavy Rotations) -->
       <div class="wrapped-slide" data-slide="2">
         <div>
-          <span class="slide-eyebrow">💿 HEAVY ROTATIONS</span>
+          <span class="slide-eyebrow">Most played / Albums</span>
           <h2 class="slide-title">Top 5 Albums</h2>
-          <p class="slide-desc">The complete bodies of work that defined your headspace.</p>
+          <p class="slide-desc">The records that held your attention.</p>
         </div>
 
         <!-- #1 Hero Album Card -->
@@ -570,7 +622,7 @@ export class WrappedExperience {
           <img class="album-hero-bg" src="${topAlbum.images?.[0]?.url || ''}" alt="Album">
           <div class="album-hero-scrim"></div>
           <div class="album-hero-content">
-            <span class="album-crown-tag">#1 ALBUM • ${topAlbum.releaseYear || '2024'}</span>
+            <span class="album-crown-tag">01 / Album${topAlbum.releaseYear ? ` / ${topAlbum.releaseYear}` : ''}</span>
             <span class="album-hero-name">${topAlbum.name}</span>
             <span class="album-hero-artist">${topAlbum.artistName || topAlbum.artists?.[0]?.name || ''}</span>
           </div>
@@ -590,21 +642,21 @@ export class WrappedExperience {
         </div>
 
         <div style="font-size:0.675rem; color:rgba(255,255,255,0.4); text-align:center;">
-          Curated from your continuous listening rotations
+          Ordered from your listening history
         </div>
       </div>
 
       <!-- Slide 3: Minutes & Sonic DNA -->
       <div class="wrapped-slide" data-slide="3">
         <div>
-          <span class="slide-eyebrow">⚡ TIME & FREQUENCY</span>
-          <h2 class="slide-title">Sonic DNA</h2>
-          <p class="slide-desc">The raw acoustic physics behind your listening habits.</p>
+          <span class="slide-eyebrow">Listening profile / Audio features</span>
+          <h2 class="slide-title">The Shape of Your Listening</h2>
+          <p class="slide-desc">Spotify audio features from your most-played tracks.</p>
         </div>
 
         <div class="minutes-hero-block">
           <span class="minutes-counter">${totalMinutesFormatted}</span>
-          <span class="minutes-subtext">Minutes with headphones on (${daysEquivalent} full days of music)</span>
+          <span class="minutes-subtext">Minutes listened${daysEquivalent}</span>
         </div>
 
         <div class="mini-eq-bars">
@@ -618,23 +670,23 @@ export class WrappedExperience {
         <div class="metrics-bento">
           <div class="metric-bento-card">
             <span class="metric-bento-label">Average Tempo</span>
-            <span class="metric-bento-val">${stats.tempoBpm || 122} BPM</span>
-            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${(stats.tempoBpm || 122) / 1.7}%"></div></div>
+            <span class="metric-bento-val">${tempo === null ? 'Not available' : `${tempo} BPM`}</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${tempo === null ? 0 : Math.min(100, tempo / 1.7)}%"></div></div>
           </div>
           <div class="metric-bento-card">
             <span class="metric-bento-label">Energy Factor</span>
-            <span class="metric-bento-val">${stats.energyScore || 78}%</span>
-            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${stats.energyScore || 78}%"></div></div>
+            <span class="metric-bento-val">${energy === null ? 'Not available' : `${energy}%`}</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${energy ?? 0}%"></div></div>
           </div>
           <div class="metric-bento-card">
             <span class="metric-bento-label">Danceability</span>
-            <span class="metric-bento-val">${stats.danceScore || 72}%</span>
-            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${stats.danceScore || 72}%"></div></div>
+            <span class="metric-bento-val">${dance === null ? 'Not available' : `${dance}%`}</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${dance ?? 0}%"></div></div>
           </div>
           <div class="metric-bento-card">
-            <span class="metric-bento-label">Obscurity Snob</span>
-            <span class="metric-bento-val">${stats.obscurityScore || 78}%</span>
-            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${stats.obscurityScore || 78}%"></div></div>
+            <span class="metric-bento-label">Obscurity score</span>
+            <span class="metric-bento-val">${obscurity === null ? 'Not available' : `${obscurity}%`}</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${obscurity ?? 0}%"></div></div>
           </div>
         </div>
       </div>
@@ -642,9 +694,9 @@ export class WrappedExperience {
       <!-- Slide 4: Top 5 Genres & Sonic Aura -->
       <div class="wrapped-slide" data-slide="4">
         <div>
-          <span class="slide-eyebrow">🔮 MUSIC ECOSYSTEM</span>
+          <span class="slide-eyebrow">Listening profile / Genres</span>
           <h2 class="slide-title">Top 5 Genres</h2>
-          <p class="slide-desc">How your sonic universe breaks down across genres.</p>
+          <p class="slide-desc">The genre mix behind your most-played artists.</p>
         </div>
 
         <div class="genres-stack">
@@ -673,20 +725,22 @@ export class WrappedExperience {
       <!-- Slide 5: Master Recap Archive Card -->
       <div class="wrapped-slide" data-slide="5">
         <div>
-          <span class="slide-eyebrow">🏆 GRAND FINALE</span>
+          <span class="slide-eyebrow">Archive card / 2026</span>
           <h2 class="slide-title">Your 2026 Archive</h2>
-          <p class="slide-desc">Your sonic identity condensed into a permanent physical card.</p>
+          <p class="slide-desc">A compact record of the music you kept close.</p>
         </div>
 
         <!-- Master Recap Artifact Container (Exportable) -->
         <div class="recap-card-artifact" id="wrapped-recap-export-card">
           <div class="recap-artifact-header">
             <span class="recap-brand">SOULSEEKR // ARCHIVE</span>
-            <span class="recap-year-pill">2026 WRAPPED</span>
+            <span class="recap-year-pill">2026 listening archive</span>
           </div>
 
           <div style="display:flex; align-items:center; gap:0.75rem;">
-            <img style="width:44px; height:44px; border-radius:50%; object-fit:cover; border:2px solid #10b981;" src="${userImg}" alt="avatar">
+            ${userImg
+              ? `<img class="recap-avatar" src="${escapeHtml(userImg)}" alt="Spotify profile">`
+              : `<span class="recap-avatar avatar-initial" aria-hidden="true">${escapeHtml(userInitial)}</span>`}
             <div>
               <div style="font-size:0.95rem; font-weight:800; color:#fff;">${data.user?.display_name || 'Soulseekr Archivist'}</div>
               <div style="font-size:0.7rem; color:rgba(255,255,255,0.6);">${stats.vibeLabel || 'Cinematic Dreamer'}</div>
@@ -723,13 +777,13 @@ export class WrappedExperience {
 
         <div class="recap-actions-row">
           <button class="btn-recap-action btn-recap-primary" id="btn-recap-download">
-            <span>💾</span> Download Story
+            Download story image
           </button>
           <button class="btn-recap-action btn-recap-secondary" id="btn-recap-copy">
-            <span>📋</span> Copy
+            Copy image
           </button>
           <button class="btn-recap-action btn-recap-secondary" id="btn-recap-replay">
-            <span>🔄</span> Replay
+            Replay story
           </button>
         </div>
       </div>
@@ -738,21 +792,42 @@ export class WrappedExperience {
     // Attach track play listener on Hero #1 Track
     const heroBtn = this.viewport.querySelector('#wrapped-hero-track-btn');
     if (heroBtn) {
-      heroBtn.addEventListener('click', (e) => {
+      const playHero = (e) => {
         e.stopPropagation();
         soundEngine.playTrack(topTrack);
         heroBtn.classList.toggle('is-playing');
+      };
+      heroBtn.setAttribute('role', 'button');
+      heroBtn.setAttribute('tabindex', '0');
+      heroBtn.setAttribute('aria-label', `Play preview for ${topTrack.name}`);
+      heroBtn.addEventListener('click', playHero);
+      heroBtn.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          playHero(e);
+        }
       });
     }
 
     // Attach track play listeners on ladder tracks
     const ladderItems = this.viewport.querySelectorAll('.track-play-trigger');
     ladderItems.forEach(el => {
-      el.addEventListener('click', (e) => {
+      const playTrack = (e) => {
         e.stopPropagation();
         const trId = el.getAttribute('data-track-id');
         const tr = tracks.find(t => t.id === trId);
         if (tr) soundEngine.playTrack(tr);
+      };
+      const tr = tracks.find(t => t.id === el.getAttribute('data-track-id'));
+      el.setAttribute('role', 'button');
+      el.setAttribute('tabindex', '0');
+      el.setAttribute('aria-label', tr ? `Play preview for ${tr.name}` : 'Play track preview');
+      el.addEventListener('click', playTrack);
+      el.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          playTrack(e);
+        }
       });
     });
 

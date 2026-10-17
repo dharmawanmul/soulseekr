@@ -55,7 +55,7 @@ function getIndicator(trackId, playbackState) {
   }
 
   if (typeof playbackState === 'object' && playbackState.isLoading) {
-    return '<span class="mini-spinner" title="Buffering studio audio..."></span>';
+    return '<span class="mini-spinner" title="Buffering audio preview..."></span>';
   }
 
   return '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>';
@@ -84,7 +84,7 @@ export function renderGatewayCard() {
       <h2 class="gateway-title">Connect Spotify<br>to reveal your artifacts</h2>
       
       <p class="gateway-desc">
-        Authorize your Spotify account to analyze your listening history and generate tactile physical artifacts — Japanese Obi sleeves, Swiss posters, and playable cassettes.
+        Connect Spotify to turn your listening history into Japanese Obi sleeves, Swiss posters, and playable cassettes.
       </p>
 
       <div class="gateway-actions-row">
@@ -107,7 +107,7 @@ export function renderGatewayCard() {
       </div>
 
       <div class="gateway-footer-note">
-        Client-Side PKCE OAuth — runs entirely in your browser
+        Client-side PKCE OAuth. Runs entirely in your browser.
       </div>
     </div>
   `;
@@ -148,7 +148,7 @@ export function renderVinylCard(data, timeRange, playbackState) {
           ${tracks.slice(0, 5).map((track, i) => {
             const active = isTrackActive(track.id, playbackState);
             return `
-              <div class="vinyl-track-row track-play-trigger ${active ? 'playing' : ''}" data-track-id="${track.id}" title="Click to stream 30s studio audio">
+              <div class="vinyl-track-row track-play-trigger ${active ? 'playing' : ''}" data-track-id="${track.id}" title="Play audio preview">
                 <span class="v-idx">A-0${i + 1}</span>
                 <div class="v-info">
                   <span class="v-title">${escapeHtml(track.name)}</span>
@@ -162,8 +162,8 @@ export function renderVinylCard(data, timeRange, playbackState) {
         </div>
 
         <div class="vinyl-footer">
-          <div class="hologram-seal">HIFI CERTIFIED</div>
-          <div class="vinyl-rpm">33⅓ RPM • DIRECT METAL MASTERING</div>
+          <div class="hologram-seal">SOULSEEKR EDITION</div>
+          <div class="vinyl-rpm">33⅓ RPM • LISTENING ARCHIVE</div>
         </div>
       </div>
     </div>
@@ -180,7 +180,7 @@ export function renderSwissCard(data, timeRange, playbackState) {
   const rangeLabel = getTimeRangeLabel(timeRange);
 
   const headliner = artists[0] ? artists[0].name.toUpperCase() : (tracks[0]?.artists[0]?.name?.toUpperCase() || 'THE WEEKND');
-  const subs = artists.slice(1, 3).map(a => a.name.toUpperCase()).join(' — ') || 'DAFT PUNK — M83';
+  const subs = artists.slice(1, 3).map(a => a.name.toUpperCase()).join(' / ') || 'DAFT PUNK / M83';
   const support = artists.slice(3, 5).map(a => a.name.toUpperCase()).join(' • ') || 'DUA LIPA • ARCTIC MONKEYS';
 
   return `
@@ -241,12 +241,16 @@ export function renderPrismCard(data, timeRange, playbackState) {
   const tracks = data.topTracks || [];
   const stats = data.stats || {};
   const rangeLabel = getTimeRangeLabel(timeRange);
+  const profileUrl = user.images?.[0]?.url || '';
+  const profileInitial = (user.display_name || user.id || 'S').trim().charAt(0).toUpperCase();
 
   return `
     <div class="card-inner card-prism" id="exportable-card">
       <div class="prism-header">
         <div class="prism-user-badge">
-          <img src="${(user.images && user.images[0]?.url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80'}" alt="Avatar" class="prism-avatar" />
+          ${profileUrl
+            ? `<img src="${escapeHtml(profileUrl)}" alt="Spotify profile" class="prism-avatar">`
+            : `<span class="prism-avatar artwork-placeholder" aria-hidden="true">${escapeHtml(profileInitial)}</span>`}
           <div class="prism-user-text">
             <span class="prism-name">${escapeHtml(user?.display_name || user?.id || 'Explorer')}</span>
             <span class="prism-subtitle">SOUND MATRIX • ${rangeLabel}</span>
@@ -458,7 +462,7 @@ export function renderReceiptCard(data, timeRange, playbackState) {
 
       <div class="receipt-barcode-box">
         <div class="r-barcode-visual">||| |||| || | ||||| ||| || |||| ||</div>
-        <div class="r-barcode-note">AUTHENTICATED CLIENT-SIDE VIA SPOTIFY PKCE</div>
+        <div class="r-barcode-note">GENERATED LOCALLY IN YOUR BROWSER</div>
         <div class="r-barcode-note" style="font-weight:700; margin-top:2px;">SOULSEEKR.APP</div>
       </div>
 
@@ -468,29 +472,32 @@ export function renderReceiptCard(data, timeRange, playbackState) {
 }
 
 /**
- * 6. THE TITANIUM STUDIO DAP (Audiophile Digital Audio Player & Balanced Pentaconn Architecture)
+ * 6. THE TITANIUM STUDIO DAP
  */
 export function renderDapCard(data, timeRange, playbackState) {
   const user = data.user || { display_name: 'Audiophile Master' };
   const tracks = data.topTracks || [];
   const stats = data.stats || {};
   const rangeLabel = getTimeRangeLabel(timeRange);
-  const topSong = tracks[0] || { name: 'Direct Stream Track', artists: [{ name: 'Studio Master' }] };
-  const topCover = topSong.album?.images?.[0]?.url || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=300&q=80';
+  const topSong = tracks[0] || { name: 'No track available', artists: [] };
+  const topCover = topSong.album?.images?.[0]?.url || '';
+  const hasObscurityScore = Number.isFinite(stats.obscurityScore);
+  const obscurityScore = hasObscurityScore ? Math.max(0, Math.min(100, stats.obscurityScore)) : 0;
+  const obscurityLabel = hasObscurityScore ? `${Math.round(obscurityScore)}%` : 'N/A';
+  const tempoLabel = Number.isFinite(stats.tempoBpm) ? `${Math.round(stats.tempoBpm)} BPM` : 'TEMPO NOT AVAILABLE';
 
   return `
     <div class="card-inner card-dap" id="exportable-card">
-      <!-- Top CNC Bevel & 4.4mm Balanced Audio Jack Accent -->
       <div class="dap-chassis-top">
         <div class="dap-jack-group">
-          <div class="dap-jack-rim" title="4.4mm Pentaconn Balanced Output">
+          <div class="dap-jack-rim" title="Archive player detail">
             <div class="dap-jack-bore"></div>
           </div>
-          <span class="dap-jack-label">4.4mm BAL</span>
+          <span class="dap-jack-label">ARCHIVE</span>
         </div>
         <div class="dap-chassis-brand">
           <span class="dap-brand-name">SOULSEEKR</span>
-          <span class="dap-brand-model">DAP-X9000 // TITANIUM</span>
+          <span class="dap-brand-model">STUDIO PLAYER // TITANIUM</span>
         </div>
         <div class="dap-volume-crown" title="Precision Knurled Volume Crown"></div>
       </div>
@@ -500,27 +507,29 @@ export function renderDapCard(data, timeRange, playbackState) {
         <div class="dap-screen-oled">
           <!-- Status Bar -->
           <div class="dap-status-bar">
-            <span class="dap-status-mode">DSD256 • 11.2MHz</span>
+            <span class="dap-status-mode">LISTENING ARCHIVE</span>
             <div class="dap-status-center">
-              <span class="dap-hi-res-badge">Hi-Res AUDIO</span>
+              <span class="dap-hi-res-badge">TOP TRACK</span>
             </div>
             <div class="dap-battery-stat">
-              <span class="dap-volt-val">100%</span>
+              <span class="dap-volt-val">SLSK</span>
               <div class="dap-battery-icon"><div class="dap-battery-cell"></div></div>
             </div>
           </div>
 
           <!-- Hero Playing Track Meta -->
           <div class="dap-hero-track">
-            <img src="${topCover}" class="dap-album-art" alt="Album Cover">
+            ${topCover
+              ? `<img src="${escapeHtml(topCover)}" class="dap-album-art" alt="Album cover">`
+              : '<span class="dap-album-art artwork-placeholder">No artwork</span>'}
             <div class="dap-track-meta">
               <span class="dap-track-rank">TOP FREQUENCY • ${rangeLabel.toUpperCase()}</span>
               <h3 class="dap-track-title">${escapeHtml(topSong.name)}</h3>
               <p class="dap-track-artist">${escapeHtml(getTrackArtistNames(topSong))}</p>
               <div class="dap-audio-specs">
-                <span>FLAC 24-BIT / 192kHz</span>
+                <span>SPOTIFY CATALOG METADATA</span>
                 <span>•</span>
-                <span>${stats.tempoBpm || 122} BPM</span>
+                <span>${tempoLabel}</span>
               </div>
             </div>
           </div>
@@ -530,19 +539,19 @@ export function renderDapCard(data, timeRange, playbackState) {
             <div class="dap-vu-channel">
               <span class="dap-vu-tag">L</span>
               <div class="dap-vu-bar"><div class="dap-vu-level dap-vu-l"></div></div>
-              <span class="dap-vu-db">-3 dB</span>
+              <span class="dap-vu-db">CHANNEL A</span>
             </div>
             <div class="dap-vu-channel">
               <span class="dap-vu-tag">R</span>
               <div class="dap-vu-bar"><div class="dap-vu-level dap-vu-r"></div></div>
-              <span class="dap-vu-db">-1 dB</span>
+              <span class="dap-vu-db">CHANNEL B</span>
             </div>
           </div>
 
           <!-- Top Tracks Playlist -->
           <div class="dap-track-list">
             <div class="dap-list-header">
-              <span>REFERENCE PLAYLIST (TAP TO STREAM)</span>
+              <span>TOP PLAYLIST (TAP TO PREVIEW)</span>
               <span>TIME</span>
             </div>
             ${tracks.slice(0, 5).map((track, i) => {
@@ -568,26 +577,26 @@ export function renderDapCard(data, timeRange, playbackState) {
         <div class="snob-meter-container" style="margin-top:0.35rem;">
           <div class="snob-meter-header">
             <span>OBSCURITY SNOB RATING</span>
-            <span class="snob-score-tag">${stats.obscurityScore || 85}% • ${escapeHtml(stats.obscurityTier || 'Ultra Crate Digger')}</span>
+            <span class="snob-score-tag">${obscurityLabel} • ${escapeHtml(stats.obscurityTier || 'Not available')}</span>
           </div>
           <div class="snob-meter-track">
-            <div class="snob-meter-fill" style="width: ${stats.obscurityScore || 85}%"></div>
+            <div class="snob-meter-fill" style="width: ${obscurityScore}%"></div>
           </div>
         </div>
 
         <div class="dap-footer-meta">
           <div class="snob-aura-pill">
             <span class="snob-aura-dot" style="background:${stats.auraColors?.[1] || '#c084fc'};"></span>
-            <span>AURA: ${escapeHtml(stats.auraTitle || 'Subterranean Velvet').toUpperCase()}</span>
+            <span>AURA: ${escapeHtml(stats.auraTitle || 'Not available').toUpperCase()}</span>
           </div>
-          <span class="dap-certification">MASTER REFERENCE • DIRECT DAC</span>
+          <span class="dap-certification">SOULSEEKR EDITION • LISTENING ARCHIVE</span>
         </div>
       </div>
     </div>
   `;
 }
 
-// Export alias for seamless backwards compatibility
+// Preserve the previous renderer import name.
 export const renderGameboyCard = renderDapCard;
 
 /**
@@ -598,7 +607,11 @@ export function renderVipPassCard(data, timeRange, playbackState) {
   const tracks = data.topTracks || [];
   const stats = data.stats || {};
   const rangeLabel = getTimeRangeLabel(timeRange);
-  const avatarUrl = (user.images && user.images[0]?.url) || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80';
+  const avatarUrl = user.images?.[0]?.url || '';
+  const avatarInitial = (user.display_name || user.id || 'S').trim().charAt(0).toUpperCase();
+  const hasObscurityScore = Number.isFinite(stats.obscurityScore);
+  const obscurityScore = hasObscurityScore ? Math.max(0, Math.min(100, stats.obscurityScore)) : 0;
+  const obscurityLabel = hasObscurityScore ? `${Math.round(obscurityScore)}%` : 'N/A';
 
   const stages = ["MAIN STAGE", "HYPER TENT", "THE VELVET DOME", "OBSCURITY LAB", "AFTERHOURS"];
   const setTimes = ["20:00", "21:15", "22:30", "23:45", "01:00"];
@@ -613,7 +626,7 @@ export function renderVipPassCard(data, timeRange, playbackState) {
 
       <div class="vip-badge-row">
         <div class="vip-event-meta">SOULSEEKR 2026 // ${rangeLabel}</div>
-        <div class="vip-all-access-tag">ALL ACCESS VIP</div>
+        <div class="vip-all-access-tag">IMAGINED FESTIVAL EDITION</div>
       </div>
 
       <div class="vip-holder-box">
@@ -622,14 +635,16 @@ export function renderVipPassCard(data, timeRange, playbackState) {
             <div class="vip-holder-label">CREDENTIAL ISSUED TO:</div>
             <div class="vip-holder-name">${escapeHtml(user?.display_name || user?.id || 'VIP Guest').toUpperCase()}</div>
           </div>
-          <img src="${avatarUrl}" alt="Pass Holder" style="width: 44px; height: 44px; border-radius: 50%; border: 2px solid #10b981; object-fit: cover;" />
+          ${avatarUrl
+            ? `<img src="${escapeHtml(avatarUrl)}" alt="Spotify profile" class="vip-profile-image">`
+            : `<span class="vip-profile-image artwork-placeholder" aria-hidden="true">${escapeHtml(avatarInitial)}</span>`}
         </div>
         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
           <div class="snob-aura-pill">
             <span class="snob-aura-dot" style="background:${stats.auraColors?.[1] || '#38bdf8'};"></span>
             <span>AURA: ${escapeHtml(stats.auraTitle || 'Sonic Nebula')}</span>
           </div>
-          <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #10b981; margin-left: auto;">● ACTIVE CREDENTIAL</span>
+          <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #ed6a45; margin-left: auto;">SAMPLE CREDENTIAL</span>
         </div>
       </div>
 
@@ -655,16 +670,16 @@ export function renderVipPassCard(data, timeRange, playbackState) {
       <div class="snob-meter-container">
         <div class="snob-meter-header">
           <span>OBSCURITY SNOB INDEX</span>
-          <span class="snob-score-tag">${stats.obscurityScore || 85}% • ${escapeHtml(stats.obscurityTier || 'Ultra Crate Digger')}</span>
+          <span class="snob-score-tag">${obscurityLabel} • ${escapeHtml(stats.obscurityTier || 'Not available')}</span>
         </div>
         <div class="snob-meter-track">
-          <div class="snob-meter-fill" style="width: ${stats.obscurityScore || 85}%"></div>
+          <div class="snob-meter-fill" style="width: ${obscurityScore}%"></div>
         </div>
       </div>
 
       <div class="vip-footer-row" style="margin-top: 0.85rem;">
         <span class="vip-barcode-code">||| | ||||| || ||| |||| || |</span>
-        <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #71717a;">RFID SECURE • SOULSEEKR PASS</span>
+        <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #71717a;">SOULSEEKR FESTIVAL STUDY</span>
       </div>
     </div>
   `;

@@ -222,7 +222,7 @@ function getFallbackColor(str = '') {
  */
 export function renderCriterionPosterHtml(director, user = {}, topTracks = []) {
   const userName = user.display_name || user.id || 'Audiophile';
-  const leadTrack = topTracks[0] || { name: 'MIDNIGHT FREQUENCY', artists: [{ name: 'Studio Master' }] };
+  const leadTrack = topTracks[0] || { name: 'NO TRACK AVAILABLE', artists: [] };
   const leadArtist = (leadTrack.artists && leadTrack.artists[0]?.name) || 'Lead Soloist';
   const supportingArtists = topTracks.slice(1, 5).map(t => (t.artists && t.artists[0]?.name) || t.name).filter(Boolean);
 

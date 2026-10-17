@@ -524,7 +524,7 @@ export const PLAYLIST_ARCHAEOLOGY_ERAS = [
     color: '#818cf8',
     peakMonth: 'Nov 2021',
     pct: 42,
-    topTrack: 'Beach House — Space Song',
+    topTrack: 'Beach House / Space Song',
     topArtist: 'Beach House',
     desc: 'Deep ethereal textures, reverb-soaked guitars, and nocturnal escapism.'
   },
@@ -535,7 +535,7 @@ export const PLAYLIST_ARCHAEOLOGY_ERAS = [
     color: '#ec4899',
     peakMonth: 'Jul 2022',
     pct: 58,
-    topTrack: 'The Weeknd — Starboy (ft. Daft Punk)',
+    topTrack: 'The Weeknd / Starboy (ft. Daft Punk)',
     topArtist: 'The Weeknd',
     desc: 'High-gloss kinetic synths, distorted autotune, and high-octane club propulsion.'
   },
@@ -546,7 +546,7 @@ export const PLAYLIST_ARCHAEOLOGY_ERAS = [
     color: '#64748b',
     peakMonth: 'Mar 2023',
     pct: 64,
-    topTrack: 'Joy Division — Disorder',
+    topTrack: 'Joy Division / Disorder',
     topArtist: 'Boy Harsher',
     desc: 'Motorik basslines, brooding Cold War synthesizers, and cathartic gloom.'
   },
@@ -557,7 +557,7 @@ export const PLAYLIST_ARCHAEOLOGY_ERAS = [
     color: '#06b6d4',
     peakMonth: 'Aug 2024',
     pct: 52,
-    topTrack: 'Tame Impala — The Less I Know The Better',
+    topTrack: 'Tame Impala / The Less I Know The Better',
     topArtist: 'Tame Impala',
     desc: 'Analog flangers, lush harmonies, tape saturation, and kaleidoscopic funk.'
   },
@@ -568,7 +568,7 @@ export const PLAYLIST_ARCHAEOLOGY_ERAS = [
     color: '#f59e0b',
     peakMonth: 'Jan 2026',
     pct: 48,
-    topTrack: 'Radiohead — Everything In Its Right Place',
+    topTrack: 'Radiohead / Everything In Its Right Place',
     topArtist: 'Radiohead',
     desc: 'Rhodes electric pianos, syncopated time signatures, and minimalist electronica.'
   }
@@ -788,7 +788,7 @@ export class AudioDnaEngine {
           <div class="dna-inspector-left">
             <div class="dna-inspector-track-row">
               <span class="dna-inspector-title" id="dna-insp-title">${escapeHtml(t.name)}</span>
-              <span class="dna-inspector-sep">—</span>
+              <span class="dna-inspector-sep">/</span>
               <span class="dna-inspector-artist" id="dna-insp-artist">${escapeHtml(Array.isArray(t.artists) ? t.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (t.artistName || 'Artist'))}</span>
             </div>
             <div class="dna-inspector-sub">
@@ -813,7 +813,7 @@ export class AudioDnaEngine {
             </div>
 
             <!-- Play Audio Preview Button with Animated Equalizer Bars -->
-            <button class="dna-play-btn" id="dna-btn-play-preview" title="Play 30s Studio Audio Preview">
+            <button class="dna-play-btn" id="dna-btn-play-preview" title="Play audio preview">
               <span class="dna-play-icon" id="dna-play-icon">▶</span>
               <div class="dna-eq-bars" id="dna-eq-bars" style="display:none;">
                 <span class="dna-bar"></span>
@@ -844,7 +844,7 @@ export class AudioDnaEngine {
       case 'compass':
         return '4-Quadrant Emotional Matrix • Top-Right: Euphoria & Party • Bottom-Left: Introspective Melancholy • Tap nodes to preview';
       default:
-        return 'Tap any element to stream genuine 30s studio master audio';
+        return 'Select any element to play its available audio preview';
     }
   }
 

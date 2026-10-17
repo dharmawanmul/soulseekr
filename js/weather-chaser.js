@@ -191,7 +191,9 @@ export function renderWeatherChaserHtml(weather, split) {
           </div>
 
           <div class="weather-vibe-body">
-            <img src="${split.sunnyAnthem.cover || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80'}" class="weather-track-art" alt="art">
+            ${split.sunnyAnthem.cover
+              ? `<img src="${escapeHtml(split.sunnyAnthem.cover)}" class="weather-track-art" alt="Album cover">`
+              : '<span class="weather-track-art artwork-placeholder">No artwork</span>'}
             <div class="weather-track-details">
               <span class="weather-vibe-type">${split.sunnyAnthem.tag}</span>
               <h3 class="weather-vibe-song">${escapeHtml(split.sunnyAnthem.name)}</h3>
@@ -214,7 +216,9 @@ export function renderWeatherChaserHtml(weather, split) {
           </div>
 
           <div class="weather-vibe-body">
-            <img src="${split.rainyComfort.cover || 'https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?auto=format&fit=crop&w=200&q=80'}" class="weather-track-art" alt="art">
+            ${split.rainyComfort.cover
+              ? `<img src="${escapeHtml(split.rainyComfort.cover)}" class="weather-track-art" alt="Album cover">`
+              : '<span class="weather-track-art artwork-placeholder">No artwork</span>'}
             <div class="weather-track-details">
               <span class="weather-vibe-type">${split.rainyComfort.tag}</span>
               <h3 class="weather-vibe-song">${escapeHtml(split.rainyComfort.name)}</h3>

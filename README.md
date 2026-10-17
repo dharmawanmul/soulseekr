@@ -1,157 +1,96 @@
-# 🎧 Soulseekr — Aesthetic Physical Music Artifacts
+# Soulseekr
 
-> **Beyond flat receipts.** Turn your Spotify listening history into tangible, museum-grade cultural artifacts with interactive **3D tilt**, **specular lighting**, and **real 30-second studio audio**.
+Soulseekr turns Spotify listening history into collectible visual artifacts. It runs as a static client-side application, includes a clearly labelled sample archive, and can export its cards as story or square images.
 
-Built with modern **Tailwind CSS**, **shadcn / tweakcn tokens**, **motion-primitives**, and **Spotify PKCE OAuth 2.0**.  
-Designed to run **100% serverless** and deploy effortlessly to **GitHub Pages** for free!
+## What is in the studio
 
----
+The main workspace renders seven formats from the same listening data:
 
-## ✨ 5 Physical Artifacts (Crafted from Scratch)
+| Format | Visual language |
+| --- | --- |
+| Vinyl Obi | Japanese record sleeve with an Obi strip and side-based track list |
+| Swiss Poster | Typographic concert poster with a strict information hierarchy |
+| Sound Prism | Translucent listening profile with audio-feature measurements |
+| Tape Cassette | Cassette shell, J-card, and playable track list |
+| Thermal Slip | Record-bar receipt with durations and catalog details |
+| Titanium DAP | Compact digital player built around the top track |
+| VIP Pass | Festival credential with a listening timetable |
 
-| Artifact | Design World & Vernacular | Interactive Signature |
-| :--- | :--- | :--- |
-| 💿 **Vinyl Master Sleeve** | Japanese Obi-strip (`帯`), catalog codes, and peeking vinyl disc | Concentric vinyl grooves and holographic foil seal |
-| 📐 **Swiss Typographic Poster** | International Typographic Style (Josef Müller-Brockmann) | Monumental grid hierarchy, coordinates, and VIP timetable |
-| 🔮 **Spatial Sound Prism** | Apple VisionOS frosted glass refraction & acoustic matrix | Live bouncing frequency bars and 4-quadrant vibe dials |
-| 📼 **Industrial Cassette** | Teenage Engineering Scandinavian hardware aesthetic | Precision machine screws & **spinning mechanical tape reels** |
-| 🧾 **Tokyo Record Bar Slip** | Minimalist Japanese vinyl lounge thermal archive | Authentic paper tear edges, itemized durations, and barcode |
+Connected accounts also unlock the Year in Music story and the Taste Dossier. The dossier includes the Audio DNA, cinema and synesthesia, listening-weather, and listening-geography views.
 
-### 🕹️ Motion-Primitives & Design Engineering
-- **Interactive 3D Card Tilt & Specular Glare**: The card physically tilts in 3D perspective as your cursor moves, casting a realistic radial light glare across the surface.
-- **Apple Music Dynamic Island**: A floating pill player dock with an animated vinyl disc, track information, and audio equalizer.
-- **Real 30-Second Studio Audio**: Automatically streams genuine studio recordings for every track (via Apple Music / iTunes preview catalog).
-- **Custom Top 5 Mix**: Pick presets (*Synthwave Drive, 2000s Indie, Pop Chart Toppers, Vinyl Classics*) or type any 5 songs to generate cards instantly!
+## Interaction and export
 
----
+- The artifact selector and listening window work with pointer or keyboard input.
+- Track rows play the preview supplied by Spotify. When Spotify has no preview URL, the audio player checks the public iTunes search endpoint for an available preview.
+- The selected artifact can be downloaded in 9:16 or 1:1 format, or copied to the clipboard when the browser supports image clipboard access.
+- Wrapped and dossier dialogs close with Escape and return focus to the control that opened them.
+- Reduced-motion preferences disable decorative transitions and the card tilt.
 
-## 🛠️ Architecture: How Spotify Auth Works on GitHub Pages
+## Local development
 
-Traditional Spotify apps require a backend server to hide a `CLIENT_SECRET`. Because GitHub Pages only hosts static client-side files, Soulseekr uses **Spotify PKCE OAuth (Proof Key for Code Exchange)**:
+Soulseekr has no build step.
 
-```
-┌─────────────────────┐                               ┌──────────────────────┐
-│  Browser (Client)   │                               │  Spotify Auth Server │
-└──────────┬──────────┘                               └──────────┬───────────┘
-           │                                                     │
-           │  1. Generate random code_verifier                   │
-           │  2. Compute SHA-256 hash (code_challenge)           │
-           │  3. Redirect to Spotify Auth with code_challenge   │
-           │────────────────────────────────────────────────────>│
-           │                                                     │
-           │  4. User logs in & grants read permissions          │
-           │  5. Redirect back with ?code=XYZ                    │
-           │<────────────────────────────────────────────────────│
-           │                                                     │
-           │  6. Exchange ?code + code_verifier for Access Token │
-           │────────────────────────────────────────────────────>│
-           │                                                     │
-           │  7. Returns Access Token (Valid for 1 Hour)         │
-           │<────────────────────────────────────────────────────│
+```bash
+npm start
 ```
 
-- **Zero backend required** (100% serverless).
-- **No Client Secret exposed** (safe to host publicly on GitHub).
-- **User Privacy**: All acoustic computations and tokens stay strictly inside the visitor's local browser (`localStorage`).
+The package script runs a static server. You can also use another static server:
 
----
-
-## 🚀 Running Locally
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/dharmawanmul/soulseekr.git
-   cd soulseekr
-   ```
-
-2. **Start the local dev server**:
-   ```bash
-   npm start
-   # or run with any static server:
-   # npx serve -l 5173 .
-   # python -m http.server 5173
-   ```
-
-3. Open **`http://localhost:5173`** (or `http://localhost:3000`) in your browser.
-
----
-
-## 🌐 Deploying to GitHub Pages (2 Minutes)
-
-Because this project is built with standard web technologies, hosting on GitHub Pages is virtually instant!
-
-### Option A: Automatic Deployment (Recommended via GitHub Actions)
-This repository already includes `.github/workflows/deploy.yml`:
-1. Push your code to your GitHub repository:
-   ```bash
-   git add .
-   git commit -m "Initial release of Soulseekr"
-   git push origin main
-   ```
-2. In your GitHub repository:
-   - Go to **Settings** → **Pages**.
-   - Under **Build and deployment** → **Source**, select **GitHub Actions**.
-3. Every time you push to `main`, GitHub will automatically build and publish your site to:
-   ```
-   https://<your-username>.github.io/<repository-name>/
-   ```
-
-### Option B: Direct Branch Deployment
-1. Go to your GitHub repository **Settings** → **Pages**.
-2. Under **Build and deployment** → **Source**, choose **Deploy from a branch**.
-3. Select branch **`main`** and folder **`/(root)`**, then click **Save**.
-4. Your site will be live within 60 seconds!
-
----
-
-## 🔑 Connecting Real Spotify Accounts (Spotify Developer Setup)
-
-To allow visitors or yourself to log in with real Spotify data:
-
-1. Go to the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) and sign in.
-2. Click **Create an App**:
-   - **App name**: `Soulseekr` (or any name you like).
-   - **App description**: `Experiential music wrapped cards`.
-   - **Redirect URIs**: Add **all 3** of these URIs into your Spotify App settings:
-     - `http://127.0.0.1:5173/` (for local IP testing)
-     - `http://localhost:5173/` (for localhost testing)
-     - `https://dharmawanmul.github.io/soulseekr/` (for live GitHub Pages!)
-   - Under **Which API/SDKs are you planning to use?**, check **Web API**.
-3. Save the app and copy your **Client ID**.
-4. Open your Soulseekr site, click **Authorize with Spotify**, and that's it! 1-click login!
-
-> **Why did 127.0.0.1 work while localhost needed adding?** Spotify's security treats `localhost` and `127.0.0.1` as two completely separate domains. Registering all 3 URIs above guarantees you can log in from any URL without `INVALID_REDIRECT_URI` errors!
->
-> **Don't want to configure Spotify Developer keys?** Click **Custom Top 5** in the header! You can pick presets or type any 5 songs you want — real album art and real 30-second studio audio will load automatically!
-
----
-
-## 📁 Project Structure
-
-```
-├── .github/
-│   └── workflows/
-│       └── deploy.yml        # Automated GitHub Actions deployment
-├── css/
-│   ├── style.css             # Design system, layout tokens, glowing orbs, UI controls
-│   └── cards.css             # 5 experiential card archetypes (Festival, DNA, Cassette, Arcade, Receipt)
-├── js/
-│   ├── app.js                # Main application orchestrator & event listeners
-│   ├── audio-player.js       # Preview playback & Web Audio synth engine
-│   ├── card-renderer.js      # Card HTML templates & formatters
-│   ├── exporter.js           # html2canvas Instagram Story (9:16) & Square (1:1) PNG engine
-│   └── spotify-api.js        # Spotify PKCE OAuth 2.0 client-side authentication
-├── index.html                # Semantic HTML5 entrypoint
-├── package.json              # Local development scripts
-└── README.md                 # Complete documentation
+```bash
+python -m http.server 5173
 ```
 
----
+Open `http://127.0.0.1:5173/`. Opening `index.html` directly is not recommended because the application uses JavaScript modules.
 
-## 🎨 Design Philosophy
+## Spotify authentication
 
-- **Zero Generic Templates**: Every card uses distinct typography pairings (`Outfit`, `Space Grotesk`, `Plus Jakarta Sans`, `Space Mono`, `Courier Prime`).
-- **Physical Feedback & Micro-interactions**: Tactile button scaling (`:active { transform: scale(0.97); }`), custom cubic-bezier transitions, and spinning tape spools.
-- **Fail-proof & Robust**: Synthesizer fallback when preview audio is restricted; graceful fallbacks for missing artwork.
+Authentication uses the OAuth 2.0 Authorization Code flow with PKCE. The browser generates the verifier and challenge, exchanges the returned code for tokens, and stores the current session in local storage. No Spotify client secret is used.
 
-Enjoy your listening experience! 🚀
+To use your own Spotify application:
+
+1. Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
+2. Add every exact URL from which you will run Soulseekr to the app's redirect URI list. Localhost, `127.0.0.1`, and the deployed GitHub Pages URL count as different redirect URIs.
+3. Replace `defaultClientId` in `js/spotify-api.js` with your app's client ID.
+4. Request only the scopes listed in `SPOTIFY_CONFIG.scopes`.
+
+The redirect URI is derived from the current origin and path. GitHub Pages subdirectories are preserved.
+
+## Project structure
+
+```text
+.
+|-- DESIGN.md                 Visual direction and decision reasons
+|-- index.html                Application shell and modal containers
+|-- css/
+|   |-- style.css             Legacy base primitives and shell behavior
+|   |-- design.css            Current editorial design system and responsive layout
+|   |-- cards.css             Seven physical artifact treatments
+|   |-- wrapped.css           Year in Music story
+|   `-- dossier.css           Dossier and analysis views
+|-- js/
+|   |-- app.js                State, rendering, authentication UI, and controls
+|   |-- spotify-api.js        PKCE and Spotify Web API requests
+|   |-- card-renderer.js      Artifact templates
+|   |-- audio-player.js       Preview lookup and playback
+|   |-- exporter.js           Canvas export and clipboard output
+|   |-- wrapped-experience.js Year in Music controller
+|   |-- dossier.js            Dossier controller
+|   |-- audio-dna.js          Audio DNA visualizations
+|   |-- cinema-synesthesia.js Cinema and color analysis
+|   |-- weather-chaser.js     Weather view and timeline
+|   `-- world-passport.js     Listening geography views
+|-- .github/workflows/        GitHub Pages deployment
+`-- package.json              Static-server scripts
+```
+
+## Design system
+
+The current direction is documented in `DESIGN.md`. The interface uses a warm listening-room palette, Bodoni Moda for editorial display type, DM Sans for interface copy, and IBM Plex Mono for catalog metadata. Spotify green is reserved for Spotify connection actions.
+
+The responsive layout has three deliberate states:
+
+- Wide screens use a narrow catalog rail beside the artifact stage.
+- Tablets reduce the rail before the layout becomes crowded.
+- Phones stack the rail above the stage, keep format tabs horizontally scrollable, and turn export actions into full-width rows.
+
+Each artifact keeps its own visual language. The surrounding application stays quiet so album art and the selected physical format remain the focal point.
