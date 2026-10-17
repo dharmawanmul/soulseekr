@@ -338,7 +338,7 @@ export function renderCassetteCard(data, timeRange, playbackState) {
             <span class="tape-side-chip">A</span>
             <div class="tape-curator-title">
               <span>MIXTAPE: ${escapeHtml(user?.display_name || user?.id || 'Tape Head').toUpperCase()}</span>
-              <span style="font-size:0.6rem; color:#71717a;">${rangeLabel}</span>
+              <span style="font-size:0.6rem; color:#62626b;">${rangeLabel}</span>
             </div>
             <span style="font-size:0.6rem; font-weight:700;">TYPE-II</span>
           </div>
@@ -679,7 +679,7 @@ export function renderVipPassCard(data, timeRange, playbackState) {
 
       <div class="vip-footer-row" style="margin-top: 0.85rem;">
         <span class="vip-barcode-code">||| | ||||| || ||| |||| || |</span>
-        <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #71717a;">SOULSEEKR FESTIVAL STUDY</span>
+        <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #a1a1aa;">SOULSEEKR FESTIVAL STUDY</span>
       </div>
     </div>
   `;

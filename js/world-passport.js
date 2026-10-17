@@ -449,7 +449,7 @@ export function computeSubconsciousMind(topTracks = []) {
     { word: 'SHADOW', count: 22, theme: 'Unconscious Self', color: '#c084fc' },
     { word: 'DRIVE', count: 19, theme: 'Escape & Kinship', color: '#f59e0b' },
     { word: 'RAIN', count: 17, theme: 'Catharsis & Renewal', color: '#10b981' },
-    { word: 'HEART', count: 14, theme: 'Emotional Vulnerability', color: '#f43f5e' }
+    { word: 'HEART', count: 14, theme: 'Emotional Vulnerability', color: '#fb7185' }
   ];
 
   // 4-Stage Narrative Story Arc Curve

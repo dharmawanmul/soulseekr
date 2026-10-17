@@ -1219,6 +1219,10 @@ a:focus-visible,
   box-shadow: none;
 }
 
+.dossier-dept-btn.active .dept-icon {
+  color: var(--archive-ink);
+}
+
 .dept-icon {
   color: var(--archive-orange);
   font-family: var(--font-mono);
@@ -1459,7 +1463,31 @@ a:focus-visible,
 
 @media (max-width: 520px) {
   .app-header {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     padding-inline: 0.75rem;
+  }
+
+  .brand-wrapper,
+  .brand-meta,
+  .session-actions,
+  .header-primary,
+  .header-primary .btn,
+  .session-actions .btn {
+    min-width: 0;
+  }
+
+  .brand-meta {
+    overflow-wrap: anywhere;
+  }
+
+  .session-actions .btn,
+  .header-primary .btn {
+    height: auto;
+    padding-block: 0.6rem;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+    text-align: center;
   }
 
   .main-layout {

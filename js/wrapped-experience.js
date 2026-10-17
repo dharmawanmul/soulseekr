@@ -604,7 +604,7 @@ export class WrappedExperience {
           `).join('')}
         </div>
 
-        <div style="font-size:0.675rem; color:rgba(255,255,255,0.4); text-align:center;">
+        <div style="font-size:0.675rem; color:rgba(255,255,255,0.68); text-align:center;">
           Tap any track to preview audio
         </div>
       </div>
@@ -641,7 +641,7 @@ export class WrappedExperience {
           `).join('')}
         </div>
 
-        <div style="font-size:0.675rem; color:rgba(255,255,255,0.4); text-align:center;">
+        <div style="font-size:0.675rem; color:rgba(255,255,255,0.68); text-align:center;">
           Ordered from your listening history
         </div>
       </div>
