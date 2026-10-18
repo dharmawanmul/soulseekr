@@ -566,6 +566,8 @@ export class WrappedExperience {
     const artists = data.topArtists || [];
     const albums = data.topAlbums || [];
     const genres = data.topGenres || [];
+    const hasGenreData = genres.length > 0;
+    const genreFallbackArtists = artists.slice(0, 5);
     const windowLabel = this.timeRange === 'long_term'
       ? 'About 1 year'
       : this.timeRange === 'medium_term'
@@ -743,12 +745,14 @@ export class WrappedExperience {
         </div>
       </div>
 
-      <!-- Slide 4: Top 5 Genres & Sonic Aura -->
+      <!-- Slide 4: Genre Mix or Ranked-Artist Fallback & Sonic Aura -->
       <div class="wrapped-slide" data-slide="4">
         <div>
-          <span class="slide-eyebrow">Listening profile / Genres</span>
-          <h2 class="slide-title">Top 5 Genres</h2>
-          <p class="slide-desc">The genre mix behind your most-played artists.</p>
+          <span class="slide-eyebrow">Listening profile / ${hasGenreData ? 'Genres' : 'Artist signals'}</span>
+          <h2 class="slide-title">${hasGenreData ? 'Top 5 Genres' : 'Top 5 Artists'}</h2>
+          <p class="slide-desc">${hasGenreData
+            ? 'The genre mix attached to your affinity-ranked artists.'
+            : 'Spotify did not provide genre tags, so your ranked artists are shown instead.'}</p>
         </div>
 
         <div class="genres-stack">
@@ -762,9 +766,29 @@ export class WrappedExperience {
                 <div class="genre-bar-fill" style="width: ${genre.percentage}%"></div>
               </div>
             </div>
-          `).join('') : `
+          `).join('') : genreFallbackArtists.length ? `
+            <div class="genre-data-note" role="status">
+              Genre metadata is unavailable for this window. No genre labels were inferred.
+            </div>
+            <ol class="genre-artist-fallback">
+              ${genreFallbackArtists.map((artist, index) => {
+                const imageUrl = artist?.images?.find(image => image?.url)?.url || '';
+                const initial = (artist?.name || 'Artist').trim().charAt(0).toUpperCase();
+                return `
+                  <li>
+                    <span class="genre-artist-rank">${String(index + 1).padStart(2, '0')}</span>
+                    ${imageUrl
+                      ? `<img src="${escapeHtml(imageUrl)}" alt="" class="genre-artist-image">`
+                      : `<span class="genre-artist-image genre-artist-initial" aria-hidden="true">${escapeHtml(initial)}</span>`}
+                    <strong>${escapeHtml(artist?.name || 'Unknown artist')}</strong>
+                    <span class="genre-artist-source">Spotify rank</span>
+                  </li>
+                `;
+              }).join('')}
+            </ol>
+          ` : `
             <div class="wrapped-data-empty" role="status">
-              Spotify returned no artist genre tags for this window.
+              Spotify returned neither genre tags nor ranked artists for this window.
             </div>
           `}
         </div>
@@ -773,7 +797,7 @@ export class WrappedExperience {
           <div class="aura-orb-sphere"></div>
           <div class="aura-card-text">
             <span class="aura-card-title">${stats.auraTitle || 'Subterranean Velvet'}</span>
-            <span class="aura-card-desc">${stats.obscurityTier || 'Underground Crate Digger'} • ${stats.dominantGenre || 'Neo-Psychedelia'}</span>
+            <span class="aura-card-desc">${stats.obscurityTier || 'Underground Crate Digger'} • ${hasGenreData ? (stats.dominantGenre || 'Genre mix') : 'Genre metadata unavailable'}</span>
           </div>
         </div>
       </div>
@@ -817,8 +841,8 @@ export class WrappedExperience {
               <span class="recap-item-val">${topAlbum.name}</span>
             </div>
             <div class="recap-summary-item">
-              <span class="recap-item-label">Top Genre</span>
-              <span class="recap-item-val">${stats.dominantGenre || 'Neo-Psychedelia'}</span>
+              <span class="recap-item-label">${hasGenreData ? 'Top Genre' : 'Genre Data'}</span>
+              <span class="recap-item-val">${hasGenreData ? (stats.dominantGenre || genres[0]?.name) : 'Not returned'}</span>
             </div>
             <div class="recap-summary-item">
               <span class="recap-item-label">Ranked Set Duration</span>

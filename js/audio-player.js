@@ -19,6 +19,8 @@ class SoundEngine {
     this.onStateChangeCallbacks = [];
     this.previewCache = new Map(); // cache query -> previewUrl
     this.playRequestId = 0;
+    this.previewTimer = null;
+    this.previewDurationMs = 30000;
 
     this.audioElement.addEventListener('ended', () => {
       this.stop();
@@ -49,6 +51,22 @@ class SoundEngine {
       isLoading: this.isLoading,
       currentTrackId: this.currentTrackId
     }));
+  }
+
+  schedulePreviewStop() {
+    if (this.previewTimer) clearTimeout(this.previewTimer);
+    this.previewTimer = setTimeout(() => {
+      this.previewTimer = null;
+      this.stop();
+    }, this.previewDurationMs);
+  }
+
+  setPreviewStartPosition() {
+    const duration = Number(this.audioElement.duration);
+    if (!Number.isFinite(duration) || duration <= 35) return;
+
+    const latestStart = Math.max(0, duration - (this.previewDurationMs / 1000));
+    this.audioElement.currentTime = Math.min(latestStart, Math.max(15, duration * 0.25));
   }
 
   initAudioContext() {
@@ -130,12 +148,16 @@ class SoundEngine {
     if (previewUrl) {
       try {
         this.audioElement.src = previewUrl;
+        this.audioElement.addEventListener('loadedmetadata', () => {
+          if (requestId === this.playRequestId) this.setPreviewStartPosition();
+        }, { once: true });
         await this.audioElement.play();
         if (requestId !== this.playRequestId) {
           this.audioElement.pause();
           return;
         }
         this.isPlaying = true;
+        this.schedulePreviewStop();
         this.notifyState();
       } catch (err) {
         if (requestId !== this.playRequestId) return;
@@ -155,6 +177,7 @@ class SoundEngine {
     this.initAudioContext();
     this.isPlaying = true;
     this.isLoading = false;
+    this.schedulePreviewStop();
     this.notifyState();
 
     const charSum = seedName.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0);
@@ -223,6 +246,10 @@ class SoundEngine {
 
   stop() {
     this.playRequestId += 1;
+    if (this.previewTimer) {
+      clearTimeout(this.previewTimer);
+      this.previewTimer = null;
+    }
     this.audioElement.pause();
     this.audioElement.currentTime = 0;
 

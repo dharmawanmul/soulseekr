@@ -709,7 +709,9 @@ export class AudioDnaEngine {
       return artist?.name && artistName && artist.name.toLowerCase() === artistName.toLowerCase();
     });
 
-    return matchingArtist?.images?.find(image => image?.url)?.url || '';
+    return matchingArtist?.images?.find(image => image?.url)?.url
+      || track?.album?.images?.find(image => image?.url)?.url
+      || '';
   }
 
   getLoadedArtistImage(track) {
@@ -766,6 +768,18 @@ export class AudioDnaEngine {
       fallback.addColorStop(1, `${color}33`);
       ctx.fillStyle = fallback;
       ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+
+      const artistName = Array.isArray(track?.artists)
+        ? (track.artists[0]?.name || track.artists[0] || '')
+        : (track?.artistName || '');
+      const initial = String(artistName).trim().charAt(0).toUpperCase();
+      if (initial) {
+        ctx.fillStyle = '#f2ead9';
+        ctx.font = `700 ${Math.max(9, radius * 0.9)}px "DM Sans", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(initial, cx, cy + 0.5);
+      }
     }
 
     ctx.restore();

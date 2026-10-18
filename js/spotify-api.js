@@ -395,7 +395,7 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
 
   // Calculate dynamic acoustic stats
   const topGenres = extractTopGenres(topArtists);
-  const dominantGenre = topGenres.length ? topGenres[0].name : 'No genre tags returned';
+  const dominantGenre = topGenres.length ? topGenres[0].name : 'Not provided by Spotify';
 
   // Obscurity rating: lower artist average popularity = higher underground rating
   const avgPopularity = topArtists.length 
@@ -427,7 +427,8 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
     tempoBpm,
     totalMinutes: null,
     rankedTrackMinutes,
-    averageArtistPopularity: avgPopularity
+    averageArtistPopularity: avgPopularity,
+    genreDataAvailable: topGenres.length > 0
   };
 
   const aura = computeSonicAura(rawStats, topArtists, topTracks);
@@ -487,7 +488,7 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
         },
         {
           label: 'Genre mix',
-          method: 'Counts Spotify genre tags attached to the ranked artists, then normalizes the visible top five.',
+          method: 'Counts Spotify genre tags attached to ranked artists when the deprecated field is populated. When it is empty, the interface shows ranked artists instead of inventing genres.',
           kind: 'derived'
         },
         {

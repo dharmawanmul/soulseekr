@@ -1001,6 +1001,72 @@
   transition: width 800ms cubic-bezier(0.23, 1, 0.32, 1);
 }
 
+.genre-data-note {
+  color: rgba(255, 255, 255, 0.68);
+  font-size: 0.72rem;
+  line-height: 1.45;
+  padding-bottom: 0.35rem;
+}
+
+.genre-artist-fallback {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+
+.genre-artist-fallback li {
+  min-width: 0;
+  min-height: 46px;
+  display: grid;
+  grid-template-columns: 1.75rem 2.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.6rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.genre-artist-rank,
+.genre-artist-source {
+  color: rgba(255, 255, 255, 0.48);
+  font-family: var(--font-mono, monospace);
+  font-size: 0.65rem;
+}
+
+.genre-artist-image {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: #26211a;
+}
+
+.genre-artist-initial {
+  display: inline-grid;
+  place-items: center;
+  color: #f2ead9;
+  font-weight: 800;
+}
+
+.genre-artist-fallback strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+  font-size: 0.8rem;
+}
+
+@media (max-width: 380px) {
+  .genre-artist-source {
+    display: none;
+  }
+
+  .genre-artist-fallback li {
+    grid-template-columns: 1.5rem 2.25rem minmax(0, 1fr);
+  }
+}
+
 .aura-card-box {
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(236, 72, 153, 0.12));
   border: 1px solid rgba(139, 92, 246, 0.3);

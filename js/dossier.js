@@ -1001,6 +1001,10 @@ export class SonicDossierEngine {
             <span class="provenance-limit-index">04</span>
             <p>Soulseekr does not store listening history on a server. Access and refresh tokens remain in this browser.</p>
           </div>
+          <div>
+            <span class="provenance-limit-index">05</span>
+            <p>Spotify artist genre tags are deprecated and may be empty. When absent, Soulseekr shows ranked artists instead of assigning speculative genres.</p>
+          </div>
         </section>
 
         <div class="provenance-footer-note">

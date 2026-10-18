@@ -16,7 +16,7 @@ The main workspace renders seven formats from the same listening data:
 | Titanium DAP | Compact digital player built around the top track |
 | VIP Pass | Festival credential with a listening timetable |
 
-Connected accounts also unlock the Year in Music story and the Taste Dossier. Each story soundtrack is randomly drawn without replacement from up to 50 ranked tracks. The dossier includes Audio DNA, cinema and synesthesia, listening-weather, listening-geography, a period comparison, and a data-provenance ledger.
+Connected accounts also unlock the Year in Music story and the Taste Dossier. Each story soundtrack is randomly drawn without replacement from up to 50 ranked tracks and is capped at a 30-second preview. The dossier includes Audio DNA, cinema and synesthesia, listening-weather, listening-geography, a period comparison, and a data-provenance ledger.
 
 ## Interaction and export
 
@@ -30,6 +30,8 @@ Connected accounts also unlock the Year in Music story and the Taste Dossier. Ea
 - Reduced-motion preferences disable decorative transitions and the card tilt.
 
 Spotify top items are affinity rankings, not exact stream counts. Spotify does not provide total listening minutes through the endpoints used here, so Soulseekr does not present an invented total. The provenance ledger records the endpoint, window, retrieval time, record count, and limitations for each connected archive.
+
+Spotify artist genre tags are deprecated and can be empty. When that happens, Year in Music shows the ranked top artists instead of inventing genre classifications.
 
 ## Local development
 
