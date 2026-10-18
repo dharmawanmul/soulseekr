@@ -272,6 +272,9 @@ export class WrappedExperience {
     this.userAvatar = document.getElementById('wrapped-user-avatar');
     this.userName = document.getElementById('wrapped-user-name');
     this.userTag = document.getElementById('wrapped-user-tag');
+    this.soundtrackCue = document.getElementById('wrapped-soundtrack-cue');
+    this.soundtrackIndex = document.getElementById('wrapped-soundtrack-index');
+    this.soundtrackTitle = document.getElementById('wrapped-soundtrack-title');
     this.btnMute = document.getElementById('btn-wrapped-mute');
     this.btnClose = document.getElementById('btn-wrapped-close');
 
@@ -291,6 +294,7 @@ export class WrappedExperience {
     this.isMuted = false;
     this.data = null;
     this.timeRange = 'short_term';
+    this.slideTracks = [];
     this.returnFocus = null;
 
     this.onKeyDown = this.handleKeyDown.bind(this);
@@ -401,6 +405,7 @@ export class WrappedExperience {
     this.returnFocus = document.activeElement;
     this.data = data;
     this.timeRange = timeRange;
+    this.slideTracks = this.selectDistinctSlideTracks(data.topTracks || []);
 
     // Populate Top Bar
     const user = data.user || { display_name: 'Soulseekr Archivist' };
@@ -444,8 +449,6 @@ export class WrappedExperience {
     this.goToSlide(0);
     requestAnimationFrame(() => this.btnClose?.focus());
 
-    // Try playing top track audio snippet
-    this.playSlideAudio();
   }
 
   close() {
@@ -485,15 +488,44 @@ export class WrappedExperience {
     }
   }
 
-  async playSlideAudio() {
-    if (this.isMuted || !this.data || !this.data.topTracks || !this.data.topTracks.length) return;
-    const topTrack = this.data.topTracks[0];
-    if (topTrack) {
+  selectDistinctSlideTracks(tracks) {
+    const seen = new Set();
+    return tracks.filter(track => {
+      const key = track?.id || `${track?.name || ''}:${track?.artists?.[0]?.name || ''}`;
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }).slice(0, this.totalSlides);
+  }
+
+  async playSlideAudio(slideIndex = this.currentSlideIndex) {
+    if (!this.data || !this.data.topTracks || !this.data.topTracks.length) return;
+    const storyTrack = this.slideTracks[slideIndex];
+    if (this.soundtrackIndex) {
+      this.soundtrackIndex.textContent = storyTrack
+        ? `Story ${slideIndex + 1} soundtrack`
+        : `Story ${slideIndex + 1} soundtrack unavailable`;
+    }
+    if (this.soundtrackTitle) {
+      const artistName = storyTrack?.artists?.[0]?.name || storyTrack?.artistName || '';
+      this.soundtrackTitle.textContent = storyTrack
+        ? `${storyTrack.name}${artistName ? ` / ${artistName}` : ''}`
+        : 'No additional unique track was returned';
+    }
+    if (this.soundtrackCue) {
+      this.soundtrackCue.classList.toggle('is-unavailable', !storyTrack);
+    }
+
+    if (this.isMuted) return;
+
+    if (storyTrack) {
       try {
-        await soundEngine.playTrack(topTrack);
+        await soundEngine.playTrack(storyTrack);
       } catch (err) {
-        console.warn('Could not auto-play top track:', err);
+        console.warn('Could not play this story soundtrack:', err);
       }
+    } else {
+      soundEngine.stop();
     }
   }
 
@@ -501,10 +533,12 @@ export class WrappedExperience {
     if (!this.progressTrack) return;
     this.progressTrack.innerHTML = '';
     for (let i = 0; i < this.totalSlides; i++) {
-      const seg = document.createElement('div');
+      const seg = document.createElement('button');
+      seg.type = 'button';
       seg.className = 'wrapped-seg';
       seg.setAttribute('data-index', i);
-      const fill = document.createElement('div');
+      seg.setAttribute('aria-label', `Go to story ${i + 1} of ${this.totalSlides}`);
+      const fill = document.createElement('span');
       fill.className = 'wrapped-seg-fill';
       seg.appendChild(fill);
 
@@ -524,6 +558,11 @@ export class WrappedExperience {
     const artists = data.topArtists || [];
     const albums = data.topAlbums || [];
     const genres = data.topGenres || [];
+    const windowLabel = this.timeRange === 'long_term'
+      ? 'About 1 year'
+      : this.timeRange === 'medium_term'
+        ? 'About 6 months'
+        : 'About 4 weeks';
 
     const topTrack = tracks[0] || { name: 'No track available', artists: [], album: { images: [] } };
     const topAlbum = albums[0] || { name: 'No album available', artistName: '', releaseYear: '', images: [] };
@@ -532,10 +571,15 @@ export class WrappedExperience {
     const avatarMarkup = userImg
       ? `<img class="prologue-avatar-img" src="${escapeHtml(userImg)}" alt="Spotify profile">`
       : `<span class="prologue-avatar-img avatar-initial" aria-hidden="true">${escapeHtml(userInitial)}</span>`;
-    const totalMinutes = Number.isFinite(Number(stats.totalMinutes)) ? Number(stats.totalMinutes) : null;
-    const totalMinutesFormatted = totalMinutes === null ? 'Not available' : totalMinutes.toLocaleString();
-    const daysEquivalent = totalMinutes === null ? '' : ` (${(totalMinutes / 1440).toFixed(1)} full days)`;
-    const tempo = Number.isFinite(Number(stats.tempoBpm)) ? Number(stats.tempoBpm) : null;
+    const rankedTrackMinutes = Number.isFinite(Number(stats.rankedTrackMinutes))
+      ? Number(stats.rankedTrackMinutes)
+      : Math.round(tracks.reduce((total, track) => total + (Number(track.duration_ms) || 0), 0) / 60000);
+    const averageTrackSeconds = tracks.length
+      ? Math.round(tracks.reduce((total, track) => total + (Number(track.duration_ms) || 0), 0) / tracks.length / 1000)
+      : null;
+    const averageTrackLength = averageTrackSeconds === null
+      ? 'Not available'
+      : `${Math.floor(averageTrackSeconds / 60)}:${String(averageTrackSeconds % 60).padStart(2, '0')}`;
     const energy = Number.isFinite(Number(stats.energyScore)) ? Number(stats.energyScore) : null;
     const dance = Number.isFinite(Number(stats.danceScore)) ? Number(stats.danceScore) : null;
     const obscurity = Number.isFinite(Number(stats.obscurityScore)) ? Number(stats.obscurityScore) : null;
@@ -544,7 +588,7 @@ export class WrappedExperience {
       <!-- Slide 0: Prologue / Cosmic Identity -->
       <div class="wrapped-slide" data-slide="0">
         <div>
-          <span class="slide-eyebrow">Listening archive / 2026</span>
+          <span class="slide-eyebrow">Listening archive / ${windowLabel}</span>
           <h2 class="slide-title">Your Year in Music</h2>
           <p class="slide-desc">The artists, albums, and patterns that stayed in rotation.</p>
         </div>
@@ -554,8 +598,8 @@ export class WrappedExperience {
             ${avatarMarkup}
           </div>
           <div class="prologue-stat-box">
-            <span class="prologue-big-number">${totalMinutesFormatted}</span>
-            <span class="prologue-stat-label">Total Minutes Listened</span>
+            <span class="prologue-big-number">${tracks.length}</span>
+            <span class="prologue-stat-label">Ranked tracks examined</span>
           </div>
           <div class="prologue-vibe-pill">
             ${escapeHtml(stats.vibeLabel || 'Profile unavailable')}
@@ -570,9 +614,9 @@ export class WrappedExperience {
       <!-- Slide 1: Top 5 Tracks (The Anthems) -->
       <div class="wrapped-slide" data-slide="1">
         <div>
-          <span class="slide-eyebrow">Most played / Tracks</span>
+          <span class="slide-eyebrow">Spotify affinity / Tracks</span>
           <h2 class="slide-title">Kept in Rotation</h2>
-          <p class="slide-desc">The tracks you returned to most.</p>
+          <p class="slide-desc">Your highest-ranked tracks in this Spotify window.</p>
         </div>
 
         <!-- #1 Hero Track Card -->
@@ -582,7 +626,7 @@ export class WrappedExperience {
             <div class="top-track-vinyl"></div>
           </div>
           <div class="top-track-info">
-            <span class="top-track-badge">01 / Most played</span>
+            <span class="top-track-badge">01 / Highest affinity</span>
             <span class="top-track-name">${topTrack.name}</span>
             <span class="top-track-artist">${Array.isArray(topTrack.artists) ? topTrack.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (topTrack.artistName || 'Unknown Artist')}</span>
             <span class="top-track-play-btn">Play preview</span>
@@ -612,9 +656,9 @@ export class WrappedExperience {
       <!-- Slide 2: Top 5 Albums (Heavy Rotations) -->
       <div class="wrapped-slide" data-slide="2">
         <div>
-          <span class="slide-eyebrow">Most played / Albums</span>
+          <span class="slide-eyebrow">Derived from ranked tracks / Albums</span>
           <h2 class="slide-title">Top 5 Albums</h2>
-          <p class="slide-desc">The records that held your attention.</p>
+          <p class="slide-desc">Albums appearing most often inside the ranked track set.</p>
         </div>
 
         <!-- #1 Hero Album Card -->
@@ -649,14 +693,14 @@ export class WrappedExperience {
       <!-- Slide 3: Minutes & Sonic DNA -->
       <div class="wrapped-slide" data-slide="3">
         <div>
-          <span class="slide-eyebrow">Listening profile / Audio features</span>
+          <span class="slide-eyebrow">Listening profile / Local reading</span>
           <h2 class="slide-title">The Shape of Your Listening</h2>
-          <p class="slide-desc">Spotify audio features from your most-played tracks.</p>
+          <p class="slide-desc">Direct catalog fields alongside clearly marked Soulseekr interpretations.</p>
         </div>
 
         <div class="minutes-hero-block">
-          <span class="minutes-counter">${totalMinutesFormatted}</span>
-          <span class="minutes-subtext">Minutes listened${daysEquivalent}</span>
+          <span class="minutes-counter">${rankedTrackMinutes.toLocaleString()}</span>
+          <span class="minutes-subtext">Combined minutes across returned ranked tracks</span>
         </div>
 
         <div class="mini-eq-bars">
@@ -669,17 +713,17 @@ export class WrappedExperience {
 
         <div class="metrics-bento">
           <div class="metric-bento-card">
-            <span class="metric-bento-label">Average Tempo</span>
-            <span class="metric-bento-val">${tempo === null ? 'Not available' : `${tempo} BPM`}</span>
-            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${tempo === null ? 0 : Math.min(100, tempo / 1.7)}%"></div></div>
+            <span class="metric-bento-label">Average track length</span>
+            <span class="metric-bento-val">${averageTrackLength}</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${averageTrackSeconds === null ? 0 : Math.min(100, averageTrackSeconds / 4)}%"></div></div>
           </div>
           <div class="metric-bento-card">
-            <span class="metric-bento-label">Energy Factor</span>
+            <span class="metric-bento-label">Energy interpretation</span>
             <span class="metric-bento-val">${energy === null ? 'Not available' : `${energy}%`}</span>
             <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${energy ?? 0}%"></div></div>
           </div>
           <div class="metric-bento-card">
-            <span class="metric-bento-label">Danceability</span>
+            <span class="metric-bento-label">Movement interpretation</span>
             <span class="metric-bento-val">${dance === null ? 'Not available' : `${dance}%`}</span>
             <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${dance ?? 0}%"></div></div>
           </div>
@@ -700,7 +744,7 @@ export class WrappedExperience {
         </div>
 
         <div class="genres-stack">
-          ${genres.slice(0, 5).map(genre => `
+          ${genres.length ? genres.slice(0, 5).map(genre => `
             <div class="genre-bar-item">
               <div class="genre-bar-header">
                 <span>${genre.name}</span>
@@ -710,7 +754,11 @@ export class WrappedExperience {
                 <div class="genre-bar-fill" style="width: ${genre.percentage}%"></div>
               </div>
             </div>
-          `).join('')}
+          `).join('') : `
+            <div class="wrapped-data-empty" role="status">
+              Spotify returned no artist genre tags for this window.
+            </div>
+          `}
         </div>
 
         <div class="aura-card-box">
@@ -725,8 +773,8 @@ export class WrappedExperience {
       <!-- Slide 5: Master Recap Archive Card -->
       <div class="wrapped-slide" data-slide="5">
         <div>
-          <span class="slide-eyebrow">Archive card / 2026</span>
-          <h2 class="slide-title">Your 2026 Archive</h2>
+          <span class="slide-eyebrow">Archive card / ${windowLabel}</span>
+          <h2 class="slide-title">Your Listening Archive</h2>
           <p class="slide-desc">A compact record of the music you kept close.</p>
         </div>
 
@@ -734,7 +782,7 @@ export class WrappedExperience {
         <div class="recap-card-artifact" id="wrapped-recap-export-card">
           <div class="recap-artifact-header">
             <span class="recap-brand">SOULSEEKR // ARCHIVE</span>
-            <span class="recap-year-pill">2026 listening archive</span>
+            <span class="recap-year-pill">${windowLabel} archive</span>
           </div>
 
           <div style="display:flex; align-items:center; gap:0.75rem;">
@@ -765,8 +813,8 @@ export class WrappedExperience {
               <span class="recap-item-val">${stats.dominantGenre || 'Neo-Psychedelia'}</span>
             </div>
             <div class="recap-summary-item">
-              <span class="recap-item-label">Minutes Listened</span>
-              <span class="recap-item-val" style="color:#10b981;">${totalMinutesFormatted}</span>
+              <span class="recap-item-label">Ranked Set Duration</span>
+              <span class="recap-item-val" style="color:#10b981;">${rankedTrackMinutes.toLocaleString()} min</span>
             </div>
             <div class="recap-summary-item">
               <span class="recap-item-label">Sonic Aura</span>
@@ -836,10 +884,10 @@ export class WrappedExperience {
     btnDownload?.addEventListener('click', async (e) => {
       e.stopPropagation();
       try {
-        showToast('Exporting 2026 Wrapped Story card...', 'info', 2000);
+        showToast('Exporting listening archive story card...', 'info', 2000);
         const recapEl = document.getElementById('wrapped-recap-export-card');
         const dataUrl = await exportCardAsImage('story', recapEl);
-        downloadDataUrl(dataUrl, 'soulseekr-wrapped-2026.png');
+        downloadDataUrl(dataUrl, 'soulseekr-listening-archive.png');
         showToast('Downloaded Wrapped Story!', 'success');
       } catch (err) {
         showToast(err.message, 'error');
@@ -898,6 +946,9 @@ export class WrappedExperience {
     // Update Progress Bars State
     this.updateProgressBarsState();
 
+    // Each story has its own distinct soundtrack when Spotify returned enough unique tracks.
+    this.playSlideAudio(index);
+
     // Start auto-advance progress timer for this slide
     this.startProgress();
   }
@@ -927,12 +978,15 @@ export class WrappedExperience {
       const fill = seg.querySelector('.wrapped-seg-fill');
       if (i < this.currentSlideIndex) {
         seg.classList.add('completed');
+        seg.removeAttribute('aria-current');
         if (fill) fill.style.width = '100%';
       } else if (i === this.currentSlideIndex) {
         seg.classList.remove('completed');
+        seg.setAttribute('aria-current', 'step');
         if (fill) fill.style.width = '0%';
       } else {
         seg.classList.remove('completed');
+        seg.removeAttribute('aria-current');
         if (fill) fill.style.width = '0%';
       }
     });

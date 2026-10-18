@@ -152,29 +152,44 @@
   display: flex;
   gap: 6px;
   width: 100%;
-  height: 3.5px;
+  height: 44px;
+  margin-block: -20px;
 }
 
 .wrapped-seg {
   flex: 1;
-  background: rgba(255, 255, 255, 0.22);
-  border-radius: 9999px;
-  overflow: hidden;
+  min-width: 0;
+  height: 44px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
   position: relative;
   cursor: pointer;
-  height: 100%;
+}
+
+.wrapped-seg::before {
+  content: '';
+  position: absolute;
+  top: 20px;
+  right: 0;
+  left: 0;
+  height: 3.5px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 9999px;
   transition: background 150ms ease;
 }
 
-.wrapped-seg:hover {
+.wrapped-seg:hover::before {
   background: rgba(255, 255, 255, 0.35);
 }
 
 .wrapped-seg-fill {
   position: absolute;
-  top: 0;
+  top: 20px;
   left: 0;
-  bottom: 0;
+  height: 3.5px;
   width: 0%;
   background: #ffffff;
   border-radius: 9999px;
@@ -225,6 +240,50 @@
   text-transform: uppercase;
 }
 
+.wrapped-soundtrack-cue {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+  padding-top: 0.55rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.wrapped-soundtrack-cue > span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.58rem;
+  font-weight: 650;
+  letter-spacing: 0.055em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.wrapped-soundtrack-cue > strong {
+  min-width: 0;
+  color: #ffffff;
+  font-size: 0.66rem;
+  font-weight: 650;
+  overflow: hidden;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wrapped-soundtrack-cue.is-unavailable > strong {
+  color: rgba(255, 255, 255, 0.72);
+  font-weight: 500;
+}
+
+.wrapped-data-empty {
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  text-align: center;
+}
+
 .wrapped-top-controls {
   display: flex;
   align-items: center;
@@ -259,7 +318,7 @@
    -------------------------------------------------------------------------- */
 .wrapped-tap-zone {
   position: absolute;
-  top: 70px;
+  top: 104px;
   bottom: 0;
   width: 38%;
   z-index: 20;

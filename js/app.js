@@ -182,7 +182,7 @@ export const DEFAULT_CURATED_DATA = {
     topGenre: 'Alternative Rock',
     obscurityScore: 73,
     obscurityTier: 'Underground Crate Digger',
-    totalMinutes: 48320,
+    rankedTrackMinutes: 24,
     acousticEnergy: '74%',
     energyScore: 78,
     danceScore: 72,

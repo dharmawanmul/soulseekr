@@ -1,5 +1,5 @@
 /**
- * Soulseekr listening dossier and its four analysis departments.
+ * Soulseekr listening dossier and its five analysis departments.
  */
 
 import { soundEngine } from './audio-player.js';
@@ -10,6 +10,98 @@ import { audioDna } from './audio-dna.js';
 import { matchDirector, renderCriterionPosterHtml, renderSynesthesiaHtml, SynesthesiaBarcodeController } from './cinema-synesthesia.js';
 import { fetchLiveWeatherData, computeBarometricSplit, renderWeatherChaserHtml, WeatherTimelineController } from './weather-chaser.js';
 import { resolvePassportMetrics, renderBoardingPassHtml, FlightMapController, computeSubconsciousMind, renderSubconsciousMindHtml } from './world-passport.js';
+import { SPOTIFY_TIME_RANGES } from './spotify-api.js';
+
+const COMPARISON_LIMIT = 20;
+
+function itemKey(item) {
+  return item?.id || `${item?.name || ''}:${item?.artists?.[0]?.name || ''}`;
+}
+
+function rangeLabel(range) {
+  return SPOTIFY_TIME_RANGES[range]?.shortLabel || range;
+}
+
+function getRangeSnapshot(data, currentRange, range) {
+  if (data?.comparisonRanges?.[range]) return data.comparisonRanges[range];
+  if (range === currentRange) {
+    return {
+      tracks: data?.topTracks || [],
+      artists: data?.topArtists || [],
+      status: { tracks: 'available', artists: 'available' }
+    };
+  }
+  return {
+    tracks: [],
+    artists: [],
+    status: { tracks: 'unavailable', artists: 'unavailable' }
+  };
+}
+
+function averageReleaseYear(tracks) {
+  const years = tracks
+    .map(track => Number.parseInt(track?.album?.release_date?.slice(0, 4), 10))
+    .filter(Number.isFinite);
+  if (!years.length) return null;
+  return Math.round(years.reduce((sum, year) => sum + year, 0) / years.length);
+}
+
+function leadingGenre(artists) {
+  const counts = new Map();
+  artists.forEach(artist => {
+    (artist?.genres || []).forEach(genre => counts.set(genre, (counts.get(genre) || 0) + 1));
+  });
+  const first = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+  if (!first) return 'No genre tags returned';
+  return first[0].replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
+function buildPeriodComparison(data, currentRange, leftRange, rightRange) {
+  const left = getRangeSnapshot(data, currentRange, leftRange);
+  const right = getRangeSnapshot(data, currentRange, rightRange);
+  const leftTracks = (left.tracks || []).slice(0, COMPARISON_LIMIT);
+  const rightTracks = (right.tracks || []).slice(0, COMPARISON_LIMIT);
+  const leftArtists = (left.artists || []).slice(0, COMPARISON_LIMIT);
+  const rightArtists = (right.artists || []).slice(0, COMPARISON_LIMIT);
+  const rightTrackKeys = new Set(rightTracks.map(itemKey));
+  const rightArtistRanks = new Map(rightArtists.map((artist, index) => [itemKey(artist), index + 1]));
+  const leftArtistRanks = new Map(leftArtists.map((artist, index) => [itemKey(artist), index + 1]));
+
+  const sharedTracks = leftTracks.filter(track => rightTrackKeys.has(itemKey(track)));
+  const sharedArtists = leftArtists.filter(artist => rightArtistRanks.has(itemKey(artist)));
+  const arrivals = leftArtists.filter(artist => !rightArtistRanks.has(itemKey(artist))).slice(0, 5);
+  const movers = sharedArtists
+    .map(artist => ({
+      artist,
+      leftRank: leftArtistRanks.get(itemKey(artist)),
+      rightRank: rightArtistRanks.get(itemKey(artist))
+    }))
+    .map(entry => ({ ...entry, shift: entry.rightRank - entry.leftRank }))
+    .sort((a, b) => Math.abs(b.shift) - Math.abs(a.shift))
+    .slice(0, 6);
+
+  let reading = 'A sharp turn in your recent rotation';
+  if (sharedArtists.length >= 12) reading = 'A steady core with small rank changes';
+  else if (sharedArtists.length >= 6) reading = 'A familiar core with visible drift';
+
+  return {
+    left,
+    right,
+    leftTracks,
+    rightTracks,
+    leftArtists,
+    rightArtists,
+    sharedTracks,
+    sharedArtists,
+    arrivals,
+    movers,
+    reading,
+    leftAverageYear: averageReleaseYear(leftTracks),
+    rightAverageYear: averageReleaseYear(rightTracks),
+    leftGenre: leadingGenre(leftArtists),
+    rightGenre: leadingGenre(rightArtists)
+  };
+}
 
 export class SonicDossierEngine {
   constructor() {
@@ -18,14 +110,17 @@ export class SonicDossierEngine {
     this.data = null;
     this.timeRange = 'short_term';
     
-    // 4 Modular Departments: 'cinema', 'audiodna', 'weather', 'world'
+    // Modular Departments: 'cinema', 'audiodna', 'weather', 'world', 'sources'
     this.activeDept = 'cinema';
     this.activeSub = {
       cinema: 'criterion',     // 'criterion' | 'synesthesia'
-      audiodna: 'explorer',    // 'explorer' | 'overview' | 'timemachine' | 'circadian' | 'obscurity'
+      audiodna: 'explorer',    // 'explorer' | 'overview' | 'comparison' | 'timemachine' | 'circadian' | 'obscurity'
       weather: 'stormchaser',  // 'stormchaser'
-      world: 'boardingpass'    // 'boardingpass' | 'subconscious' | 'festival'
+      world: 'boardingpass',   // 'boardingpass' | 'subconscious' | 'festival'
+      sources: 'provenance'
     };
+    this.comparisonLeft = 'short_term';
+    this.comparisonRight = 'medium_term';
 
     this.weatherData = null;
     this.activeControllers = {
@@ -56,6 +151,8 @@ export class SonicDossierEngine {
     this.returnFocus = document.activeElement;
     this.data = data;
     this.timeRange = timeRange;
+    this.comparisonLeft = timeRange;
+    this.comparisonRight = timeRange === 'short_term' ? 'medium_term' : 'short_term';
     this.analytics = this.computeAnalytics(data, timeRange);
 
     this.ensureDom();
@@ -137,7 +234,7 @@ export class SonicDossierEngine {
     const stats = data.stats || {};
 
     // 1. Taste Age & Vintage Drift
-    const currentYear = 2026;
+    const currentYear = new Date().getFullYear();
     const releaseYears = tracks
       .map(t => {
         const d = t.album?.release_date;
@@ -215,7 +312,7 @@ export class SonicDossierEngine {
       ? Math.round(popValues.reduce((a, b) => a + b, 0) / popValues.length)
       : 65;
 
-    const obscurityScore = Math.max(12, Math.min(99, 100 - avgPopularity + 15));
+    const obscurityScore = Math.max(0, Math.min(100, 100 - avgPopularity));
     let snobTier = "Curator in Training";
     if (obscurityScore >= 85) snobTier = "Subterranean Purist";
     else if (obscurityScore >= 70) snobTier = "Crate Digger Elite";
@@ -350,6 +447,10 @@ export class SonicDossierEngine {
             <span class="dept-icon" aria-hidden="true">MAP</span>
             <span>Influence Map</span>
           </button>
+          <button class="dossier-dept-btn ${this.activeDept === 'sources' ? 'active' : ''}" data-dept="sources" role="tab" aria-selected="${this.activeDept === 'sources'}">
+            <span class="dept-icon" aria-hidden="true">SRC</span>
+            <span>Method &amp; Sources</span>
+          </button>
         </nav>
 
         <p class="dossier-method-note">Interpretive archive. Scores, scenes, and maps are creative readings of your catalog metadata, not Spotify measurements.</p>
@@ -392,6 +493,9 @@ export class SonicDossierEngine {
           <button class="dossier-sub-pill ${active === 'overview' ? 'active' : ''}" data-sub="overview">
             <span>Persona DNA Archetype</span>
           </button>
+          <button class="dossier-sub-pill ${active === 'comparison' ? 'active' : ''}" data-sub="comparison">
+            <span>Period Comparison</span>
+          </button>
           <button class="dossier-sub-pill ${active === 'timemachine' ? 'active' : ''}" data-sub="timemachine">
             <span>Time Machine (${this.analytics.tasteAge})</span>
           </button>
@@ -400,6 +504,16 @@ export class SonicDossierEngine {
           </button>
           <button class="dossier-sub-pill ${active === 'obscurity' ? 'active' : ''}" data-sub="obscurity">
             <span>Underground Radar</span>
+          </button>
+        </div>
+      `;
+    }
+
+    if (this.activeDept === 'sources') {
+      return `
+        <div class="dossier-sub-nav">
+          <button class="dossier-sub-pill active" data-sub="provenance">
+            <span>Data Provenance Ledger</span>
           </button>
         </div>
       `;
@@ -454,6 +568,7 @@ export class SonicDossierEngine {
       if (sub === 'explorer') {
         return '<div id="dna-mount-point" class="dna-container-mount"></div>';
       }
+      if (sub === 'comparison') return this.renderPeriodComparisonTab();
       if (sub === 'timemachine') return this.renderTimeMachineTab();
       if (sub === 'circadian') return this.renderCircadianTab();
       if (sub === 'obscurity') return this.renderObscurityTab();
@@ -512,6 +627,10 @@ export class SonicDossierEngine {
           </div>
         </div>
       `;
+    }
+
+    if (this.activeDept === 'sources') {
+      return this.renderProvenanceTab();
     }
 
     return this.renderOverviewTab();
@@ -596,6 +715,297 @@ export class SonicDossierEngine {
               </div>
             `).join('')}
           </div>
+        </div>
+      </section>
+    `;
+  }
+
+  renderPeriodComparisonTab() {
+    const leftRange = this.comparisonLeft;
+    const rightRange = this.comparisonRight;
+    const comparison = buildPeriodComparison(this.data, this.timeRange, leftRange, rightRange);
+    const optionsFor = (selected, unavailableChoice) => Object.keys(SPOTIFY_TIME_RANGES).map(range => `
+      <option value="${range}" ${range === selected ? 'selected' : ''} ${range === unavailableChoice ? 'disabled' : ''}>
+        ${escapeHtml(SPOTIFY_TIME_RANGES[range].label)}
+      </option>
+    `).join('');
+    const hasBothPeriods = comparison.leftTracks.length > 0
+      && comparison.rightTracks.length > 0
+      && comparison.leftArtists.length > 0
+      && comparison.rightArtists.length > 0;
+
+    if (!hasBothPeriods) {
+      return `
+        <section class="comparison-view">
+          <div class="dossier-view-banner comparison-banner">
+            <div class="dossier-badge-label">PERIOD COMPARISON</div>
+            <h2 class="dossier-view-title">Not enough ranked history to compare</h2>
+            <p class="dossier-view-sub">Spotify did not return tracks and artists for both selected windows. Choose another pair, or revisit after your listening history has had time to develop.</p>
+          </div>
+          <div class="comparison-period-controls" aria-label="Comparison windows">
+            <label class="comparison-period-field">
+              <span>Primary window</span>
+              <select id="comparison-left-range" data-comparison-side="left">
+                ${optionsFor(leftRange, rightRange)}
+              </select>
+            </label>
+            <span class="comparison-versus" aria-hidden="true">vs</span>
+            <label class="comparison-period-field">
+              <span>Reference window</span>
+              <select id="comparison-right-range" data-comparison-side="right">
+                ${optionsFor(rightRange, leftRange)}
+              </select>
+            </label>
+          </div>
+          <div class="dossier-card provenance-empty-state" role="status">
+            <strong>Comparison unavailable for this pair.</strong>
+            <span>No substitute period was inserted.</span>
+          </div>
+        </section>
+      `;
+    }
+
+    const renderTrackList = (tracks, range) => `
+      <section class="comparison-period-column" aria-label="Top tracks for ${escapeHtml(rangeLabel(range))}">
+        <header class="comparison-column-header">
+          <div>
+            <span class="comparison-column-index">${escapeHtml(rangeLabel(range))}</span>
+            <h3>Track register</h3>
+          </div>
+          <span>${tracks.length} shown</span>
+        </header>
+        <ol class="comparison-track-list">
+          ${tracks.slice(0, 5).map((track, index) => `
+            <li>
+              <span class="comparison-rank">${String(index + 1).padStart(2, '0')}</span>
+              ${track.album?.images?.[0]?.url
+                ? `<img src="${escapeHtml(track.album.images[0].url)}" alt="" class="comparison-track-art">`
+                : '<span class="comparison-track-art artwork-placeholder" aria-hidden="true"></span>'}
+              <span class="comparison-track-copy">
+                <strong>${escapeHtml(track.name || 'Untitled track')}</strong>
+                <small>${escapeHtml(Array.isArray(track.artists) ? track.artists.map(artist => artist?.name || artist).filter(Boolean).join(', ') : (track.artistName || 'Artist'))}</small>
+              </span>
+            </li>
+          `).join('')}
+        </ol>
+        <dl class="comparison-period-facts">
+          <div>
+            <dt>Leading genre</dt>
+            <dd>${escapeHtml(range === leftRange ? comparison.leftGenre : comparison.rightGenre)}</dd>
+          </div>
+          <div>
+            <dt>Mean release year</dt>
+            <dd>${range === leftRange ? (comparison.leftAverageYear || 'Unavailable') : (comparison.rightAverageYear || 'Unavailable')}</dd>
+          </div>
+        </dl>
+      </section>
+    `;
+
+    return `
+      <section class="comparison-view">
+        <div class="dossier-view-banner comparison-banner">
+          <div class="dossier-badge-label">PERIOD COMPARISON</div>
+          <h2 class="dossier-view-title">What changed in your rotation?</h2>
+          <p class="dossier-view-sub">Compare Spotify affinity rankings across two official windows. Rank movement is relative to these lists, not a count of streams.</p>
+        </div>
+
+        <div class="comparison-period-controls" aria-label="Comparison windows">
+          <label class="comparison-period-field">
+            <span>Primary window</span>
+            <select id="comparison-left-range" data-comparison-side="left">
+              ${optionsFor(leftRange, rightRange)}
+            </select>
+          </label>
+          <span class="comparison-versus" aria-hidden="true">vs</span>
+          <label class="comparison-period-field">
+            <span>Reference window</span>
+            <select id="comparison-right-range" data-comparison-side="right">
+              ${optionsFor(rightRange, leftRange)}
+            </select>
+          </label>
+        </div>
+
+        <div class="comparison-reading-card">
+          <span class="comparison-reading-label">Local reading</span>
+          <strong>${escapeHtml(comparison.reading)}</strong>
+          <p>${comparison.sharedArtists.length} artists and ${comparison.sharedTracks.length} tracks appear in both top-${COMPARISON_LIMIT} registers.</p>
+        </div>
+
+        <div class="comparison-register-grid">
+          ${renderTrackList(comparison.leftTracks, leftRange)}
+          ${renderTrackList(comparison.rightTracks, rightRange)}
+        </div>
+
+        <div class="comparison-analysis-grid">
+          <section class="dossier-card comparison-movers-card">
+            <div class="dossier-card-header">
+              <span class="dossier-card-title">SHARED ARTIST RANK MOVEMENT</span>
+              <span class="dossier-card-sub">TOP ${COMPARISON_LIMIT}</span>
+            </div>
+            <div class="comparison-movers-list">
+              ${comparison.movers.length ? comparison.movers.map(entry => {
+                const movement = entry.shift > 0
+                  ? `${entry.shift} place${entry.shift === 1 ? '' : 's'} higher in ${rangeLabel(leftRange)}`
+                  : entry.shift < 0
+                    ? `${Math.abs(entry.shift)} place${Math.abs(entry.shift) === 1 ? '' : 's'} lower in ${rangeLabel(leftRange)}`
+                    : 'Same rank in both windows';
+                return `
+                  <div class="comparison-mover-row">
+                    <span class="comparison-mover-name">${escapeHtml(entry.artist.name || 'Unknown artist')}</span>
+                    <span class="comparison-mover-ranks">#${entry.leftRank} / #${entry.rightRank}</span>
+                    <span class="comparison-mover-shift">${escapeHtml(movement)}</span>
+                  </div>
+                `;
+              }).join('') : '<p class="comparison-no-result">No shared top artists were returned for these windows.</p>'}
+            </div>
+          </section>
+
+          <section class="dossier-card comparison-arrivals-card">
+            <div class="dossier-card-header">
+              <span class="dossier-card-title">PRIMARY-WINDOW ARRIVALS</span>
+              <span class="dossier-card-sub">NOT IN REFERENCE TOP ${COMPARISON_LIMIT}</span>
+            </div>
+            ${comparison.arrivals.length ? `
+              <ol class="comparison-arrivals-list">
+                ${comparison.arrivals.map(artist => `<li>${escapeHtml(artist.name || 'Unknown artist')}</li>`).join('')}
+              </ol>
+            ` : '<p class="comparison-no-result">The primary window has no new names outside the reference top list.</p>'}
+          </section>
+        </div>
+
+        <p class="comparison-source-note">Source: Spotify Web API top tracks and top artists, up to 50 ranked items per window. Soulseekr compares the first ${COMPARISON_LIMIT} entries.</p>
+      </section>
+    `;
+  }
+
+  renderProvenanceTab() {
+    const provenance = this.data?.provenance || {
+      mode: 'sample',
+      retrievedAt: null,
+      selectedRange: this.timeRange,
+      scopes: [],
+      sources: [],
+      calculations: []
+    };
+    const retrievedDate = provenance.retrievedAt
+      ? new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(provenance.retrievedAt))
+      : 'Sample archive, no live retrieval';
+    const ranges = Object.entries(this.data?.comparisonRanges || {});
+
+    return `
+      <section class="provenance-view">
+        <div class="dossier-view-banner provenance-banner">
+          <div class="dossier-badge-label">DATA PROVENANCE</div>
+          <h2 class="dossier-view-title">Every result gets a paper trail</h2>
+          <p class="dossier-view-sub">Direct Spotify fields, local calculations, and creative interpretations are separated here so the archive never implies more certainty than the source provides.</p>
+        </div>
+
+        <div class="provenance-summary-strip">
+          <div>
+            <span>Archive mode</span>
+            <strong>${provenance.mode === 'spotify' ? 'Connected Spotify data' : 'Clearly labelled sample data'}</strong>
+          </div>
+          <div>
+            <span>Retrieved</span>
+            <strong>${escapeHtml(retrievedDate)}</strong>
+          </div>
+          <div>
+            <span>Selected window</span>
+            <strong>${escapeHtml(SPOTIFY_TIME_RANGES[provenance.selectedRange]?.label || provenance.selectedRange)}</strong>
+          </div>
+        </div>
+
+        <div class="provenance-legend" aria-label="Provenance classifications">
+          <span><b class="provenance-key key-direct">Direct</b> Returned by Spotify</span>
+          <span><b class="provenance-key key-derived">Derived</b> Calculated from returned fields</span>
+          <span><b class="provenance-key key-interpretive">Interpretive</b> Creative Soulseekr reading</span>
+        </div>
+
+        <section class="dossier-card provenance-ledger-card">
+          <div class="dossier-card-header">
+            <span class="dossier-card-title">SOURCE LEDGER</span>
+            <span class="dossier-card-sub">CURRENT ARCHIVE</span>
+          </div>
+          <div class="provenance-ledger">
+            ${(provenance.sources || []).map(source => `
+              <article class="provenance-row">
+                <div class="provenance-row-main">
+                  <span class="provenance-key key-direct">Direct</span>
+                  <div>
+                    <h3>${escapeHtml(source.label)}</h3>
+                    <code>${escapeHtml(source.endpoint)}</code>
+                  </div>
+                </div>
+                <div class="provenance-row-status">
+                  <strong>${source.status === 'available' ? 'Available' : 'Unavailable'}</strong>
+                  <span>${Number(source.count) || 0} ${Number(source.count) === 1 ? 'record' : 'records'}</span>
+                </div>
+              </article>
+            `).join('') || `
+              <div class="provenance-empty-state" role="status">
+                <strong>No live Spotify requests in the sample archive.</strong>
+                <span>Connect Spotify to populate endpoint-level retrieval details.</span>
+              </div>
+            `}
+          </div>
+        </section>
+
+        <div class="provenance-grid">
+          <section class="dossier-card provenance-method-card">
+            <div class="dossier-card-header">
+              <span class="dossier-card-title">LOCAL METHODS</span>
+              <span class="dossier-card-sub">HOW THE ARTIFACT IS MADE</span>
+            </div>
+            <div class="provenance-method-list">
+              ${(provenance.calculations || []).map(method => `
+                <article>
+                  <span class="provenance-key ${method.kind === 'interpretive' ? 'key-interpretive' : 'key-derived'}">${method.kind === 'interpretive' ? 'Interpretive' : 'Derived'}</span>
+                  <h3>${escapeHtml(method.label)}</h3>
+                  <p>${escapeHtml(method.method)}</p>
+                </article>
+              `).join('') || '<p class="comparison-no-result">Method details appear with connected data.</p>'}
+            </div>
+          </section>
+
+          <section class="dossier-card provenance-range-card">
+            <div class="dossier-card-header">
+              <span class="dossier-card-title">COMPARISON COVERAGE</span>
+              <span class="dossier-card-sub">OFFICIAL TIME WINDOWS</span>
+            </div>
+            <div class="provenance-range-list">
+              ${ranges.map(([range, snapshot]) => `
+                <div>
+                  <span>${escapeHtml(SPOTIFY_TIME_RANGES[range]?.label || range)}</span>
+                  <strong>${snapshot.tracks?.length || 0} tracks / ${snapshot.artists?.length || 0} artists</strong>
+                  <small>${snapshot.status?.tracks === 'available' && snapshot.status?.artists === 'available' ? 'Both lists available' : 'Partial or unavailable'}</small>
+                </div>
+              `).join('') || '<p class="comparison-no-result">Comparison windows are available after Spotify connects.</p>'}
+            </div>
+          </section>
+        </div>
+
+        <section class="provenance-limitations">
+          <div>
+            <span class="provenance-limit-index">01</span>
+            <p>Top items are Spotify affinity rankings. They are not exact play counts or a complete listening log.</p>
+          </div>
+          <div>
+            <span class="provenance-limit-index">02</span>
+            <p>The long-term window is approximately one year, not lifetime history. Four-week and six-month windows are also approximate.</p>
+          </div>
+          <div>
+            <span class="provenance-limit-index">03</span>
+            <p>Recent-play timing uses only the latest 50 returned plays, so circadian views are a snapshot rather than a full-period census.</p>
+          </div>
+          <div>
+            <span class="provenance-limit-index">04</span>
+            <p>Soulseekr does not store listening history on a server. Access and refresh tokens remain in this browser.</p>
+          </div>
+        </section>
+
+        <div class="provenance-footer-note">
+          <span>Granted scopes: ${provenance.scopes?.length ? provenance.scopes.map(scope => escapeHtml(scope)).join(', ') : 'none in sample mode'}</span>
+          <a href="https://developer.spotify.com/documentation/web-api/reference/get-users-top-artists-and-tracks" target="_blank" rel="noreferrer">Read Spotify's top-items reference</a>
         </div>
       </section>
     `;
@@ -727,7 +1137,7 @@ export class SonicDossierEngine {
         <div class="dossier-view-banner">
           <div class="dossier-badge-label">OBSCURITY RADAR &amp; SNOB INDEX</div>
           <h2 class="dossier-view-title">${a.snobTier}</h2>
-          <p class="dossier-view-sub">Your music catalog registers an obscurity snob rating of <b>${a.obscurityScore}%</b>. Only a tiny fraction overlaps with standard global Top 50 hits.</p>
+          <p class="dossier-view-sub">Your ranked artists produce a rarity index of <b>${a.obscurityScore}</b> out of 100. Higher values indicate lower average Spotify artist popularity in this set.</p>
         </div>
 
         <div class="dossier-card dossier-snob-meter-card">
@@ -844,7 +1254,7 @@ export class SonicDossierEngine {
 
     // 1. Department Navigation Tabs
     const deptBtns = this.modal.querySelectorAll('.dossier-dept-btn');
-    deptBtns.forEach(btn => {
+    deptBtns.forEach((btn, index) => {
       btn.onclick = () => {
         const dept = btn.getAttribute('data-dept');
         if (dept && dept !== this.activeDept) {
@@ -854,6 +1264,25 @@ export class SonicDossierEngine {
           this.activeDept = dept;
           this.render();
         }
+      };
+      btn.onkeydown = event => {
+        if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+        event.preventDefault();
+        let nextIndex = index;
+        if (event.key === 'ArrowLeft') nextIndex = (index - 1 + deptBtns.length) % deptBtns.length;
+        if (event.key === 'ArrowRight') nextIndex = (index + 1) % deptBtns.length;
+        if (event.key === 'Home') nextIndex = 0;
+        if (event.key === 'End') nextIndex = deptBtns.length - 1;
+        const nextDept = deptBtns[nextIndex].getAttribute('data-dept');
+        if (!nextDept) return;
+        if (this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
+          audioDna.destroy();
+        }
+        this.activeDept = nextDept;
+        this.render();
+        requestAnimationFrame(() => {
+          this.modal.querySelector(`.dossier-dept-btn[data-dept="${nextDept}"]`)?.focus();
+        });
       };
     });
 
@@ -869,6 +1298,21 @@ export class SonicDossierEngine {
           this.activeSub[this.activeDept] = sub;
           this.render();
         }
+      };
+    });
+
+    const comparisonSelects = this.modal.querySelectorAll('[data-comparison-side]');
+    comparisonSelects.forEach(select => {
+      select.onchange = () => {
+        const side = select.getAttribute('data-comparison-side');
+        const nextRange = select.value;
+        if (!SPOTIFY_TIME_RANGES[nextRange]) return;
+        if (side === 'left') this.comparisonLeft = nextRange;
+        if (side === 'right') this.comparisonRight = nextRange;
+        this.render();
+        requestAnimationFrame(() => {
+          this.modal.querySelector(`[data-comparison-side="${side}"]`)?.focus();
+        });
       };
     });
 

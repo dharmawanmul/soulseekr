@@ -10,13 +10,13 @@ The main workspace renders seven formats from the same listening data:
 | --- | --- |
 | Vinyl Obi | Japanese record sleeve with an Obi strip and side-based track list |
 | Swiss Poster | Typographic concert poster with a strict information hierarchy |
-| Sound Prism | Translucent listening profile with audio-feature measurements |
+| Sound Prism | Translucent listening profile with clearly labelled archive indices |
 | Tape Cassette | Cassette shell, J-card, and playable track list |
 | Thermal Slip | Record-bar receipt with durations and catalog details |
 | Titanium DAP | Compact digital player built around the top track |
 | VIP Pass | Festival credential with a listening timetable |
 
-Connected accounts also unlock the Year in Music story and the Taste Dossier. The dossier includes the Audio DNA, cinema and synesthesia, listening-weather, and listening-geography views.
+Connected accounts also unlock the Year in Music story and the Taste Dossier. The dossier includes Audio DNA, cinema and synesthesia, listening-weather, listening-geography, a period comparison, and a data-provenance ledger.
 
 ## Interaction and export
 
@@ -24,7 +24,12 @@ Connected accounts also unlock the Year in Music story and the Taste Dossier. Th
 - Track rows play the preview supplied by Spotify. When Spotify has no preview URL, the audio player checks the public iTunes search endpoint for an available preview.
 - The selected artifact can be downloaded in 9:16 or 1:1 format, or copied to the clipboard when the browser supports image clipboard access.
 - Wrapped and dossier dialogs close with Escape and return focus to the control that opened them.
+- Each Year in Music story uses a different unique ranked track when enough tracks are available.
+- Period Comparison contrasts Spotify's approximate four-week, six-month, and one-year affinity windows without substituting data from another window.
+- Method & Sources distinguishes direct Spotify fields, local calculations, and creative Soulseekr interpretations.
 - Reduced-motion preferences disable decorative transitions and the card tilt.
+
+Spotify top items are affinity rankings, not exact stream counts. Spotify does not provide total listening minutes through the endpoints used here, so Soulseekr does not present an invented total. The provenance ledger records the endpoint, window, retrieval time, record count, and limitations for each connected archive.
 
 ## Local development
 

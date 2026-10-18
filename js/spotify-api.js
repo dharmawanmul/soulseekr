@@ -11,9 +11,7 @@ export const SPOTIFY_CONFIG = {
   scopes: [
     'user-top-read',
     'user-read-private',
-    'user-read-email',
-    'user-read-recently-played',
-    'user-library-read'
+    'user-read-recently-played'
   ],
   storageKeys: {
     clientId: 'vibe_spotify_client_id',
@@ -294,97 +292,116 @@ export async function fetchTopArtists(token, timeRange = 'short_term', limit = 1
  * Fetch Recently Played Tracks (for 3 AM Confessional Clock)
  */
 export async function fetchRecentlyPlayed(token, limit = 50) {
-  try {
-    return await spotifyFetch(`/me/player/recently-played?limit=${limit}`, token);
-  } catch (err) {
-    console.warn('Recently played fetch failed (scope or history empty):', err);
-    return { items: [] };
-  }
+  return spotifyFetch(`/me/player/recently-played?limit=${limit}`, token);
 }
 
-/**
- * Fetch Saved / Liked Tracks (for Playlist Archaeology)
- */
-export async function fetchSavedTracks(token, limit = 50) {
-  try {
-    return await spotifyFetch(`/me/tracks?limit=${limit}`, token);
-  } catch (err) {
-    console.warn('Saved tracks fetch failed (scope or library empty):', err);
-    return { items: [] };
+export const SPOTIFY_TIME_RANGES = {
+  short_term: {
+    label: 'About 4 weeks',
+    shortLabel: '4 weeks'
+  },
+  medium_term: {
+    label: 'About 6 months',
+    shortLabel: '6 months'
+  },
+  long_term: {
+    label: 'About 1 year',
+    shortLabel: '1 year'
   }
-}
+};
 
-/**
- * Fetch Top Artists across short_term, medium_term, and long_term in parallel
- * (for Taste Drift River Bump Chart)
- */
-export async function fetchTopArtistsAcrossTimeRanges(token) {
+async function captureSource(promise, fallback) {
   try {
-    const [shortRes, medRes, longRes] = await Promise.all([
-      fetchTopArtists(token, 'short_term', 20),
-      fetchTopArtists(token, 'medium_term', 20),
-      fetchTopArtists(token, 'long_term', 20)
-    ]);
+    return { data: await promise, status: 'available', error: '' };
+  } catch (error) {
     return {
-      short_term: shortRes.items || [],
-      medium_term: medRes.items || [],
-      long_term: longRes.items || []
+      data: fallback,
+      status: 'unavailable',
+      error: error?.message || 'Request failed'
     };
-  } catch (err) {
-    console.warn('Multi-range artists fetch failed:', err);
-    return null;
   }
 }
 
 /**
- * Fetch User Wrapped Data and compute Stats with intelligent fallback cascades
+ * Fetch the ranked tracks and artists needed for an honest period comparison.
+ * The selected range is reused so opening the comparison does not repeat work.
+ */
+export async function fetchTopItemsAcrossTimeRanges(
+  token,
+  selectedRange,
+  selectedTracks = [],
+  selectedArtists = [],
+  selectedStatus = { tracks: 'available', artists: 'available' }
+) {
+  const entries = await Promise.all(Object.keys(SPOTIFY_TIME_RANGES).map(async range => {
+    if (range === selectedRange) {
+      return [range, {
+        tracks: selectedTracks,
+        artists: selectedArtists,
+        status: selectedStatus
+      }];
+    }
+
+    const [tracksResult, artistsResult] = await Promise.all([
+      captureSource(fetchTopTracks(token, range, 50), { items: [] }),
+      captureSource(fetchTopArtists(token, range, 50), { items: [] })
+    ]);
+
+    return [range, {
+      tracks: tracksResult.data?.items || [],
+      artists: artistsResult.data?.items || [],
+      status: {
+        tracks: tracksResult.status,
+        artists: artistsResult.status
+      }
+    }];
+  }));
+
+  return Object.fromEntries(entries);
+}
+
+/**
+ * Fetch user listening data and preserve each source's retrieval status.
  */
 export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') {
-  const [user, tracksRes, artistsRes, recentlyPlayedRes, savedTracksRes, multiRangeArtists] = await Promise.all([
-    fetchUserProfile(token).catch(err => ({ display_name: 'Spotify Listener' })),
-    fetchTopTracks(token, timeRange, 50).catch(() => ({ items: [] })),
-    fetchTopArtists(token, timeRange, 50).catch(() => ({ items: [] })),
-    fetchRecentlyPlayed(token, 50).catch(() => ({ items: [] })),
-    fetchSavedTracks(token, 50).catch(() => ({ items: [] })),
-    fetchTopArtistsAcrossTimeRanges(token).catch(() => null)
+  const retrievedAt = new Date().toISOString();
+  const [userSource, tracksSource, artistsSource, recentlyPlayedSource] = await Promise.all([
+    captureSource(fetchUserProfile(token), { display_name: 'Spotify Listener', images: [] }),
+    captureSource(fetchTopTracks(token, timeRange, 50), { items: [] }),
+    captureSource(fetchTopArtists(token, timeRange, 50), { items: [] }),
+    captureSource(fetchRecentlyPlayed(token, 50), { items: [] })
   ]);
 
-  let topTracks = tracksRes.items || [];
-  let topArtists = artistsRes.items || [];
-
-  // Intelligently cascade if user has sparse listening history for selected timeframe
-  if (topTracks.length < 5) {
-    const fallbackRange = timeRange === 'short_term' ? 'medium_term' : 'long_term';
-    try {
-      const fallbackTracks = await fetchTopTracks(token, fallbackRange, 50);
-      if (fallbackTracks.items && fallbackTracks.items.length > topTracks.length) {
-        topTracks = fallbackTracks.items;
-      }
-    } catch (_) {}
+  const expiredSource = [userSource, tracksSource, artistsSource, recentlyPlayedSource]
+    .find(source => /session expired/i.test(source.error));
+  if (expiredSource) {
+    throw new Error('Spotify session expired. Please reconnect.');
   }
 
-  if (topArtists.length < 5) {
-    const fallbackRange = timeRange === 'short_term' ? 'medium_term' : 'long_term';
-    try {
-      const fallbackArtists = await fetchTopArtists(token, fallbackRange, 50);
-      if (fallbackArtists.items && fallbackArtists.items.length > topArtists.length) {
-        topArtists = fallbackArtists.items;
-      }
-    } catch (_) {}
-  }
+  const user = userSource.data;
+  const topTracks = tracksSource.data?.items || [];
+  const topArtists = artistsSource.data?.items || [];
+  const recentlyPlayed = recentlyPlayedSource.data?.items || [];
+  const comparisonRanges = await fetchTopItemsAcrossTimeRanges(
+    token,
+    timeRange,
+    topTracks,
+    topArtists,
+    { tracks: tracksSource.status, artists: artistsSource.status }
+  );
 
   // Calculate top albums from top tracks
   const topAlbums = extractTopAlbums(topTracks);
 
   // Calculate dynamic acoustic stats
   const topGenres = extractTopGenres(topArtists);
-  const dominantGenre = topGenres.length ? topGenres[0].name : "Eclectic Audiophile";
+  const dominantGenre = topGenres.length ? topGenres[0].name : 'No genre tags returned';
 
   // Obscurity rating: lower artist average popularity = higher underground rating
   const avgPopularity = topArtists.length 
     ? Math.round(topArtists.reduce((acc, a) => acc + (a.popularity || 50), 0) / topArtists.length) 
     : 70;
-  const obscurityScore = Math.max(12, Math.min(99, 100 - avgPopularity + 15));
+  const obscurityScore = Math.max(0, Math.min(100, 100 - avgPopularity));
 
   const danceScore = Math.min(96, Math.max(45, Math.round(75 + (Math.sin(avgPopularity) * 15))));
   const energyScore = Math.min(98, Math.max(50, Math.round(82 + (Math.cos(avgPopularity) * 12))));
@@ -396,8 +413,9 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
   else if (danceScore > 80) vibeLabel = "Club & Groove Alchemist";
   else vibeLabel = "Midnight Dreamer";
 
-  // Calculate estimated total listening minutes based on timeframe
-  const totalMinutes = estimateListeningMinutes(topTracks, timeRange);
+  const rankedTrackMinutes = Math.round(
+    topTracks.reduce((total, track) => total + (Number(track.duration_ms) || 0), 0) / 60000
+  );
 
   const rawStats = {
     dominantGenre: dominantGenre.charAt(0).toUpperCase() + dominantGenre.slice(1),
@@ -407,7 +425,9 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
     danceScore,
     obscurityScore,
     tempoBpm,
-    totalMinutes
+    totalMinutes: null,
+    rankedTrackMinutes,
+    averageArtistPopularity: avgPopularity
   };
 
   const aura = computeSonicAura(rawStats, topArtists, topTracks);
@@ -418,9 +438,70 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
     topArtists,
     topAlbums,
     topGenres,
-    recentlyPlayed: recentlyPlayedRes?.items || [],
-    savedTracks: savedTracksRes?.items || [],
-    multiRangeArtists,
+    recentlyPlayed,
+    comparisonRanges,
+    provenance: {
+      mode: 'spotify',
+      retrievedAt,
+      selectedRange: timeRange,
+      scopes: [...SPOTIFY_CONFIG.scopes],
+      sources: [
+        {
+          id: 'profile',
+          label: 'Listener profile',
+          endpoint: 'GET /me',
+          status: userSource.status,
+          count: userSource.status === 'available' ? 1 : 0,
+          kind: 'direct'
+        },
+        {
+          id: 'top-tracks',
+          label: 'Ranked tracks',
+          endpoint: `GET /me/top/tracks?time_range=${timeRange}&limit=50`,
+          status: tracksSource.status,
+          count: topTracks.length,
+          kind: 'direct'
+        },
+        {
+          id: 'top-artists',
+          label: 'Ranked artists',
+          endpoint: `GET /me/top/artists?time_range=${timeRange}&limit=50`,
+          status: artistsSource.status,
+          count: topArtists.length,
+          kind: 'direct'
+        },
+        {
+          id: 'recently-played',
+          label: 'Recent plays',
+          endpoint: 'GET /me/player/recently-played?limit=50',
+          status: recentlyPlayedSource.status,
+          count: recentlyPlayed.length,
+          kind: 'direct'
+        }
+      ],
+      calculations: [
+        {
+          label: 'Top albums',
+          method: 'Counts album appearances inside the ranked top-track response. This is not a stream count.',
+          kind: 'derived'
+        },
+        {
+          label: 'Genre mix',
+          method: 'Counts Spotify genre tags attached to the ranked artists, then normalizes the visible top five.',
+          kind: 'derived'
+        },
+        {
+          label: 'Rarity index',
+          method: 'Calculated as 100 minus the mean Spotify artist-popularity field for the ranked set.',
+          kind: 'derived'
+        },
+        {
+          label: 'Aura, energy, dance, and persona labels',
+          method: 'Creative local heuristics for the Soulseekr artifact. They are not Spotify audio-feature measurements.',
+          kind: 'interpretive'
+        }
+      ]
+    },
     stats: {
       ...rawStats,
       ...aura
@@ -445,7 +526,7 @@ export function extractTopAlbums(tracks = []) {
         artistName: (track.album.artists && track.album.artists[0]?.name) || (track.artists && track.artists[0]?.name) || 'Artist',
         images: track.album.images || [],
         release_date: track.album.release_date || '',
-        releaseYear: track.album.release_date ? track.album.release_date.split('-')[0] : '2024',
+        releaseYear: track.album.release_date ? track.album.release_date.split('-')[0] : '',
         trackCount: 1,
         tracks: [track.name]
       });
@@ -481,15 +562,7 @@ export function extractTopGenres(artists = []) {
   });
 
   const sorted = Object.entries(genreCounts).sort((a, b) => b[1] - a[1]);
-  if (!sorted.length) {
-    return [
-      { name: 'Neo-Psychedelia', count: 8, percentage: 38 },
-      { name: 'Synthpop', count: 5, percentage: 24 },
-      { name: 'Indie Rock', count: 4, percentage: 19 },
-      { name: 'R&B / Soul', count: 3, percentage: 12 },
-      { name: 'Alternative Pop', count: 2, percentage: 7 }
-    ];
-  }
+  if (!sorted.length) return [];
 
   const total = sorted.reduce((acc, [, count]) => acc + count, 0);
   const top5 = sorted.slice(0, 5).map(([name, count]) => ({
@@ -506,12 +579,9 @@ export function extractTopGenres(artists = []) {
  * Estimate listening minutes for time range
  */
 export function estimateListeningMinutes(tracks = [], timeRange = 'short_term') {
-  let baseMinutes = 4820;
-  if (timeRange === 'medium_term') baseMinutes = 24650;
-  if (timeRange === 'long_term') baseMinutes = 58940;
-
-  const durationBonus = tracks.reduce((acc, t) => acc + (t.duration_ms || 210000), 0) % 2500;
-  return baseMinutes + durationBonus;
+  void tracks;
+  void timeRange;
+  return null;
 }
 
 /**

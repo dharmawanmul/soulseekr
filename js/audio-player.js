@@ -18,6 +18,7 @@ class SoundEngine {
     this.synthInterval = null;
     this.onStateChangeCallbacks = [];
     this.previewCache = new Map(); // cache query -> previewUrl
+    this.playRequestId = 0;
 
     this.audioElement.addEventListener('ended', () => {
       this.stop();
@@ -107,6 +108,7 @@ class SoundEngine {
     }
 
     this.stop();
+    const requestId = ++this.playRequestId;
     this.currentTrackId = track.id;
     this.isLoading = true;
     this.notifyState();
@@ -117,6 +119,7 @@ class SoundEngine {
     if (!previewUrl) {
       const artist = (track.artists && track.artists[0]) ? track.artists[0].name : '';
       previewUrl = await this.resolveRealAudioPreview(track.name, artist);
+      if (requestId !== this.playRequestId) return;
       if (previewUrl) {
         track.preview_url = previewUrl; // cache on object
       }
@@ -128,9 +131,14 @@ class SoundEngine {
       try {
         this.audioElement.src = previewUrl;
         await this.audioElement.play();
+        if (requestId !== this.playRequestId) {
+          this.audioElement.pause();
+          return;
+        }
         this.isPlaying = true;
         this.notifyState();
       } catch (err) {
+        if (requestId !== this.playRequestId) return;
         console.warn('HTML5 Audio play failed, starting generative synth:', err);
         this.playSynthesizedLoop(track.name);
       }
@@ -214,6 +222,7 @@ class SoundEngine {
   }
 
   stop() {
+    this.playRequestId += 1;
     this.audioElement.pause();
     this.audioElement.currentTime = 0;
 
