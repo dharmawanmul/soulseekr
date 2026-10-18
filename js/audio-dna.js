@@ -591,7 +591,7 @@ export class AudioDnaEngine {
     this.activeHorizon = 'short_term'; // 'short_term' (4 Weeks) | 'medium_term' (6 Months) | 'long_term' (1 Year)
     this.activeViz = 'eravspop';       // 'eravspop' | 'drift' | 'clock' | 'constellation' | 'archaeology' | 'compass'
     this.clockMode = 'polar';          // 'polar' | 'matrix'
-    this.activeTrack = AUDIO_DNA_TRACKS[0];
+    this.activeTrack = null;
     
     // Interactive mouse / tooltip / physics state
     this.mouse = { x: -1000, y: -1000, isDown: false, isDragging: false };
@@ -618,6 +618,10 @@ export class AudioDnaEngine {
     this.initialHorizon = initialHorizon;
     this.activeHorizon = initialHorizon;
     this.activeTrack = this.resolveActiveTrack();
+    const availableVisualizations = this.getAvailableVisualizations();
+    if (!availableVisualizations.some(viz => viz.id === this.activeViz)) {
+      this.activeViz = availableVisualizations[0]?.id || 'eravspop';
+    }
 
     this.renderDomStructure();
     this.initCanvas();
@@ -733,8 +737,9 @@ export class AudioDnaEngine {
     if (Array.isArray(tracks) && tracks.length) {
       const artists = this.getArtistsList(range);
       return tracks.map((t, idx) => {
-        const year = parseInt(t.album?.release_date?.slice(0, 4) || '2016', 10);
-        const pop = typeof t.popularity === 'number' ? t.popularity : Math.max(20, 95 - idx * 4);
+        const parsedYear = parseInt(t.album?.release_date?.slice(0, 4) || '', 10);
+        const year = Number.isFinite(parsedYear) ? parsedYear : null;
+        const pop = typeof t.popularity === 'number' ? t.popularity : null;
         const primaryArtist = t.artists?.[0];
         const matchingArtist = artists.find(artist => (
           (primaryArtist?.id && artist?.id === primaryArtist.id)
@@ -746,13 +751,29 @@ export class AudioDnaEngine {
           popularity: pop,
           userRank: idx + 1,
           genre: (t.genres && t.genres[0]) || matchingArtist?.genres?.[0] || 'Not returned',
-          durationFormatted: formatDuration(t.duration_ms || 215000),
-          valence: t.valence ?? Math.min(0.95, Math.max(0.12, 0.45 + Math.sin(idx * 1.3) * 0.35)),
-          energy: t.energy ?? Math.min(0.98, Math.max(0.25, 0.65 + Math.cos(idx * 1.1) * 0.28))
+          durationFormatted: Number.isFinite(Number(t.duration_ms)) ? formatDuration(t.duration_ms) : '—',
+          valence: typeof t.valence === 'number' && Number.isFinite(t.valence) ? t.valence : null,
+          energy: typeof t.energy === 'number' && Number.isFinite(t.energy) ? t.energy : null
         };
       });
     }
-    return this.data ? [] : AUDIO_DNA_TRACKS;
+    return [];
+  }
+
+  getAvailableVisualizations() {
+    const tracks = this.getTracksList();
+    const artists = this.getArtistsList();
+    const ranges = ['long_term', 'medium_term', 'short_term'];
+    const populatedRanges = ranges.filter(range => this.getArtistsList(range).length > 0);
+    const options = [
+      { id: 'eravspop', label: 'Era vs Popularity', title: 'Release year vs Spotify track popularity', available: tracks.some(track => Number.isFinite(track.releaseYear) && Number.isFinite(track.popularity)) },
+      { id: 'drift', label: 'Taste Drift', title: 'Artist rank movement across available periods', available: populatedRanges.length >= 2 },
+      { id: 'clock', label: 'Recent Play Clock', title: 'Requires a timestamp-based renderer', available: false },
+      { id: 'constellation', label: 'Genre Constellation', title: 'Connections between returned Spotify artist genres', available: artists.some(artist => artist?.genres?.length) },
+      { id: 'archaeology', label: 'Release Era Profile', title: 'Release-decade distribution of ranked tracks', available: tracks.some(track => Number.isFinite(track.releaseYear)) },
+      { id: 'compass', label: 'Emotional Compass', title: 'Requires Spotify valence and energy fields', available: tracks.some(track => Number.isFinite(track.valence) && Number.isFinite(track.energy)) }
+    ];
+    return options.filter(option => option.available);
   }
 
   getArtistImageUrl(track) {
@@ -867,6 +888,7 @@ export class AudioDnaEngine {
       ['medium_term', '6 Months'],
       ['long_term', '1 Year']
     ];
+    const visualizations = this.getAvailableVisualizations();
 
     this.container.innerHTML = `
       <div class="audio-dna-wrapper" id="audio-dna-root">
@@ -921,12 +943,7 @@ export class AudioDnaEngine {
         <div class="dna-control-strip dna-viz-strip">
           <span class="dna-strip-lbl">Visualization</span>
           <div class="dna-pill-group dna-viz-pills" role="tablist" aria-label="Visualizations">
-            <button class="dna-pill-btn ${this.activeViz === 'eravspop' ? 'is-active' : ''}" data-viz="eravspop" role="tab" aria-selected="${this.activeViz === 'eravspop'}" title="2D Scatter / Bubble Plot: Release Year vs Spotify Popularity">Era vs Popularity</button>
-            <button class="dna-pill-btn ${this.activeViz === 'drift' ? 'is-active' : ''}" data-viz="drift" role="tab" aria-selected="${this.activeViz === 'drift'}" title="Sankey / Bump Chart: Artist Rank Drift across 1 Year → 6 Months → 4 Weeks">Taste Drift</button>
-            <button class="dna-pill-btn ${this.activeViz === 'clock' ? 'is-active' : ''}" data-viz="clock" role="tab" aria-selected="${this.activeViz === 'clock'}" title="24-Hour Polar Clock & Matrix Heatmap">3 AM Confessional</button>
-            <button class="dna-pill-btn ${this.activeViz === 'constellation' ? 'is-active' : ''}" data-viz="constellation" role="tab" aria-selected="${this.activeViz === 'constellation'}" title="Force-Directed Galaxy Network of Micro-Genres">Genre Constellation</button>
-            <button class="dna-pill-btn ${this.activeViz === 'archaeology' ? 'is-active' : ''}" data-viz="archaeology" role="tab" aria-selected="${this.activeViz === 'archaeology'}" title="Release-decade distribution of ranked tracks">Release Era Profile</button>
-            <button class="dna-pill-btn ${this.activeViz === 'compass' ? 'is-active' : ''}" data-viz="compass" role="tab" aria-selected="${this.activeViz === 'compass'}" title="4-Quadrant Emotional Scatter Plot: Valence vs Energy">Emotional Compass</button>
+            ${visualizations.map(viz => `<button class="dna-pill-btn ${this.activeViz === viz.id ? 'is-active' : ''}" data-viz="${viz.id}" role="tab" aria-selected="${this.activeViz === viz.id}" title="${escapeHtml(viz.title)}">${escapeHtml(viz.label)}</button>`).join('') || '<span class="dna-data-note">No graph-ready fields were returned for this window.</span>'}
           </div>
         </div>
 
@@ -959,14 +976,14 @@ export class AudioDnaEngine {
             <div class="dna-inspector-sub">
               <span>Genre: <b id="dna-insp-genre">${t.genre || 'Not returned'}</b></span>
               <span class="dna-dot">•</span>
-              <span>Duration: <b id="dna-insp-duration">${t.durationFormatted || '4.2m'}</b></span>
+              <span>Duration: <b id="dna-insp-duration">${t.durationFormatted || '—'}</b></span>
             </div>
           </div>
 
           <div class="dna-inspector-right">
             <div class="dna-chip-item">
               <span class="dna-chip-lbl">Year:</span>
-              <span class="dna-chip-val" id="dna-insp-year">${t.releaseYear || '2000'}</span>
+              <span class="dna-chip-val" id="dna-insp-year">${t.releaseYear || '—'}</span>
             </div>
             <div class="dna-chip-item">
               <span class="dna-chip-lbl">Pop:</span>
@@ -1001,13 +1018,13 @@ export class AudioDnaEngine {
       case 'drift':
         return 'Direct Spotify ranks across available windows • Selected horizon is highlighted';
       case 'clock':
-        return `Interpretive clock for ${this.getHorizonLabel()} • Spotify top items do not include listening-hour history`;
+        return 'Hours are taken from Spotify’s recently played timestamps; this is a small recent sample, not full history';
       case 'constellation':
         return 'Force-directed galaxy: micro-genres linked by shared artists • Click and drag stars to test physics';
       case 'archaeology':
         return `Release decades within the ${this.getHorizonLabel()} ranked set • This is release history, not listening history`;
       case 'compass':
-        return `Interpretive mood placement for ${this.getHorizonLabel()} • Portraits and ranks are direct; positions are illustrative`;
+        return `Valence and energy fields returned for ${this.getHorizonLabel()}`;
       default:
         return 'Select any element to play its available audio preview';
     }

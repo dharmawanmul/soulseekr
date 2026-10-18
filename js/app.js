@@ -28,6 +28,7 @@ import { sonicDossier } from './dossier.js';
 
 // Curated default preview data allowing instant, responsive exploration across all 7 card archetypes
 export const DEFAULT_CURATED_DATA = {
+  provenance: { mode: 'sample', selectedRange: 'short_term' },
   user: {
     display_name: 'Soulseekr Archivist',
     images: []
@@ -200,7 +201,7 @@ const state = {
   timeRange: 'short_term', // 'short_term' | 'medium_term' | 'long_term'
   spotifyToken: null,
   cachedRealData: {},
-  currentData: DEFAULT_CURATED_DATA,
+  currentData: null,
   playbackState: {
     isPlaying: false,
     isPaused: false,
@@ -299,9 +300,9 @@ export function showToast(message, type = 'info', duration = 2800) {
 async function loadData() {
   const token = state.spotifyToken || (await getValidAccessToken());
   if (!token) {
-    state.currentData = DEFAULT_CURATED_DATA;
-    updateAuthBadge('SAMPLE / CONNECT SPOTIFY', 'unauth');
-    if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
+    state.currentData = null;
+    updateAuthBadge('CONNECT SPOTIFY', 'unauth');
+    if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'none';
     renderCurrentCard();
     checkAndShowAuthGateway();
     return;
@@ -339,15 +340,15 @@ async function loadData() {
     // Only demote session to unauth if token was genuinely expired/invalidated
     if (err.message && err.message.toLowerCase().includes('session expired')) {
       state.spotifyToken = null;
-      updateAuthBadge('SAMPLE / CONNECT SPOTIFY', 'unauth');
-      if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
+      updateAuthBadge('CONNECT SPOTIFY', 'unauth');
+      if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'none';
       showToast('Spotify session expired. Please reconnect.', 'error', 4500);
     } else {
       // Non-auth error: keep authenticated state in UI
       updateAuthBadge('SPOTIFY CONNECTED', 'active');
       showToast(`Spotify could not refresh this view: ${err.message}. Showing the last available archive.`, 'warning', 5000);
     }
-    state.currentData = state.currentData || DEFAULT_CURATED_DATA;
+    state.currentData = state.currentData?.provenance?.mode === 'spotify' ? state.currentData : null;
     renderCurrentCard();
   }
 }
@@ -448,7 +449,19 @@ async function startSpotifyAuth() {
  * Render the currently selected physical card directly
  */
 function renderCurrentCard() {
-  const data = state.currentData || DEFAULT_CURATED_DATA;
+  const data = state.currentData;
+  if (!data) {
+    elements.cardContainer.innerHTML = `
+      <div class="studio-state studio-state-connect" role="status">
+        <span class="studio-state-index">Your archive is private</span>
+        <h3>Connect Spotify to build this artifact.</h3>
+        <p>No sample listener or invented statistics are shown here.</p>
+        <button class="btn-primary" type="button" id="btn-empty-connect">Connect Spotify</button>
+      </div>
+    `;
+    document.getElementById('btn-empty-connect')?.addEventListener('click', startSpotifyAuth);
+    return;
+  }
   if (!Array.isArray(data.topTracks) || data.topTracks.length === 0) {
     elements.cardContainer.innerHTML = `
       <div class="studio-state" role="status">
@@ -498,7 +511,8 @@ function renderCurrentCard() {
  */
 function attachTrackListeners() {
   const triggerElements = elements.cardContainer.querySelectorAll('.track-play-trigger');
-  const data = state.currentData || DEFAULT_CURATED_DATA;
+  const data = state.currentData;
+  if (!data) return;
   triggerElements.forEach(el => {
     const activateTrack = async () => {
       const trackId = el.getAttribute('data-track-id');
@@ -531,7 +545,7 @@ function attachTrackListeners() {
  */
 soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, currentTrack }) => {
   state.playbackState = { isPlaying, isPaused, isLoading, trackId: currentTrackId };
-  const data = state.currentData || DEFAULT_CURATED_DATA;
+  const data = state.currentData;
 
   if ((isPlaying || isPaused || isLoading) && currentTrackId && data) {
     const track = currentTrack || data.topTracks.find(t => t.id === currentTrackId);
@@ -625,7 +639,11 @@ function setupEventListeners() {
       return;
     }
     state.spotifyToken = token;
-    const data = state.currentData || DEFAULT_CURATED_DATA;
+    const data = state.currentData;
+    if (!data?.topTracks?.length) {
+      showToast('Spotify returned no ranked tracks for this window. Try another time horizon.', 'warning');
+      return;
+    }
     wrappedExperience.open(data, state.timeRange);
   });
 
@@ -636,7 +654,11 @@ function setupEventListeners() {
       return;
     }
     state.spotifyToken = token;
-    const data = state.currentData || DEFAULT_CURATED_DATA;
+    const data = state.currentData;
+    if (!data?.topTracks?.length && !data?.topArtists?.length) {
+      showToast('Spotify returned no listening data for this window. Try another time horizon.', 'warning');
+      return;
+    }
     sonicDossier.open(data, state.timeRange);
   });
 
@@ -756,6 +778,10 @@ function setupEventListeners() {
   });
 
   elements.btnGatewayDemo?.addEventListener('click', () => {
+    state.currentData = DEFAULT_CURATED_DATA;
+    if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
+    updateAuthBadge('SAMPLE ARCHIVE', 'unauth');
+    renderCurrentCard();
     sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
     hideAuthGateway();
     showToast('Sample archive opened. Connect Spotify when you want to use your own listening history.', 'info', 4000);
@@ -787,7 +813,7 @@ function setupEventListeners() {
     logoutSpotify();
     state.spotifyToken = null;
     sessionStorage.removeItem('soulseekr_auth_gateway_dismissed');
-    state.currentData = DEFAULT_CURATED_DATA; // keep preview rather than flashing blank
+    state.currentData = null;
     state.cachedRealData = {};
     showToast('Logged out of Spotify', 'info');
     loadData();

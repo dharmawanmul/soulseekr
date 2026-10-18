@@ -9,11 +9,8 @@ import { escapeHtml } from './card-renderer.js';
 
 export async function fetchLiveWeatherData() {
   return new Promise((resolve) => {
-    // Default location: Tokyo / London / Seattle fallback coordinates
-    const defaultCoords = { lat: 35.6762, lon: 139.6503, city: 'Tokyo, JP' };
-
     if (!('geolocation' in navigator)) {
-      queryOpenMeteo(defaultCoords.lat, defaultCoords.lon, defaultCoords.city).then(resolve);
+      resolve({ available: false, reason: 'Geolocation is not supported by this browser.' });
       return;
     }
 
@@ -24,8 +21,7 @@ export async function fetchLiveWeatherData() {
         queryOpenMeteo(lat, lon, 'Local Telemetry').then(resolve);
       },
       () => {
-        // Fallback gracefully on permission denial
-        queryOpenMeteo(defaultCoords.lat, defaultCoords.lon, defaultCoords.city).then(resolve);
+        resolve({ available: false, reason: 'Location permission was not granted.' });
       },
       { timeout: 3500 }
     );
@@ -40,8 +36,8 @@ async function queryOpenMeteo(lat, lon, city) {
     const data = await res.json();
     return parseWeatherData(data, city);
   } catch (err) {
-    console.warn('Weather fetch fallback to simulated telemetry:', err);
-    return getSimulatedWeather(city);
+    console.warn('Weather telemetry unavailable:', err);
+    return { available: false, reason: 'Live weather could not be retrieved.' };
   }
 }
 
@@ -69,6 +65,7 @@ function parseWeatherData(data, city) {
   }));
 
   return {
+    available: true,
     city,
     temp: Math.round(cur.temperature_2m ?? 19),
     apparentTemp: Math.round(cur.apparent_temperature ?? 19),
@@ -83,35 +80,12 @@ function parseWeatherData(data, city) {
   };
 }
 
-function getSimulatedWeather(city) {
-  return {
-    city: city || 'Tokyo, JP',
-    temp: 18,
-    apparentTemp: 17,
-    humidity: 72,
-    pressure: 1014,
-    windSpeed: 12,
-    precipitation: 2.4,
-    condition: 'Atmospheric Drizzle',
-    icon: '🌧️',
-    vibeMood: 'Late-Night Solitude',
-    hourly: Array.from({ length: 24 }, (_, i) => ({
-      hour: `${i < 10 ? '0' : ''}${i}:00`,
-      temp: Math.round(15 + Math.sin(i / 3) * 6),
-      precip: i > 14 ? 60 : 10
-    }))
-  };
-}
-
 /**
  * Compute Barometric Vibe Split (Sunny Anthem vs Rainy Night Comfort)
  */
 export function computeBarometricSplit(topTracks = []) {
   if (!topTracks || topTracks.length === 0) {
-    return {
-      sunnyAnthem: { name: 'Solar Frequency', artist: 'Sunny Vanguard', bpm: 126, valence: 88, cover: '' },
-      rainyComfort: { name: 'Midnight Umbrella', artist: 'Nocturnal Echo', bpm: 84, valence: 28, cover: '' }
-    };
+    return null;
   }
 
   // Sort tracks by heuristic valence / dance energy
@@ -122,20 +96,16 @@ export function computeBarometricSplit(topTracks = []) {
     sunnyAnthem: {
       track: sunny,
       name: sunny.name,
-      artist: (sunny.artists && sunny.artists[0]?.name) || 'Lead Artist',
+      artist: (sunny.artists && sunny.artists[0]?.name) || '',
       cover: sunny.album?.images?.[0]?.url || '',
-      bpm: 128,
-      vibe: 'High-Valence Golden Euphoria',
-      tag: 'SUNNY DAY ANTHEM (12:00 PM)'
+      tag: 'MOST POPULAR RANKED TRACK'
     },
     rainyComfort: {
       track: rainy,
       name: rainy.name,
-      artist: (rainy.artists && rainy.artists[0]?.name) || 'Lead Artist',
+      artist: (rainy.artists && rainy.artists[0]?.name) || '',
       cover: rainy.album?.images?.[0]?.url || '',
-      bpm: 88,
-      vibe: 'Subterranean Acoustic Shelter',
-      tag: 'RAINY NIGHT COMFORT (01:45 AM)'
+      tag: 'LOWEST-POPULARITY RANKED TRACK'
     }
   };
 }
@@ -144,6 +114,34 @@ export function computeBarometricSplit(topTracks = []) {
  * Render the Storm Chaser HTML View
  */
 export function renderWeatherChaserHtml(weather, split) {
+  void split;
+  return `
+    <div class="weather-view-wrap">
+      <div class="dossier-view-banner">
+        <div class="dossier-badge-label">LIVE LOCAL TELEMETRY</div>
+        <h2 class="dossier-view-title">Current atmosphere</h2>
+        <p class="dossier-view-sub">Weather is shown separately from your Spotify rankings. The available APIs do not establish a causal relationship between the two.</p>
+      </div>
+      <div class="dossier-card weather-station-card">
+        <div class="weather-telemetry-grid">
+          <div class="telemetry-main">
+            <span class="telemetry-icon">${weather.icon}</span>
+            <div>
+              <div class="telemetry-temp">${weather.temp}°C <span class="telemetry-city">• ${escapeHtml(weather.city)}</span></div>
+              <div class="telemetry-condition">${escapeHtml(weather.condition)}</div>
+            </div>
+          </div>
+          <div class="telemetry-specs-group">
+            <div class="telemetry-spec-item"><span class="telemetry-spec-lbl">HUMIDITY</span><span class="telemetry-spec-val">${weather.humidity}%</span></div>
+            <div class="telemetry-spec-item"><span class="telemetry-spec-lbl">PRESSURE</span><span class="telemetry-spec-val">${weather.pressure} hPa</span></div>
+            <div class="telemetry-spec-item"><span class="telemetry-spec-lbl">WIND</span><span class="telemetry-spec-val">${weather.windSpeed} km/h</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  /*
   return `
     <div class="weather-view-wrap">
       <!-- Top Atmospheric Banner -->
@@ -253,6 +251,7 @@ export function renderWeatherChaserHtml(weather, split) {
       </div>
     </div>
   `;
+  */
 }
 
 /**

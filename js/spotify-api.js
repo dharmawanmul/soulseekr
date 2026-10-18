@@ -366,7 +366,7 @@ export async function fetchTopItemsAcrossTimeRanges(
 export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') {
   const retrievedAt = new Date().toISOString();
   const [userSource, tracksSource, artistsSource, recentlyPlayedSource] = await Promise.all([
-    captureSource(fetchUserProfile(token), { display_name: 'Spotify Listener', images: [] }),
+    captureSource(fetchUserProfile(token), { display_name: '', images: [] }),
     captureSource(fetchTopTracks(token, timeRange, 50), { items: [] }),
     captureSource(fetchTopArtists(token, timeRange, 50), { items: [] }),
     captureSource(fetchRecentlyPlayed(token, 50), { items: [] })
@@ -395,36 +395,29 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
 
   // Calculate dynamic acoustic stats
   const topGenres = extractTopGenres(topArtists);
-  const dominantGenre = topGenres.length ? topGenres[0].name : 'Not provided by Spotify';
+  const dominantGenre = topGenres.length ? topGenres[0].name : null;
 
   // Obscurity rating: lower artist average popularity = higher underground rating
-  const avgPopularity = topArtists.length 
-    ? Math.round(topArtists.reduce((acc, a) => acc + (a.popularity || 50), 0) / topArtists.length) 
-    : 70;
-  const obscurityScore = Math.max(0, Math.min(100, 100 - avgPopularity));
-
-  const danceScore = Math.min(96, Math.max(45, Math.round(75 + (Math.sin(avgPopularity) * 15))));
-  const energyScore = Math.min(98, Math.max(50, Math.round(82 + (Math.cos(avgPopularity) * 12))));
-  const tempoBpm = 115 + (avgPopularity % 25);
-
-  let vibeLabel = "Eclectic Audiophile";
-  if (obscurityScore > 75) vibeLabel = "Underground Deep Diver";
-  else if (energyScore > 85) vibeLabel = "High-Voltage Dynamo";
-  else if (danceScore > 80) vibeLabel = "Club & Groove Alchemist";
-  else vibeLabel = "Midnight Dreamer";
+  const popularityValues = topArtists
+    .map(artist => Number(artist?.popularity))
+    .filter(Number.isFinite);
+  const avgPopularity = popularityValues.length
+    ? Math.round(popularityValues.reduce((sum, value) => sum + value, 0) / popularityValues.length)
+    : null;
+  const obscurityScore = avgPopularity === null ? null : Math.max(0, Math.min(100, 100 - avgPopularity));
 
   const rankedTrackMinutes = Math.round(
     topTracks.reduce((total, track) => total + (Number(track.duration_ms) || 0), 0) / 60000
   );
 
   const rawStats = {
-    dominantGenre: dominantGenre.charAt(0).toUpperCase() + dominantGenre.slice(1),
-    topGenre: dominantGenre.charAt(0).toUpperCase() + dominantGenre.slice(1),
-    vibeLabel,
-    energyScore,
-    danceScore,
+    dominantGenre: dominantGenre ? dominantGenre.charAt(0).toUpperCase() + dominantGenre.slice(1) : null,
+    topGenre: dominantGenre ? dominantGenre.charAt(0).toUpperCase() + dominantGenre.slice(1) : null,
+    vibeLabel: null,
+    energyScore: null,
+    danceScore: null,
     obscurityScore,
-    tempoBpm,
+    tempoBpm: null,
     totalMinutes: null,
     rankedTrackMinutes,
     averageArtistPopularity: avgPopularity,
@@ -497,9 +490,9 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
           kind: 'derived'
         },
         {
-          label: 'Aura, energy, dance, and persona labels',
-          method: 'Creative local heuristics for the Soulseekr artifact. They are not Spotify audio-feature measurements.',
-          kind: 'interpretive'
+          label: 'Audio features',
+          method: 'Energy, danceability, valence, and tempo are left unavailable because the connected endpoints do not return them.',
+          kind: 'direct'
         }
       ]
     },
@@ -589,38 +582,27 @@ export function estimateListeningMinutes(tracks = [], timeRange = 'short_term') 
  * Compute Sonic Aura (Synesthetic color mesh & Obscurity Snob Tier)
  */
 export function computeSonicAura(stats, topArtists = [], topTracks = []) {
-  const obscurityScore = stats.obscurityScore || 65;
-  const energyScore = stats.energyScore || 75;
-  const danceScore = stats.danceScore || 70;
+  void topArtists;
+  void topTracks;
+  const obscurityScore = Number.isFinite(stats.obscurityScore) ? stats.obscurityScore : null;
 
   // Snob Tiers
-  let obscurityTier = "Eclectic Tastemaker";
-  if (obscurityScore >= 82) obscurityTier = "Ultra Crate Digger";
+  let obscurityTier = null;
+  if (obscurityScore === null) obscurityTier = null;
+  else if (obscurityScore >= 82) obscurityTier = "Ultra Crate Digger";
   else if (obscurityScore >= 70) obscurityTier = "Underground Purist";
   else if (obscurityScore >= 52) obscurityTier = "Indie Connoisseur";
   else if (obscurityScore >= 35) obscurityTier = "Eclectic Tastemaker";
   else obscurityTier = "Chart Navigator";
 
-  const snobLabel = `${obscurityScore}% Obscurity • ${obscurityTier}`;
+  const snobLabel = obscurityTier ? `${obscurityScore}% Obscurity • ${obscurityTier}` : null;
 
   // Aura title and synesthetic color palette
-  let auraTitle = "Deep Celestial Drift";
   let auraColors = ["#3b82f6", "#14b8a6", "#c084fc"];
 
-  if (energyScore > 82 && danceScore > 76) {
-    auraTitle = "Hyperpop Supernova";
-    auraColors = ["#ec4899", "#f59e0b", "#8b5cf6"];
-  } else if (obscurityScore >= 72) {
-    auraTitle = "Subterranean Velvet";
+  if (obscurityScore !== null && obscurityScore >= 72) {
     auraColors = ["#3b0764", "#6366f1", "#06b6d4"];
-  } else if (energyScore >= 80) {
-    auraTitle = "High-Voltage Acid Pulse";
-    auraColors = ["#10b981", "#06b6d4", "#facc15"];
-  } else if (danceScore >= 78) {
-    auraTitle = "Midnight Velvet Groove";
-    auraColors = ["#a855f7", "#ec4899", "#3b82f6"];
   } else if (stats.dominantGenre && stats.dominantGenre.toLowerCase().includes("rock")) {
-    auraTitle = "Obsidian Distortion Glow";
     auraColors = ["#f43f5e", "#ea580c", "#7c3aed"];
   }
 
@@ -630,7 +612,7 @@ export function computeSonicAura(stats, topArtists = [], topTracks = []) {
     obscurityScore,
     obscurityTier,
     snobLabel,
-    auraTitle,
+    auraTitle: null,
     auraColors,
     auraGradient
   };

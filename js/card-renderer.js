@@ -121,10 +121,11 @@ export function renderGatewayCard() {
  * 1. THE VINYL MASTER SLEEVE (Japanese Obi-Strip + Peeking Disc)
  */
 export function renderVinylCard(data, timeRange, playbackState) {
-  const user = data.user || { display_name: 'Audiophile' };
+  const user = data.user || {};
   const tracks = data.topTracks || [];
   const rangeLabel = getTimeRangeLabel(timeRange);
-  const dominantGenre = data.stats?.dominantGenre || 'Electronic / Modern';
+  const dominantGenre = data.stats?.dominantGenre || '';
+  const curatorName = user?.display_name || user?.id || 'Spotify archive';
 
   return `
     <div class="card-inner card-vinyl" id="exportable-card">
@@ -144,8 +145,8 @@ export function renderVinylCard(data, timeRange, playbackState) {
             <span>MASTER RECORDING // SIDE A</span>
             <span>${rangeLabel}</span>
           </div>
-          <h2 class="vinyl-album-title">${escapeHtml(user?.display_name || user?.id || 'Audiophile').toUpperCase()}</h2>
-          <div class="vinyl-curator">${escapeHtml(dominantGenre).toUpperCase()} ARCHIVE</div>
+          <h2 class="vinyl-album-title">${escapeHtml(curatorName).toUpperCase()}</h2>
+          ${dominantGenre ? `<div class="vinyl-curator">${escapeHtml(dominantGenre).toUpperCase()} ARCHIVE</div>` : ''}
         </div>
 
         <div class="vinyl-tracklist">
@@ -178,14 +179,14 @@ export function renderVinylCard(data, timeRange, playbackState) {
  * 2. SWISS TYPOGRAPHIC FESTIVAL POSTER (Josef Müller-Brockmann inspired)
  */
 export function renderSwissCard(data, timeRange, playbackState) {
-  const user = data.user || { display_name: 'Curator' };
+  const user = data.user || {};
   const artists = data.topArtists || [];
   const tracks = data.topTracks || [];
   const rangeLabel = getTimeRangeLabel(timeRange);
 
-  const headliner = artists[0] ? artists[0].name.toUpperCase() : (tracks[0]?.artists[0]?.name?.toUpperCase() || 'THE WEEKND');
-  const subs = artists.slice(1, 3).map(a => a.name.toUpperCase()).join(' / ') || 'DAFT PUNK / M83';
-  const support = artists.slice(3, 5).map(a => a.name.toUpperCase()).join(' • ') || 'DUA LIPA • ARCTIC MONKEYS';
+  const headliner = artists[0] ? artists[0].name.toUpperCase() : (tracks[0]?.artists[0]?.name?.toUpperCase() || '');
+  const subs = artists.slice(1, 3).map(a => a.name.toUpperCase()).join(' / ');
+  const support = artists.slice(3, 5).map(a => a.name.toUpperCase()).join(' • ');
 
   return `
     <div class="card-inner card-swiss" id="exportable-card">
@@ -198,15 +199,15 @@ export function renderSwissCard(data, timeRange, playbackState) {
       <div class="swiss-title-block">
         <h1 class="swiss-super-title">SOULSEEKR 26</h1>
         <div class="swiss-meta-coords">
-          <span>CURATOR: ${escapeHtml(user?.display_name || user?.id || 'Curator').toUpperCase()}</span>
+          <span>${user?.display_name || user?.id ? `CURATOR: ${escapeHtml(user.display_name || user.id).toUpperCase()}` : 'SPOTIFY RANKED ARCHIVE'}</span>
           <span>VENUE: MAIN STAGE // HEADPHONES</span>
         </div>
       </div>
 
       <div class="swiss-billing-hierarchy">
         <div class="swiss-headliner">${escapeHtml(headliner)}</div>
-        <div class="swiss-subs">${escapeHtml(subs)}</div>
-        <div class="swiss-support">${escapeHtml(support)}</div>
+        ${subs ? `<div class="swiss-subs">${escapeHtml(subs)}</div>` : ''}
+        ${support ? `<div class="swiss-support">${escapeHtml(support)}</div>` : ''}
       </div>
 
       <div class="swiss-setlist-section">
@@ -241,12 +242,17 @@ export function renderSwissCard(data, timeRange, playbackState) {
  * 3. SPATIAL SOUND PRISM (VisionOS Refraction Glass & Vibe Matrix)
  */
 export function renderPrismCard(data, timeRange, playbackState) {
-  const user = data.user || { display_name: 'Explorer' };
+  const user = data.user || {};
   const tracks = data.topTracks || [];
   const stats = data.stats || {};
   const rangeLabel = getTimeRangeLabel(timeRange);
   const profileUrl = user.images?.[0]?.url || '';
-  const profileInitial = (user.display_name || user.id || 'S').trim().charAt(0).toUpperCase();
+  const profileName = user.display_name || user.id || '';
+  const profileInitial = profileName.trim().charAt(0).toUpperCase();
+  const metrics = [
+    Number.isFinite(stats.obscurityScore) ? { label: 'RARITY INDEX', value: `${Math.round(stats.obscurityScore)}%`, width: stats.obscurityScore } : null,
+    Number.isFinite(stats.averageArtistPopularity) ? { label: 'ARTIST POPULARITY', value: `${Math.round(stats.averageArtistPopularity)}/100`, width: stats.averageArtistPopularity } : null
+  ].filter(Boolean);
 
   return `
     <div class="card-inner card-prism" id="exportable-card">
@@ -254,44 +260,17 @@ export function renderPrismCard(data, timeRange, playbackState) {
         <div class="prism-user-badge">
           ${profileUrl
             ? `<img src="${escapeHtml(profileUrl)}" alt="Spotify profile" class="prism-avatar">`
-            : `<span class="prism-avatar artwork-placeholder" aria-hidden="true">${escapeHtml(profileInitial)}</span>`}
+            : profileInitial ? `<span class="prism-avatar artwork-placeholder" aria-hidden="true">${escapeHtml(profileInitial)}</span>` : ''}
           <div class="prism-user-text">
-            <span class="prism-name">${escapeHtml(user?.display_name || user?.id || 'Explorer')}</span>
+            <span class="prism-name">${escapeHtml(profileName || 'Spotify archive')}</span>
             <span class="prism-subtitle">SOUND MATRIX • ${rangeLabel}</span>
           </div>
         </div>
-        <div class="prism-frequency-pill">${escapeHtml(stats.vibeLabel || 'Euphoric')}</div>
+        ${stats.dominantGenre ? `<div class="prism-frequency-pill">${escapeHtml(stats.dominantGenre)}</div>` : ''}
       </div>
 
       <div class="prism-metrics-quad">
-        <div class="prism-metric-card">
-          <span class="p-label">ENERGY LEVEL</span>
-          <div class="p-bar-track">
-            <div class="p-bar-val" style="width: ${stats.energyScore}%"></div>
-          </div>
-          <span class="p-val-text">${stats.energyScore}%</span>
-        </div>
-        <div class="prism-metric-card">
-          <span class="p-label">DANCEABILITY</span>
-          <div class="p-bar-track">
-            <div class="p-bar-val" style="width: ${stats.danceScore}%"></div>
-          </div>
-          <span class="p-val-text">${stats.danceScore}%</span>
-        </div>
-        <div class="prism-metric-card">
-          <span class="p-label">UNDERGROUND SCORE</span>
-          <div class="p-bar-track">
-            <div class="p-bar-val" style="width: ${stats.obscurityScore}%"></div>
-          </div>
-          <span class="p-val-text">${stats.obscurityScore}%</span>
-        </div>
-        <div class="prism-metric-card">
-          <span class="p-label">PULSE TEMPO</span>
-          <div class="p-bar-track">
-            <div class="p-bar-val" style="width: ${(stats.tempoBpm / 180) * 100}%"></div>
-          </div>
-          <span class="p-val-text">${stats.tempoBpm} BPM</span>
-        </div>
+        ${metrics.map(metric => `<div class="prism-metric-card"><span class="p-label">${metric.label}</span><div class="p-bar-track"><div class="p-bar-val" style="width:${metric.width}%"></div></div><span class="p-val-text">${metric.value}</span></div>`).join('')}
       </div>
 
       <div class="prism-tracks-container">
@@ -313,7 +292,7 @@ export function renderPrismCard(data, timeRange, playbackState) {
       </div>
 
       <div class="prism-footer">
-        <span>PRIMARY FREQ: ${escapeHtml(stats.dominantGenre).toUpperCase()}</span>
+        ${stats.dominantGenre ? `<span>PRIMARY GENRE: ${escapeHtml(stats.dominantGenre).toUpperCase()}</span>` : '<span>GENRE METADATA NOT RETURNED</span>'}
         <span>SOULSEEKR OS</span>
       </div>
     </div>
@@ -324,7 +303,7 @@ export function renderPrismCard(data, timeRange, playbackState) {
  * 4. TEENAGE ENGINEERING INDUSTRIAL CASSETTE (Tactile Hardware)
  */
 export function renderCassetteCard(data, timeRange, playbackState) {
-  const user = data.user || { display_name: 'Tape Head' };
+  const user = data.user || {};
   const tracks = data.topTracks || [];
   const rangeLabel = getTimeRangeLabel(timeRange);
   const isPlaying = playbackState && (
@@ -341,7 +320,7 @@ export function renderCassetteCard(data, timeRange, playbackState) {
           <div class="label-top-row">
             <span class="tape-side-chip">A</span>
             <div class="tape-curator-title">
-              <span>MIXTAPE: ${escapeHtml(user?.display_name || user?.id || 'Tape Head').toUpperCase()}</span>
+              <span>MIXTAPE: ${escapeHtml(user?.display_name || user?.id || 'SPOTIFY ARCHIVE').toUpperCase()}</span>
               <span style="font-size:0.6rem; color:#62626b;">${rangeLabel}</span>
             </div>
             <span style="font-size:0.6rem; font-weight:700;">TYPE-II</span>
@@ -479,16 +458,16 @@ export function renderReceiptCard(data, timeRange, playbackState) {
  * 6. THE TITANIUM STUDIO DAP
  */
 export function renderDapCard(data, timeRange, playbackState) {
-  const user = data.user || { display_name: 'Audiophile Master' };
+  const user = data.user || {};
   const tracks = data.topTracks || [];
   const stats = data.stats || {};
   const rangeLabel = getTimeRangeLabel(timeRange);
-  const topSong = tracks[0] || { name: 'No track available', artists: [] };
-  const topCover = topSong.album?.images?.[0]?.url || '';
+  const topSong = tracks[0];
+  const topCover = topSong?.album?.images?.[0]?.url || '';
   const hasObscurityScore = Number.isFinite(stats.obscurityScore);
   const obscurityScore = hasObscurityScore ? Math.max(0, Math.min(100, stats.obscurityScore)) : 0;
   const obscurityLabel = hasObscurityScore ? `${Math.round(obscurityScore)}%` : 'N/A';
-  const tempoLabel = Number.isFinite(stats.tempoBpm) ? `${Math.round(stats.tempoBpm)} BPM` : 'TEMPO NOT AVAILABLE';
+  const tempoLabel = Number.isFinite(stats.tempoBpm) ? `${Math.round(stats.tempoBpm)} BPM` : null;
 
   return `
     <div class="card-inner card-dap" id="exportable-card">
@@ -525,15 +504,14 @@ export function renderDapCard(data, timeRange, playbackState) {
           <div class="dap-hero-track">
             ${topCover
               ? `<img src="${escapeHtml(topCover)}" class="dap-album-art" alt="Album cover">`
-              : '<span class="dap-album-art artwork-placeholder">No artwork</span>'}
+              : ''}
             <div class="dap-track-meta">
               <span class="dap-track-rank">TOP FREQUENCY • ${rangeLabel.toUpperCase()}</span>
-              <h3 class="dap-track-title">${escapeHtml(topSong.name)}</h3>
-              <p class="dap-track-artist">${escapeHtml(getTrackArtistNames(topSong))}</p>
+              <h3 class="dap-track-title">${escapeHtml(topSong?.name || '')}</h3>
+              <p class="dap-track-artist">${escapeHtml(topSong ? getTrackArtistNames(topSong) : '')}</p>
               <div class="dap-audio-specs">
                 <span>SPOTIFY CATALOG METADATA</span>
-                <span>•</span>
-                <span>${tempoLabel}</span>
+                ${tempoLabel ? `<span>•</span><span>${tempoLabel}</span>` : ''}
               </div>
             </div>
           </div>
@@ -580,21 +558,21 @@ export function renderDapCard(data, timeRange, playbackState) {
 
       <!-- Audiophile Obscurity & Aura Chassis Footer -->
       <div class="dap-chassis-footer">
-        <div class="snob-meter-container" style="margin-top:0.35rem;">
+        ${hasObscurityScore ? `<div class="snob-meter-container" style="margin-top:0.35rem;">
           <div class="snob-meter-header">
             <span>OBSCURITY SNOB RATING</span>
-            <span class="snob-score-tag">${obscurityLabel} • ${escapeHtml(stats.obscurityTier || 'Not available')}</span>
+            <span class="snob-score-tag">${obscurityLabel}${stats.obscurityTier ? ` • ${escapeHtml(stats.obscurityTier)}` : ''}</span>
           </div>
           <div class="snob-meter-track">
             <div class="snob-meter-fill" style="width: ${obscurityScore}%"></div>
           </div>
-        </div>
+        </div>` : ''}
 
         <div class="dap-footer-meta">
-          <div class="snob-aura-pill">
+          ${stats.auraTitle ? `<div class="snob-aura-pill">
             <span class="snob-aura-dot" style="background:${stats.auraColors?.[1] || '#c084fc'};"></span>
-            <span>AURA: ${escapeHtml(stats.auraTitle || 'Not available').toUpperCase()}</span>
-          </div>
+            <span>AURA: ${escapeHtml(stats.auraTitle).toUpperCase()}</span>
+          </div>` : ''}
           <span class="dap-certification">SOULSEEKR EDITION • LISTENING ARCHIVE</span>
         </div>
       </div>
@@ -609,12 +587,13 @@ export const renderGameboyCard = renderDapCard;
  * 7. THE ALL-ACCESS VIP FESTIVAL PASS (Holographic Band & Security RFID)
  */
 export function renderVipPassCard(data, timeRange, playbackState) {
-  const user = data.user || { display_name: 'VIP Guest' };
+  const user = data.user || {};
   const tracks = data.topTracks || [];
   const stats = data.stats || {};
   const rangeLabel = getTimeRangeLabel(timeRange);
   const avatarUrl = user.images?.[0]?.url || '';
-  const avatarInitial = (user.display_name || user.id || 'S').trim().charAt(0).toUpperCase();
+  const profileName = user.display_name || user.id || '';
+  const avatarInitial = profileName.trim().charAt(0).toUpperCase();
   const hasObscurityScore = Number.isFinite(stats.obscurityScore);
   const obscurityScore = hasObscurityScore ? Math.max(0, Math.min(100, stats.obscurityScore)) : 0;
   const obscurityLabel = hasObscurityScore ? `${Math.round(obscurityScore)}%` : 'N/A';
@@ -639,18 +618,18 @@ export function renderVipPassCard(data, timeRange, playbackState) {
         <div style="display: flex; align-items: center; justify-content: space-between;">
           <div>
             <div class="vip-holder-label">CREDENTIAL ISSUED TO:</div>
-            <div class="vip-holder-name">${escapeHtml(user?.display_name || user?.id || 'VIP Guest').toUpperCase()}</div>
+            <div class="vip-holder-name">${escapeHtml(profileName || 'SPOTIFY ARCHIVE').toUpperCase()}</div>
           </div>
           ${avatarUrl
             ? `<img src="${escapeHtml(avatarUrl)}" alt="Spotify profile" class="vip-profile-image">`
-            : `<span class="vip-profile-image artwork-placeholder" aria-hidden="true">${escapeHtml(avatarInitial)}</span>`}
+            : avatarInitial ? `<span class="vip-profile-image artwork-placeholder" aria-hidden="true">${escapeHtml(avatarInitial)}</span>` : ''}
         </div>
         <div style="display: flex; gap: 0.5rem; margin-top: 0.5rem; align-items: center;">
-          <div class="snob-aura-pill">
+          ${stats.auraTitle ? `<div class="snob-aura-pill">
             <span class="snob-aura-dot" style="background:${stats.auraColors?.[1] || '#38bdf8'};"></span>
-            <span>AURA: ${escapeHtml(stats.auraTitle || 'Sonic Nebula')}</span>
-          </div>
-          <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #ed6a45; margin-left: auto;">SAMPLE CREDENTIAL</span>
+            <span>AURA: ${escapeHtml(stats.auraTitle)}</span>
+          </div>` : ''}
+          <span style="font-family: var(--font-mono); font-size: 0.55rem; color: #ed6a45; margin-left: auto;">IMAGINED CREDENTIAL</span>
         </div>
       </div>
 
@@ -673,15 +652,15 @@ export function renderVipPassCard(data, timeRange, playbackState) {
         }).join('')}
       </div>
 
-      <div class="snob-meter-container">
+      ${hasObscurityScore ? `<div class="snob-meter-container">
         <div class="snob-meter-header">
           <span>OBSCURITY SNOB INDEX</span>
-          <span class="snob-score-tag">${obscurityLabel} • ${escapeHtml(stats.obscurityTier || 'Not available')}</span>
+          <span class="snob-score-tag">${obscurityLabel}${stats.obscurityTier ? ` • ${escapeHtml(stats.obscurityTier)}` : ''}</span>
         </div>
         <div class="snob-meter-track">
           <div class="snob-meter-fill" style="width: ${obscurityScore}%"></div>
         </div>
-      </div>
+      </div>` : ''}
 
       <div class="vip-footer-row" style="margin-top: 0.85rem;">
         <span class="vip-barcode-code">||| | ||||| || ||| |||| || |</span>

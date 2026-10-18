@@ -236,7 +236,7 @@ export class SonicDossierEngine {
   computeAnalytics(data, timeRange) {
     const tracks = data.topTracks || [];
     const artists = data.topArtists || [];
-    const user = data.user || { display_name: 'Audiophile Explorer' };
+    const user = data.user || { display_name: '', images: [] };
     const stats = data.stats || {};
 
     // 1. Taste Age & Vintage Drift
@@ -250,9 +250,9 @@ export class SonicDossierEngine {
 
     const avgReleaseYear = releaseYears.length
       ? Math.round(releaseYears.reduce((a, b) => a + b, 0) / releaseYears.length)
-      : 2020;
+      : null;
 
-    const vintageDrift = Math.max(0, currentYear - avgReleaseYear);
+    const vintageDrift = avgReleaseYear === null ? null : Math.max(0, currentYear - avgReleaseYear);
 
     // 2. Decades Distribution
     const decadesCount = {};
@@ -280,7 +280,7 @@ export class SonicDossierEngine {
     }
 
     let maxWeight = 0;
-    let peakHourIndex = 23;
+    let peakHourIndex = null;
     for (let h = 0; h < 24; h++) {
       if (hourWeights[h] > maxWeight) {
         maxWeight = hourWeights[h];
@@ -288,84 +288,70 @@ export class SonicDossierEngine {
       }
     }
 
-    if (maxWeight === 0) {
-      peakHourIndex = 1; // 1 AM default nocturnal peak
-      hourWeights[1] = 6;
-      hourWeights[2] = 5;
-      hourWeights[23] = 4;
-    }
-
-    const peakHour = `${peakHourIndex < 10 ? '0' : ''}${peakHourIndex}:00`;
-    let circadianTitle = "Midnight Dreamer";
-    if (peakHourIndex >= 0 && peakHourIndex < 5) circadianTitle = "Nocturnal Vampire";
+    const peakHour = peakHourIndex === null ? null : `${peakHourIndex < 10 ? '0' : ''}${peakHourIndex}:00`;
+    let circadianTitle = null;
+    if (peakHourIndex !== null && peakHourIndex >= 0 && peakHourIndex < 5) circadianTitle = "Nocturnal listener";
     else if (peakHourIndex >= 5 && peakHourIndex < 9) circadianTitle = "Dawn Patrol Pioneer";
     else if (peakHourIndex >= 9 && peakHourIndex < 17) circadianTitle = "High-Noon Dynamo";
     else if (peakHourIndex >= 17 && peakHourIndex < 21) circadianTitle = "Dusk Alchemist";
+    else if (peakHourIndex !== null) circadianTitle = "Evening listener";
 
     const nightPlays = hourWeights.slice(22).reduce((a, b) => a + b, 0) + hourWeights.slice(0, 5).reduce((a, b) => a + b, 0);
-    const totalPlays = hourWeights.reduce((a, b) => a + b, 0) || 1;
-    const nocturnalPct = Math.round((nightPlays / totalPlays) * 100);
+    const totalPlays = hourWeights.reduce((a, b) => a + b, 0);
+    const nocturnalPct = totalPlays ? Math.round((nightPlays / totalPlays) * 100) : null;
 
     const hourlyDistribution = hourWeights.map((w, h) => ({
       hour: h,
       label: `${h < 10 ? '0' : ''}${h}:00`,
-      weight: maxWeight ? w / maxWeight : 0.1
+      weight: maxWeight ? w / maxWeight : 0
     }));
 
     // 4. Obscurity & Snob Index
-    const popValues = artists.map(a => a.popularity || 50);
+    const popValues = artists.map(a => Number(a?.popularity)).filter(Number.isFinite);
     const avgPopularity = popValues.length
       ? Math.round(popValues.reduce((a, b) => a + b, 0) / popValues.length)
-      : 65;
+      : null;
 
-    const obscurityScore = Math.max(0, Math.min(100, 100 - avgPopularity));
-    let snobTier = "Curator in Training";
-    if (obscurityScore >= 85) snobTier = "Subterranean Purist";
+    const obscurityScore = avgPopularity === null ? null : Math.max(0, Math.min(100, 100 - avgPopularity));
+    let snobTier = null;
+    if (obscurityScore !== null && obscurityScore >= 85) snobTier = "Subterranean Purist";
     else if (obscurityScore >= 70) snobTier = "Crate Digger Elite";
     else if (obscurityScore >= 50) snobTier = "Discriminating Listener";
-    else snobTier = "Mainstream Connoisseur";
+    else if (obscurityScore !== null) snobTier = "Mainstream Connoisseur";
 
     // Most obscure crate discovery
-    const sortedByPop = [...artists].sort((a, b) => (a.popularity || 50) - (b.popularity || 50));
-    const rarestGem = sortedByPop[0] || { name: 'Underground Unit', popularity: 18, genres: ['slowcore', 'dream-pop'] };
-    const mainstreamStaple = [...artists].reverse().find(a => (a.popularity || 50) > 75);
+    const sortedByPop = artists.filter(a => Number.isFinite(Number(a?.popularity))).sort((a, b) => a.popularity - b.popularity);
+    const rarestGem = sortedByPop[0] || null;
+    const mainstreamStaple = [...sortedByPop].reverse()[0] || null;
 
     // Oldest release vs newest release
-    const sortedTracksByYear = [...tracks].sort((a, b) => {
-      const ya = parseInt(a.album?.release_date?.slice(0, 4) || '2020', 10);
-      const yb = parseInt(b.album?.release_date?.slice(0, 4) || '2020', 10);
+    const sortedTracksByYear = tracks.filter(track => /^\d{4}/.test(track.album?.release_date || '')).sort((a, b) => {
+      const ya = parseInt(a.album.release_date.slice(0, 4), 10);
+      const yb = parseInt(b.album.release_date.slice(0, 4), 10);
       return ya - yb;
     });
 
-    const oldestTrack = sortedTracksByYear[0] || { name: 'Classic Relic', track: tracks[0], year: 1977 };
-    const newestTrack = sortedTracksByYear[sortedTracksByYear.length - 1] || { name: 'Contemporary Vanguard', track: tracks[0], year: 2026 };
-
-    // 5. Geographic Epicenters
-    const epicenters = [
-      { name: 'London / Manchester', country: 'United Kingdom', flag: '🇬🇧', genre: 'Post-Punk / Shoegaze', pct: 42 },
-      { name: 'Tokyo / Shibuya', country: 'Japan', flag: '🇯🇵', genre: 'City Pop / Math Rock', pct: 28 },
-      { name: 'Toronto / Montreal', country: 'Canada', flag: '🇨🇦', genre: 'Indie Pop / R&B Noir', pct: 18 },
-      { name: 'Reykjavik / Berlin', country: 'Iceland / DE', flag: '🇮🇸', genre: 'Ambient Minimal / Techno', pct: 12 }
-    ];
+    const oldestTrack = sortedTracksByYear[0] || null;
+    const newestTrack = sortedTracksByYear[sortedTracksByYear.length - 1] || null;
 
     // 6. Festival Lineup Generation
     const festivalDays = [
       {
         day: 'FRIDAY // NIGHT ZERO',
         theme: 'Subterranean Echoes & Neon Reverbs',
-        headliner: artists[0]?.name || 'THE HEADLINER',
+        headliner: artists[0]?.name || '',
         undercard: artists.slice(1, 6).map(a => a.name)
       },
       {
         day: 'SATURDAY // APEX DRIFT',
         theme: 'High-Voltage Psych & Groove Catharsis',
-        headliner: artists[6]?.name || artists[1]?.name || 'THE SATURDAY ICON',
+        headliner: artists[6]?.name || artists[1]?.name || '',
         undercard: artists.slice(7, 12).map(a => a.name)
       },
       {
         day: 'SUNDAY // TWILIGHT CODA',
         theme: 'Meditative Ambient & 70s Analog Masters',
-        headliner: artists[12]?.name || artists[2]?.name || 'THE CLOSING LEGEND',
+        headliner: artists[12]?.name || artists[2]?.name || '',
         undercard: artists.slice(13, 18).map(a => a.name)
       }
     ];
@@ -381,17 +367,17 @@ export class SonicDossierEngine {
       hourlyDistribution,
       obscurityScore,
       snobTier,
-      rarestGem: rarestGem.name,
-      rarestGemPop: rarestGem.popularity || 18,
-      rarestGemGenres: rarestGem.genres ? rarestGem.genres.slice(0, 2).join(' • ') : 'indie / underground',
-      oldestTrack: { track: oldestTrack, year: oldestTrack.album?.release_date?.slice(0, 4) || '1977' },
-      newestTrack: { track: newestTrack, year: newestTrack.album?.release_date?.slice(0, 4) || '2026' },
-      mainstreamStaple: mainstreamStaple?.name || artists[0]?.name || 'Global Staple',
-      mainstreamStaplePop: mainstreamStaple?.popularity || 94,
-      epicenters,
+      rarestGem: rarestGem?.name || null,
+      rarestGemPop: Number.isFinite(Number(rarestGem?.popularity)) ? rarestGem.popularity : null,
+      rarestGemGenres: rarestGem?.genres?.slice(0, 2).join(' • ') || null,
+      oldestTrack: oldestTrack ? { track: oldestTrack, year: oldestTrack.album.release_date.slice(0, 4) } : null,
+      newestTrack: newestTrack ? { track: newestTrack, year: newestTrack.album.release_date.slice(0, 4) } : null,
+      mainstreamStaple: mainstreamStaple?.name || null,
+      mainstreamStaplePop: Number.isFinite(Number(mainstreamStaple?.popularity)) ? mainstreamStaple.popularity : null,
+      epicenters: [],
       festivalDays,
-      dominantGenre: stats.dominantGenre || 'Neo-Psychedelia / Synthpop',
-      auraTitle: stats.auraTitle || 'Subterranean Velvet',
+      dominantGenre: stats.dominantGenre || null,
+      auraTitle: stats.auraTitle || null,
       auraColors: stats.auraColors || ['#8b5cf6', '#38bdf8', '#c084fc']
     };
   }
@@ -403,7 +389,8 @@ export class SonicDossierEngine {
     if (!this.modal) return;
     const a = this.analytics;
     const profileImage = a.user.images?.[0]?.url || '';
-    const profileInitial = (a.user.display_name || 'Soulseekr').trim().charAt(0).toUpperCase();
+    const profileName = a.user.display_name || a.user.id || '';
+    const profileInitial = profileName.trim().charAt(0).toUpperCase();
 
     this.modal.innerHTML = `
       <div class="dossier-backdrop" id="dossier-backdrop"></div>
@@ -414,13 +401,13 @@ export class SonicDossierEngine {
           <div class="dossier-user-card">
             ${profileImage
               ? `<img src="${escapeHtml(profileImage)}" class="dossier-user-avatar" alt="Spotify profile">`
-              : `<span class="dossier-user-avatar dossier-user-avatar-placeholder" aria-hidden="true">${escapeHtml(profileInitial)}</span>`}
+              : profileInitial ? `<span class="dossier-user-avatar dossier-user-avatar-placeholder" aria-hidden="true">${escapeHtml(profileInitial)}</span>` : ''}
             <div class="dossier-user-meta">
               <div class="dossier-title-row">
-                <h2 class="dossier-user-name">${escapeHtml(a.user.display_name)}</h2>
-                <span class="dossier-tier-badge">${a.snobTier.toUpperCase()}</span>
+                <h2 class="dossier-user-name">${escapeHtml(profileName || 'Spotify profile')}</h2>
+                ${a.snobTier ? `<span class="dossier-tier-badge">${escapeHtml(a.snobTier.toUpperCase())}</span>` : ''}
               </div>
-              <p class="dossier-persona-sub">${a.auraTitle} • ${a.circadianTitle}</p>
+              ${a.auraTitle || a.circadianTitle ? `<p class="dossier-persona-sub">${[a.auraTitle, a.circadianTitle].filter(Boolean).map(escapeHtml).join(' • ')}</p>` : ''}
             </div>
           </div>
 
@@ -502,15 +489,15 @@ export class SonicDossierEngine {
           <button class="dossier-sub-pill ${active === 'comparison' ? 'active' : ''}" data-sub="comparison">
             <span>Period Comparison</span>
           </button>
-          <button class="dossier-sub-pill ${active === 'timemachine' ? 'active' : ''}" data-sub="timemachine">
-            <span>Time Machine (${this.analytics.tasteAge})</span>
-          </button>
-          <button class="dossier-sub-pill ${active === 'circadian' ? 'active' : ''}" data-sub="circadian">
+          ${this.analytics.tasteAge !== null ? `<button class="dossier-sub-pill ${active === 'timemachine' ? 'active' : ''}" data-sub="timemachine">
+            <span>Release History (${this.analytics.tasteAge})</span>
+          </button>` : ''}
+          ${this.analytics.peakHour ? `<button class="dossier-sub-pill ${active === 'circadian' ? 'active' : ''}" data-sub="circadian">
             <span>Circadian Clock (24h)</span>
-          </button>
-          <button class="dossier-sub-pill ${active === 'obscurity' ? 'active' : ''}" data-sub="obscurity">
+          </button>` : ''}
+          ${this.analytics.obscurityScore !== null ? `<button class="dossier-sub-pill ${active === 'obscurity' ? 'active' : ''}" data-sub="obscurity">
             <span>Underground Radar</span>
-          </button>
+          </button>` : ''}
         </div>
       `;
     }
@@ -583,23 +570,10 @@ export class SonicDossierEngine {
 
     // 3. Atmosphere & Weather
     if (this.activeDept === 'weather') {
-      const weather = this.weatherData || {
-        city: 'Tokyo, JP (GPS Syncing)',
-        temp: 18,
-        apparentTemp: 17,
-        humidity: 68,
-        pressure: 1014,
-        windSpeed: 10,
-        precipitation: 1.2,
-        condition: 'Atmospheric Drizzle',
-        icon: '🌧️',
-        vibeMood: 'Late-Night Solitude',
-        hourly: Array.from({ length: 24 }, (_, i) => ({
-          hour: `${i < 10 ? '0' : ''}${i}:00`,
-          temp: Math.round(15 + Math.sin(i / 3) * 6),
-          precip: i > 12 ? 40 : 10
-        }))
-      };
+      if (!this.weatherData?.available) {
+        return `<div class="dossier-card provenance-empty-state" role="status"><strong>Local weather unavailable.</strong><span>Allow location access and keep an internet connection to build this report. No substitute city or simulated forecast is used.</span></div>`;
+      }
+      const weather = this.weatherData;
       const split = computeBarometricSplit(this.data.topTracks);
       return renderWeatherChaserHtml(weather, split);
     }
@@ -615,22 +589,10 @@ export class SonicDossierEngine {
         return this.renderFestivalTab();
       }
 
-      // Default: Airline Boarding Pass + Interactive Flight Map
-      const passport = resolvePassportMetrics(this.analytics.user, this.data.topArtists, this.data.topTracks);
       return `
-        <div style="display:flex; flex-direction:column; gap:1.5rem;">
-          ${renderBoardingPassHtml(this.analytics.user, passport)}
-          
-          <!-- Interactive Flight Map Canvas Card -->
-          <div class="dossier-card flight-map-stage-card">
-            <div class="dossier-card-header">
-              <span class="dossier-card-title">GLOBAL FLIGHT CORRIDORS // MUSICBRAINZ ARTIST ORIGINS</span>
-              <span class="dossier-card-sub">${passport.destinationHubs.length} GLOBAL CAPITALS VISITED</span>
-            </div>
-            <div class="flight-map-canvas-container">
-              <canvas id="flight-map-canvas" class="flight-canvas"></canvas>
-            </div>
-          </div>
+        <div class="dossier-card provenance-empty-state" role="status">
+          <strong>Artist geography is not available.</strong>
+          <span>Spotify's ranked artist response does not include verified hometowns. The passport and flight map stay hidden instead of assigning artists to guessed cities.</span>
         </div>
       `;
     }
@@ -655,31 +617,27 @@ export class SonicDossierEngine {
         <div class="dossier-card dossier-card-hero">
           <div class="dossier-card-aura-bg" style="background: radial-gradient(circle at 30% 30%, ${a.auraColors[0]}40 0%, transparent 70%), radial-gradient(circle at 75% 70%, ${a.auraColors[1]}35 0%, transparent 65%);"></div>
           <div class="dossier-badge-label">SONIC ARCHETYPE IDENTIFIER</div>
-          <h1 class="dossier-hero-headline">${a.circadianTitle}</h1>
-          <p class="dossier-hero-description">Your musical fingerprint reveals a strong gravitation toward <b>${a.dominantGenre}</b>, seasoned with a <b>${a.vintageDrift}-year vintage drift</b> and a <b>${a.nocturnalPct}% nocturnal affinity</b>.</p>
+          <h1 class="dossier-hero-headline">Your listening record</h1>
+          <p class="dossier-hero-description">This panel only includes fields calculated from Spotify's returned rankings${a.dominantGenre ? `, led by <b>${escapeHtml(a.dominantGenre)}</b>` : ''}.</p>
 
           <div class="dossier-stat-pill-row">
-            <div class="dossier-pill-box">
+            ${a.tasteAge !== null ? `<div class="dossier-pill-box">
               <span class="dossier-pill-val">${a.tasteAge}</span>
-              <span class="dossier-pill-lbl">TASTE AGE</span>
-            </div>
-            <div class="dossier-pill-box">
+              <span class="dossier-pill-lbl">AVERAGE RELEASE YEAR</span>
+            </div>` : ''}
+            ${a.obscurityScore !== null ? `<div class="dossier-pill-box">
               <span class="dossier-pill-val">${a.obscurityScore}%</span>
-              <span class="dossier-pill-lbl">OBSCURITY</span>
-            </div>
-            <div class="dossier-pill-box">
+              <span class="dossier-pill-lbl">RARITY INDEX</span>
+            </div>` : ''}
+            ${a.peakHour ? `<div class="dossier-pill-box">
               <span class="dossier-pill-val">${a.peakHour}</span>
-              <span class="dossier-pill-lbl">PEAK HOUR</span>
-            </div>
-            <div class="dossier-pill-box">
-              <span class="dossier-pill-val">5 CONTS</span>
-              <span class="dossier-pill-lbl">GLOBAL PASSPORT</span>
-            </div>
+              <span class="dossier-pill-lbl">RECENT-PLAY PEAK</span>
+            </div>` : ''}
           </div>
         </div>
 
         <!-- Sonic Passport Geographic Footprint -->
-        <div class="dossier-card dossier-card-passport">
+        ${a.epicenters.length ? `<div class="dossier-card dossier-card-passport">
           <div class="dossier-card-header">
             <span class="dossier-card-title">SONIC PASSPORT // INFLUENCE MAP</span>
             <span class="dossier-card-sub">AN INTERPRETIVE MICRO-GENRE STUDY</span>
@@ -698,7 +656,7 @@ export class SonicDossierEngine {
               </div>
             `).join('')}
           </div>
-        </div>
+        </div>` : ''}
 
         <!-- Top Reference Rotation with 30s Studio Audio Previews -->
         <div class="dossier-card dossier-card-tracks">
@@ -712,7 +670,7 @@ export class SonicDossierEngine {
                 <span class="dossier-track-rank">0${idx + 1}</span>
                 ${t.album?.images?.[0]?.url
                   ? `<img src="${escapeHtml(t.album.images[0].url)}" class="dossier-track-art" alt="Album cover">`
-                  : '<span class="dossier-track-art artwork-placeholder">No artwork</span>'}
+                  : ''}
                 <div class="dossier-track-info">
                   <div class="dossier-track-name">${escapeHtml(t.name)}</div>
                   <div class="dossier-track-artist">${escapeHtml(Array.isArray(t.artists) ? t.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (t.artistName || 'Artist'))}</div>
@@ -1028,8 +986,8 @@ export class SonicDossierEngine {
       <section class="dossier-view-timemachine">
         <div class="dossier-view-banner">
           <div class="dossier-badge-label">HISTORICAL CHRONOLOGY</div>
-          <h2 class="dossier-view-title">Born in 2026, Tuning into <b>${a.tasteAge}</b></h2>
-          <p class="dossier-view-sub">Your musical soul is offset by <b>+${a.vintageDrift} years</b> into the catalog. Here is how your listening breaks down by era:</p>
+          <h2 class="dossier-view-title">Average release year: <b>${a.tasteAge}</b></h2>
+          <p class="dossier-view-sub">Release years from the ranked tracks in this Spotify window, grouped by decade.</p>
         </div>
 
         <div class="dossier-card dossier-card-histogram">
@@ -1053,11 +1011,11 @@ export class SonicDossierEngine {
             <div class="dossier-relic-body">
               ${a.oldestTrack?.track?.album?.images?.[0]?.url
                 ? `<img src="${escapeHtml(a.oldestTrack.track.album.images[0].url)}" class="dossier-relic-art" alt="Album cover">`
-                : '<span class="dossier-relic-art artwork-placeholder">No artwork</span>'}
+                : ''}
               <div>
-                <h3 class="dossier-relic-title">${escapeHtml(a.oldestTrack?.track?.name || 'Classic Master')}</h3>
-                <p class="dossier-relic-artist">${escapeHtml(Array.isArray(a.oldestTrack?.track?.artists) ? a.oldestTrack.track.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (a.oldestTrack?.track?.artistName || 'Artist'))}</p>
-                <span class="dossier-relic-year">RELEASED: ${a.oldestTrack?.year || '1977'}</span>
+                <h3 class="dossier-relic-title">${escapeHtml(a.oldestTrack?.track?.name || '')}</h3>
+                <p class="dossier-relic-artist">${escapeHtml(Array.isArray(a.oldestTrack?.track?.artists) ? a.oldestTrack.track.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (a.oldestTrack?.track?.artistName || ''))}</p>
+                <span class="dossier-relic-year">RELEASED: ${a.oldestTrack?.year || ''}</span>
               </div>
             </div>
           </div>
@@ -1067,11 +1025,11 @@ export class SonicDossierEngine {
             <div class="dossier-relic-body">
               ${a.newestTrack?.track?.album?.images?.[0]?.url
                 ? `<img src="${escapeHtml(a.newestTrack.track.album.images[0].url)}" class="dossier-relic-art" alt="Album cover">`
-                : '<span class="dossier-relic-art artwork-placeholder">No artwork</span>'}
+                : ''}
               <div>
-                <h3 class="dossier-relic-title">${escapeHtml(a.newestTrack?.track?.name || 'Contemporary Track')}</h3>
-                <p class="dossier-relic-artist">${escapeHtml(Array.isArray(a.newestTrack?.track?.artists) ? a.newestTrack.track.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (a.newestTrack?.track?.artistName || 'Artist'))}</p>
-                <span class="dossier-relic-year">RELEASED: ${a.newestTrack?.year || '2024'}</span>
+                <h3 class="dossier-relic-title">${escapeHtml(a.newestTrack?.track?.name || '')}</h3>
+                <p class="dossier-relic-artist">${escapeHtml(Array.isArray(a.newestTrack?.track?.artists) ? a.newestTrack.track.artists.map(art => (art && typeof art === 'object' ? art.name : art) || '').filter(Boolean).join(', ') : (a.newestTrack?.track?.artistName || ''))}</p>
+                <span class="dossier-relic-year">RELEASED: ${a.newestTrack?.year || ''}</span>
               </div>
             </div>
           </div>
@@ -1088,7 +1046,7 @@ export class SonicDossierEngine {
         <div class="dossier-view-banner">
           <div class="dossier-badge-label">CIRCADIAN RHYTHM PROFILE</div>
           <h2 class="dossier-view-title">${a.circadianTitle}</h2>
-          <p class="dossier-view-sub">Your peak sonic focus ignites at <b>${a.peakHour}</b>. <b>${a.nocturnalPct}%</b> of your total streaming occurs in the late evening and nighttime hours.</p>
+          <p class="dossier-view-sub">Among the recent plays returned by Spotify, the most represented hour is <b>${a.peakHour}</b>; <b>${a.nocturnalPct}%</b> of this limited sample occurred between 22:00 and 05:00.</p>
         </div>
 
         <div class="dossier-card dossier-circadian-wheel-card">
@@ -1096,7 +1054,7 @@ export class SonicDossierEngine {
             <div class="dossier-dial-center">
               <span class="dossier-dial-icon">🌙</span>
               <span class="dossier-dial-hour">${a.peakHour}</span>
-              <span class="dossier-dial-label">PEAK EXISTENTIAL GROOVE</span>
+              <span class="dossier-dial-label">MOST RECENT PLAYS</span>
             </div>
 
             <div class="dossier-radial-segments">
@@ -1112,28 +1070,6 @@ export class SonicDossierEngine {
             </div>
           </div>
 
-          <div class="dossier-quadrant-breakdown">
-            <div class="dossier-quad-cell">
-              <span class="dossier-quad-time">00:00 – 05:00</span>
-              <span class="dossier-quad-name">Vampire Hours</span>
-              <span class="dossier-quad-desc">Slowcore &amp; IDM</span>
-            </div>
-            <div class="dossier-quad-cell">
-              <span class="dossier-quad-time">06:00 – 11:00</span>
-              <span class="dossier-quad-name">Morning Awakening</span>
-              <span class="dossier-quad-desc">Acoustic &amp; Modern Jazz</span>
-            </div>
-            <div class="dossier-quad-cell">
-              <span class="dossier-quad-time">12:00 – 17:00</span>
-              <span class="dossier-quad-name">Deep Focus Engine</span>
-              <span class="dossier-quad-desc">High-Tempo Synthpop</span>
-            </div>
-            <div class="dossier-quad-cell">
-              <span class="dossier-quad-time">18:00 – 23:00</span>
-              <span class="dossier-quad-name">Twilight Euphoria</span>
-              <span class="dossier-quad-desc">Post-Punk &amp; Psychedelia</span>
-            </div>
-          </div>
         </div>
       </section>
     `;
@@ -1183,7 +1119,7 @@ export class SonicDossierEngine {
             <div class="dossier-gem-card">
               <span class="dossier-gem-badge" style="color:#fbbf24;">MAINSTREAM ANCHOR</span>
               <h3 class="dossier-gem-name">${escapeHtml(a.mainstreamStaple)}</h3>
-              <p class="dossier-gem-genres">Global Hit Rotation</p>
+              ${a.mainstreamStaple ? '' : '<p class="dossier-gem-genres">No popularity field returned.</p>'}
               <div class="dossier-gem-metric">
                 <span>SPOTIFY POPULARITY:</span>
                 <b style="color: #fbbf24;">${a.mainstreamStaplePop}/100</b>

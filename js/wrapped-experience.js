@@ -403,14 +403,15 @@ export class WrappedExperience {
   }
 
   open(data, timeRange = 'short_term') {
+    if (!Array.isArray(data?.topTracks) || data.topTracks.length === 0) return;
     this.returnFocus = document.activeElement;
     this.data = data;
     this.timeRange = timeRange;
     this.slideTracks = this.selectDistinctSlideTracks(data.topTracks || []);
 
     // Populate Top Bar
-    const user = data.user || { display_name: 'Soulseekr Archivist' };
-    if (this.userName) this.userName.textContent = user.display_name;
+    const user = data.user || {};
+    if (this.userName) this.userName.textContent = user.display_name || user.id || '';
     if (this.userAvatar) {
       const avatarUrl = user.images && user.images[0]?.url;
       if (avatarUrl) {
@@ -575,13 +576,14 @@ export class WrappedExperience {
         ? 'About 6 months'
         : 'About 4 weeks';
 
-    const topTrack = tracks[0] || { name: 'No track available', artists: [], album: { images: [] } };
-    const topAlbum = albums[0] || { name: 'No album available', artistName: '', releaseYear: '', images: [] };
+    const topTrack = tracks[0];
+    const topAlbum = albums[0] || null;
     const userImg = data.user?.images?.[0]?.url || '';
-    const userInitial = (data.user?.display_name || 'Soulseekr').trim().charAt(0).toUpperCase();
+    const profileName = data.user?.display_name || data.user?.id || '';
+    const userInitial = profileName.trim().charAt(0).toUpperCase();
     const avatarMarkup = userImg
       ? `<img class="prologue-avatar-img" src="${escapeHtml(userImg)}" alt="Spotify profile">`
-      : `<span class="prologue-avatar-img avatar-initial" aria-hidden="true">${escapeHtml(userInitial)}</span>`;
+      : userInitial ? `<span class="prologue-avatar-img avatar-initial" aria-hidden="true">${escapeHtml(userInitial)}</span>` : '';
     const rankedTrackMinutes = Number.isFinite(Number(stats.rankedTrackMinutes))
       ? Number(stats.rankedTrackMinutes)
       : Math.round(tracks.reduce((total, track) => total + (Number(track.duration_ms) || 0), 0) / 60000);
@@ -591,9 +593,9 @@ export class WrappedExperience {
     const averageTrackLength = averageTrackSeconds === null
       ? 'Not available'
       : `${Math.floor(averageTrackSeconds / 60)}:${String(averageTrackSeconds % 60).padStart(2, '0')}`;
-    const energy = Number.isFinite(Number(stats.energyScore)) ? Number(stats.energyScore) : null;
-    const dance = Number.isFinite(Number(stats.danceScore)) ? Number(stats.danceScore) : null;
-    const obscurity = Number.isFinite(Number(stats.obscurityScore)) ? Number(stats.obscurityScore) : null;
+    const energy = Number.isFinite(stats.energyScore) ? stats.energyScore : null;
+    const dance = Number.isFinite(stats.danceScore) ? stats.danceScore : null;
+    const obscurity = Number.isFinite(stats.obscurityScore) ? stats.obscurityScore : null;
 
     this.viewport.innerHTML = `
       <!-- Slide 0: Prologue / Cosmic Identity -->
@@ -612,9 +614,7 @@ export class WrappedExperience {
             <span class="prologue-big-number">${tracks.length}</span>
             <span class="prologue-stat-label">Ranked tracks examined</span>
           </div>
-          <div class="prologue-vibe-pill">
-            ${escapeHtml(stats.vibeLabel || 'Profile unavailable')}
-          </div>
+          ${stats.vibeLabel ? `<div class="prologue-vibe-pill">${escapeHtml(stats.vibeLabel)}</div>` : ''}
         </div>
 
         <div class="prologue-prompt">
@@ -674,12 +674,11 @@ export class WrappedExperience {
 
         <!-- #1 Hero Album Card -->
         <div class="album-hero">
-          <img class="album-hero-bg" src="${topAlbum.images?.[0]?.url || ''}" alt="Album">
+          ${topAlbum?.images?.[0]?.url ? `<img class="album-hero-bg" src="${escapeHtml(topAlbum.images[0].url)}" alt="Album">` : ''}
           <div class="album-hero-scrim"></div>
           <div class="album-hero-content">
-            <span class="album-crown-tag">01 / Album${topAlbum.releaseYear ? ` / ${topAlbum.releaseYear}` : ''}</span>
-            <span class="album-hero-name">${topAlbum.name}</span>
-            <span class="album-hero-artist">${topAlbum.artistName || topAlbum.artists?.[0]?.name || ''}</span>
+            <span class="album-crown-tag">${topAlbum ? `01 / Album${topAlbum.releaseYear ? ` / ${topAlbum.releaseYear}` : ''}` : 'Album data unavailable'}</span>
+            ${topAlbum ? `<span class="album-hero-name">${escapeHtml(topAlbum.name)}</span><span class="album-hero-artist">${escapeHtml(topAlbum.artistName || topAlbum.artists?.[0]?.name || '')}</span>` : ''}
           </div>
         </div>
 
@@ -797,8 +796,8 @@ export class WrappedExperience {
         <div class="aura-card-box">
           <div class="aura-orb-sphere"></div>
           <div class="aura-card-text">
-            <span class="aura-card-title">${stats.auraTitle || 'Subterranean Velvet'}</span>
-            <span class="aura-card-desc">${stats.obscurityTier || 'Underground Crate Digger'} • ${hasGenreData ? (stats.dominantGenre || 'Genre mix') : 'Genre metadata unavailable'}</span>
+            ${stats.auraTitle ? `<span class="aura-card-title">${escapeHtml(stats.auraTitle)}</span>` : ''}
+            <span class="aura-card-desc">${[stats.obscurityTier, hasGenreData ? stats.dominantGenre : null].filter(Boolean).map(escapeHtml).join(' • ') || 'No interpretive label added'}</span>
           </div>
         </div>
       </div>
@@ -823,36 +822,36 @@ export class WrappedExperience {
               ? `<img class="recap-avatar" src="${escapeHtml(userImg)}" alt="Spotify profile">`
               : `<span class="recap-avatar avatar-initial" aria-hidden="true">${escapeHtml(userInitial)}</span>`}
             <div>
-              <div style="font-size:0.95rem; font-weight:800; color:#fff;">${data.user?.display_name || 'Soulseekr Archivist'}</div>
-              <div style="font-size:0.7rem; color:rgba(255,255,255,0.6);">${stats.vibeLabel || 'Cinematic Dreamer'}</div>
+              <div style="font-size:0.95rem; font-weight:800; color:#fff;">${escapeHtml(profileName || 'Spotify archive')}</div>
+              ${stats.vibeLabel ? `<div style="font-size:0.7rem; color:rgba(255,255,255,0.6);">${escapeHtml(stats.vibeLabel)}</div>` : ''}
             </div>
           </div>
 
           <div class="recap-summary-grid">
             <div class="recap-summary-item">
               <span class="recap-item-label">Top Track</span>
-              <span class="recap-item-val">${topTrack.name}</span>
+              <span class="recap-item-val">${escapeHtml(topTrack.name)}</span>
             </div>
             <div class="recap-summary-item">
               <span class="recap-item-label">Top Artist</span>
-              <span class="recap-item-val">${topTrack.artists?.[0]?.name || 'Artist'}</span>
+              <span class="recap-item-val">${escapeHtml(topTrack.artists?.[0]?.name || '')}</span>
             </div>
-            <div class="recap-summary-item">
+            ${topAlbum ? `<div class="recap-summary-item">
               <span class="recap-item-label">Top Album</span>
-              <span class="recap-item-val">${topAlbum.name}</span>
-            </div>
-            <div class="recap-summary-item">
-              <span class="recap-item-label">${hasGenreData ? 'Top Genre' : 'Genre Data'}</span>
-              <span class="recap-item-val">${hasGenreData ? (stats.dominantGenre || genres[0]?.name) : 'Not returned'}</span>
-            </div>
+              <span class="recap-item-val">${escapeHtml(topAlbum.name)}</span>
+            </div>` : ''}
+            ${hasGenreData ? `<div class="recap-summary-item">
+              <span class="recap-item-label">Top Genre</span>
+              <span class="recap-item-val">${escapeHtml(stats.dominantGenre || genres[0]?.name || '')}</span>
+            </div>` : ''}
             <div class="recap-summary-item">
               <span class="recap-item-label">Ranked Set Duration</span>
               <span class="recap-item-val" style="color:#10b981;">${rankedTrackMinutes.toLocaleString()} min</span>
             </div>
-            <div class="recap-summary-item">
+            ${stats.auraTitle ? `<div class="recap-summary-item">
               <span class="recap-item-label">Sonic Aura</span>
-              <span class="recap-item-val" style="color:#c084fc;">${stats.auraTitle || 'Velvet'}</span>
-            </div>
+              <span class="recap-item-val" style="color:#c084fc;">${escapeHtml(stats.auraTitle)}</span>
+            </div>` : ''}
           </div>
         </div>
 
