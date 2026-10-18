@@ -584,6 +584,8 @@ export class AudioDnaEngine {
     this.ctx = null;
     this.animId = null;
     this.data = null;
+    this.initialHorizon = 'short_term';
+    this.unsubscribeSoundState = null;
     
     // Active states
     this.activeHorizon = 'short_term'; // 'short_term' (4 Weeks) | 'medium_term' (6 Months) | 'long_term' (1 Year)
@@ -613,6 +615,7 @@ export class AudioDnaEngine {
   init(containerEl, data = null, initialHorizon = 'short_term') {
     this.container = containerEl;
     this.data = data;
+    this.initialHorizon = initialHorizon;
     this.activeHorizon = initialHorizon;
     this.activeTrack = this.resolveActiveTrack();
 
@@ -630,72 +633,126 @@ export class AudioDnaEngine {
       this.animId = null;
     }
     window.removeEventListener('resize', this.handleResize);
+    window.removeEventListener('mouseup', this.handleMouseUp);
+    if (this.unsubscribeSoundState) {
+      this.unsubscribeSoundState();
+      this.unsubscribeSoundState = null;
+    }
   }
 
-  // Calculate top 3 summary metrics dynamically based on active horizon
   getSummaryMetrics() {
-    if (this.activeHorizon === 'short_term') {
-      return {
-        hipsterIndex: '27%',
-        hipsterLabel: 'Obscurity Score',
-        hipsterColor: '#38bdf8',
-        averageEra: '2003',
-        eraLabel: 'Release Weight',
-        eraColor: '#60a5fa',
-        dominantVibe: 'Alternative Rock',
-        vibeLabel: 'Top Micro-Genre',
-        vibeColor: '#38bdf8'
-      };
-    } else if (this.activeHorizon === 'medium_term') {
-      return {
-        hipsterIndex: '38%',
-        hipsterLabel: 'Obscurity Score',
-        hipsterColor: '#a78bfa',
-        averageEra: '2008',
-        eraLabel: 'Release Weight',
-        eraColor: '#818cf8',
-        dominantVibe: 'Neo-Psychedelia',
-        vibeLabel: 'Top Micro-Genre',
-        vibeColor: '#c084fc'
-      };
-    } else {
-      return {
-        hipsterIndex: '46%',
-        hipsterLabel: 'Obscurity Score',
-        hipsterColor: '#34d399',
-        averageEra: '1998',
-        eraLabel: 'Release Weight',
-        eraColor: '#38bdf8',
-        dominantVibe: 'Classic Rock / Indie',
-        vibeLabel: 'Top Micro-Genre',
-        vibeColor: '#e879f9'
-      };
-    }
+    const tracks = this.getTracksList();
+    const artists = this.getArtistsList();
+    const palette = {
+      short_term: ['#38bdf8', '#60a5fa', '#38bdf8'],
+      medium_term: ['#a78bfa', '#818cf8', '#c084fc'],
+      long_term: ['#34d399', '#38bdf8', '#e879f9']
+    }[this.activeHorizon] || ['#38bdf8', '#60a5fa', '#c084fc'];
+
+    const popularityValues = artists
+      .map(artist => Number(artist?.popularity))
+      .filter(Number.isFinite);
+    const trackPopularityValues = tracks
+      .map(track => Number(track?.popularity))
+      .filter(Number.isFinite);
+    const obscuritySource = popularityValues.length ? popularityValues : trackPopularityValues;
+    const averagePopularity = obscuritySource.length
+      ? obscuritySource.reduce((sum, value) => sum + value, 0) / obscuritySource.length
+      : null;
+    const releaseYears = tracks
+      .map(track => Number(track.releaseYear))
+      .filter(year => Number.isFinite(year) && year > 1900);
+    const averageYear = releaseYears.length
+      ? Math.round(releaseYears.reduce((sum, year) => sum + year, 0) / releaseYears.length)
+      : null;
+    const genreCounts = new Map();
+    artists.forEach(artist => (artist?.genres || []).forEach(genre => {
+      genreCounts.set(genre, (genreCounts.get(genre) || 0) + 1);
+    }));
+    const dominantGenre = [...genreCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || 'Not returned';
+
+    return {
+      hipsterIndex: averagePopularity === null ? '—' : `${Math.round(100 - averagePopularity)}%`,
+      hipsterLabel: popularityValues.length ? 'From artist popularity' : trackPopularityValues.length ? 'Track popularity proxy' : 'No popularity data',
+      hipsterColor: palette[0],
+      averageEra: averageYear === null ? '—' : String(averageYear),
+      eraLabel: releaseYears.length ? `${releaseYears.length} ranked releases` : 'No release dates',
+      eraColor: palette[1],
+      dominantVibe: dominantGenre,
+      vibeLabel: genreCounts.size ? 'Most frequent artist genre' : 'Spotify genre metadata',
+      vibeColor: palette[2]
+    };
   }
 
   resolveActiveTrack() {
     const list = this.getTracksList();
-    return list[0] || AUDIO_DNA_TRACKS[0];
+    return list[0] || null;
   }
 
-  getTracksList() {
-    if (this.data?.topTracks && this.data.topTracks.length >= 5) {
-      return this.data.topTracks.map((t, idx) => {
+  getRangeSnapshot(range = this.activeHorizon) {
+    const snapshot = this.data?.comparisonRanges?.[range];
+    if (snapshot) return snapshot;
+
+    const selectedRange = this.data?.provenance?.selectedRange || this.initialHorizon;
+    if (range === selectedRange) {
+      return {
+        tracks: this.data?.topTracks || [],
+        artists: this.data?.topArtists || [],
+        status: { tracks: 'available', artists: 'available' }
+      };
+    }
+
+    return {
+      tracks: [],
+      artists: [],
+      status: { tracks: 'unavailable', artists: 'unavailable' }
+    };
+  }
+
+  hasHorizonData(range) {
+    if (!this.data) return true;
+    const snapshot = this.getRangeSnapshot(range);
+    return Array.isArray(snapshot?.tracks) && snapshot.tracks.length > 0;
+  }
+
+  getHorizonLabel(range = this.activeHorizon) {
+    return ({
+      short_term: '4 Weeks',
+      medium_term: '6 Months',
+      long_term: '1 Year'
+    })[range] || range;
+  }
+
+  getArtistsList(range = this.activeHorizon) {
+    const artists = this.getRangeSnapshot(range)?.artists;
+    return Array.isArray(artists) ? artists : [];
+  }
+
+  getTracksList(range = this.activeHorizon) {
+    const tracks = this.getRangeSnapshot(range)?.tracks;
+    if (Array.isArray(tracks) && tracks.length) {
+      const artists = this.getArtistsList(range);
+      return tracks.map((t, idx) => {
         const year = parseInt(t.album?.release_date?.slice(0, 4) || '2016', 10);
         const pop = typeof t.popularity === 'number' ? t.popularity : Math.max(20, 95 - idx * 4);
+        const primaryArtist = t.artists?.[0];
+        const matchingArtist = artists.find(artist => (
+          (primaryArtist?.id && artist?.id === primaryArtist.id)
+          || (primaryArtist?.name && artist?.name?.toLowerCase() === primaryArtist.name.toLowerCase())
+        ));
         return {
           ...t,
           releaseYear: year,
           popularity: pop,
           userRank: idx + 1,
-          genre: (t.genres && t.genres[0]) || (this.data.topGenres && this.data.topGenres[0]?.name) || 'Alternative Rock',
+          genre: (t.genres && t.genres[0]) || matchingArtist?.genres?.[0] || 'Not returned',
           durationFormatted: formatDuration(t.duration_ms || 215000),
-          valence: t.valence || Math.min(0.95, Math.max(0.12, 0.45 + Math.sin(idx * 1.3) * 0.35)),
-          energy: t.energy || Math.min(0.98, Math.max(0.25, 0.65 + Math.cos(idx * 1.1) * 0.28))
+          valence: t.valence ?? Math.min(0.95, Math.max(0.12, 0.45 + Math.sin(idx * 1.3) * 0.35)),
+          energy: t.energy ?? Math.min(0.98, Math.max(0.25, 0.65 + Math.cos(idx * 1.1) * 0.28))
         };
       });
     }
-    return AUDIO_DNA_TRACKS;
+    return this.data ? [] : AUDIO_DNA_TRACKS;
   }
 
   getArtistImageUrl(track) {
@@ -704,7 +761,7 @@ export class AudioDnaEngine {
 
     const artistName = typeof primaryArtist === 'object' ? primaryArtist.name : primaryArtist;
     const artistId = typeof primaryArtist === 'object' ? primaryArtist.id : '';
-    const matchingArtist = (this.data?.topArtists || []).find(artist => {
+    const matchingArtist = this.getArtistsList().find(artist => {
       if (artistId && artist?.id) return artist.id === artistId;
       return artist?.name && artistName && artist.name.toLowerCase() === artistName.toLowerCase();
     });
@@ -796,7 +853,20 @@ export class AudioDnaEngine {
   renderDomStructure() {
     if (!this.container) return;
     const metrics = this.getSummaryMetrics();
-    const t = this.activeTrack;
+    const t = this.activeTrack || {
+      name: 'No ranked track returned',
+      artists: [],
+      genre: 'Not available',
+      durationFormatted: '—',
+      releaseYear: '—',
+      popularity: null,
+      userRank: null
+    };
+    const horizons = [
+      ['short_term', '4 Weeks'],
+      ['medium_term', '6 Months'],
+      ['long_term', '1 Year']
+    ];
 
     this.container.innerHTML = `
       <div class="audio-dna-wrapper" id="audio-dna-root">
@@ -839,9 +909,11 @@ export class AudioDnaEngine {
         <div class="dna-control-strip">
           <span class="dna-strip-lbl">Time Horizon</span>
           <div class="dna-pill-group" role="radiogroup" aria-label="Time Horizon">
-            <button class="dna-pill-btn ${this.activeHorizon === 'short_term' ? 'is-active' : ''}" data-horizon="short_term">4 Weeks</button>
-            <button class="dna-pill-btn ${this.activeHorizon === 'medium_term' ? 'is-active' : ''}" data-horizon="medium_term">6 Months</button>
-            <button class="dna-pill-btn ${this.activeHorizon === 'long_term' ? 'is-active' : ''}" data-horizon="long_term">1 Year</button>
+            ${horizons.map(([range, label]) => {
+              const available = this.hasHorizonData(range);
+              const active = this.activeHorizon === range;
+              return `<button class="dna-pill-btn ${active ? 'is-active' : ''}" data-horizon="${range}" role="radio" aria-checked="${active}" ${available ? '' : 'disabled title="No Spotify top-track data returned for this window"'}>${label}</button>`;
+            }).join('')}
           </div>
         </div>
 
@@ -849,12 +921,12 @@ export class AudioDnaEngine {
         <div class="dna-control-strip dna-viz-strip">
           <span class="dna-strip-lbl">Visualization</span>
           <div class="dna-pill-group dna-viz-pills" role="tablist" aria-label="Visualizations">
-            <button class="dna-pill-btn ${this.activeViz === 'eravspop' ? 'is-active' : ''}" data-viz="eravspop" title="2D Scatter / Bubble Plot: Release Year vs Spotify Popularity">Era vs Popularity</button>
-            <button class="dna-pill-btn ${this.activeViz === 'drift' ? 'is-active' : ''}" data-viz="drift" title="Sankey / Bump Chart: Artist Rank Drift across 1 Year → 6 Months → 4 Weeks">Taste Drift</button>
-            <button class="dna-pill-btn ${this.activeViz === 'clock' ? 'is-active' : ''}" data-viz="clock" title="24-Hour Polar Clock & Matrix Heatmap">3 AM Confessional</button>
-            <button class="dna-pill-btn ${this.activeViz === 'constellation' ? 'is-active' : ''}" data-viz="constellation" title="Force-Directed Galaxy Network of Micro-Genres">Genre Constellation</button>
-            <button class="dna-pill-btn ${this.activeViz === 'archaeology' ? 'is-active' : ''}" data-viz="archaeology" title="5-Year Stacked Area Timeline of Liked Music Phases">Playlist Archaeology</button>
-            <button class="dna-pill-btn ${this.activeViz === 'compass' ? 'is-active' : ''}" data-viz="compass" title="4-Quadrant Emotional Scatter Plot: Valence vs Energy">Emotional Compass</button>
+            <button class="dna-pill-btn ${this.activeViz === 'eravspop' ? 'is-active' : ''}" data-viz="eravspop" role="tab" aria-selected="${this.activeViz === 'eravspop'}" title="2D Scatter / Bubble Plot: Release Year vs Spotify Popularity">Era vs Popularity</button>
+            <button class="dna-pill-btn ${this.activeViz === 'drift' ? 'is-active' : ''}" data-viz="drift" role="tab" aria-selected="${this.activeViz === 'drift'}" title="Sankey / Bump Chart: Artist Rank Drift across 1 Year → 6 Months → 4 Weeks">Taste Drift</button>
+            <button class="dna-pill-btn ${this.activeViz === 'clock' ? 'is-active' : ''}" data-viz="clock" role="tab" aria-selected="${this.activeViz === 'clock'}" title="24-Hour Polar Clock & Matrix Heatmap">3 AM Confessional</button>
+            <button class="dna-pill-btn ${this.activeViz === 'constellation' ? 'is-active' : ''}" data-viz="constellation" role="tab" aria-selected="${this.activeViz === 'constellation'}" title="Force-Directed Galaxy Network of Micro-Genres">Genre Constellation</button>
+            <button class="dna-pill-btn ${this.activeViz === 'archaeology' ? 'is-active' : ''}" data-viz="archaeology" role="tab" aria-selected="${this.activeViz === 'archaeology'}" title="Release-decade distribution of ranked tracks">Release Era Profile</button>
+            <button class="dna-pill-btn ${this.activeViz === 'compass' ? 'is-active' : ''}" data-viz="compass" role="tab" aria-selected="${this.activeViz === 'compass'}" title="4-Quadrant Emotional Scatter Plot: Valence vs Energy">Emotional Compass</button>
           </div>
         </div>
 
@@ -885,7 +957,7 @@ export class AudioDnaEngine {
               <span class="dna-inspector-artist" id="dna-insp-artist">${escapeHtml(Array.isArray(t.artists) ? t.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (t.artistName || 'Artist'))}</span>
             </div>
             <div class="dna-inspector-sub">
-              <span>Genre: <b id="dna-insp-genre">${t.genre || 'Alternative Rock'}</b></span>
+              <span>Genre: <b id="dna-insp-genre">${t.genre || 'Not returned'}</b></span>
               <span class="dna-dot">•</span>
               <span>Duration: <b id="dna-insp-duration">${t.durationFormatted || '4.2m'}</b></span>
             </div>
@@ -898,15 +970,15 @@ export class AudioDnaEngine {
             </div>
             <div class="dna-chip-item">
               <span class="dna-chip-lbl">Pop:</span>
-              <span class="dna-chip-val" id="dna-insp-pop">${t.popularity || 76}/100</span>
+              <span class="dna-chip-val" id="dna-insp-pop">${Number.isFinite(t.popularity) ? `${t.popularity}/100` : '—'}</span>
             </div>
             <div class="dna-chip-item dna-chip-rank">
               <span class="dna-chip-lbl">Rank</span>
-              <span class="dna-chip-val" id="dna-insp-rank">#${t.userRank || 1}</span>
+              <span class="dna-chip-val" id="dna-insp-rank">${t.userRank ? `#${t.userRank}` : '—'}</span>
             </div>
 
             <!-- Play Audio Preview Button with Animated Equalizer Bars -->
-            <button class="dna-play-btn" id="dna-btn-play-preview" title="Play audio preview">
+            <button class="dna-play-btn" id="dna-btn-play-preview" title="Play audio preview" ${this.activeTrack ? '' : 'disabled'}>
               <span class="dna-play-icon" id="dna-play-icon">▶</span>
               <div class="dna-eq-bars" id="dna-eq-bars" style="display:none;">
                 <span class="dna-bar"></span>
@@ -927,15 +999,15 @@ export class AudioDnaEngine {
       case 'eravspop':
         return 'Hover or click bubbles to inspect release chronology & popularity • Bubble size indicates user rank';
       case 'drift':
-        return 'Hover any flow ribbon to trace artist rank trajectory over 1 Year → 6 Months → 4 Weeks';
+        return 'Direct Spotify ranks across available windows • Selected horizon is highlighted';
       case 'clock':
-        return 'Hover hours to inspect circadian rituals • Deep twilight shows 2 AM Melancholy vs 10 AM Focus Catalyst';
+        return `Interpretive clock for ${this.getHorizonLabel()} • Spotify top items do not include listening-hour history`;
       case 'constellation':
         return 'Force-directed galaxy: micro-genres linked by shared artists • Click and drag stars to test physics';
       case 'archaeology':
-        return 'Scrub across 2021–2026 to reveal your evolving musical eras • Liked tracks transition over time';
+        return `Release decades within the ${this.getHorizonLabel()} ranked set • This is release history, not listening history`;
       case 'compass':
-        return '4-Quadrant Emotional Matrix • Top-Right: Euphoria & Party • Bottom-Left: Introspective Melancholy • Tap nodes to preview';
+        return `Interpretive mood placement for ${this.getHorizonLabel()} • Portraits and ranks are direct; positions are illustrative`;
       default:
         return 'Select any element to play its available audio preview';
     }
@@ -984,20 +1056,41 @@ export class AudioDnaEngine {
   }
 
   initConstellationGraph() {
-    const rawGenres = [
-      { id: 'alt_rock', name: 'Alternative Rock', size: 16, color: '#38bdf8' },
-      { id: 'art_rock', name: 'Art Rock', size: 14, color: '#60a5fa' },
-      { id: 'neo_psych', name: 'Neo-Psychedelia', size: 18, color: '#c084fc' },
-      { id: 'dream_pop', name: 'Dream Pop', size: 17, color: '#e879f9' },
-      { id: 'shoegaze', name: 'Shoegaze', size: 15, color: '#2dd4bf' },
-      { id: 'post_punk', name: 'Post-Punk', size: 16, color: '#fb7185' },
-      { id: 'darkwave', name: 'Darkwave', size: 13, color: '#a855f7' },
-      { id: 'synthpop', name: 'Synthpop', size: 16, color: '#f59e0b' },
-      { id: 'french_touch', name: 'French Touch', size: 14, color: '#34d399' },
-      { id: 'bedroom_pop', name: 'Bedroom Pop', size: 12, color: '#f43f5e' },
-      { id: 'ambient', name: 'Ambient & IDM', size: 13, color: '#818cf8' },
-      { id: 'classic_rock', name: 'Classic Rock', size: 15, color: '#fbbf24' }
-    ];
+    const palette = ['#38bdf8', '#60a5fa', '#c084fc', '#e879f9', '#2dd4bf', '#fb7185', '#a855f7', '#f59e0b', '#34d399', '#f43f5e', '#818cf8', '#fbbf24'];
+    const genreMap = new Map();
+    const edgeMap = new Map();
+
+    this.getArtistsList().forEach((artist, artistIndex) => {
+      const genres = [...new Set((artist?.genres || []).filter(Boolean).slice(0, 3))];
+      genres.forEach(genre => {
+        const id = genre.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+        if (!genreMap.has(id)) genreMap.set(id, { id, name: genre, score: 0, artists: new Set() });
+        const entry = genreMap.get(id);
+        entry.score += Math.max(1, 12 - artistIndex);
+        entry.artists.add(artist.name);
+      });
+
+      for (let first = 0; first < genres.length; first += 1) {
+        for (let second = first + 1; second < genres.length; second += 1) {
+          const source = genres[first].toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+          const target = genres[second].toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+          const key = [source, target].sort().join('|');
+          if (!edgeMap.has(key)) edgeMap.set(key, { source, target, artists: new Set() });
+          edgeMap.get(key).artists.add(artist.name);
+        }
+      }
+    });
+
+    const rawGenres = [...genreMap.values()]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 12)
+      .map((genre, index) => ({
+        id: genre.id,
+        name: genre.name,
+        size: Math.min(20, 10 + genre.artists.size * 2),
+        color: palette[index % palette.length]
+      }));
+    const activeIds = new Set(rawGenres.map(genre => genre.id));
 
     const cx = (this.width || 750) / 2;
     const cy = (this.height || 420) / 2;
@@ -1015,21 +1108,9 @@ export class AudioDnaEngine {
       };
     });
 
-    this.graphEdges = [
-      { source: 'alt_rock', target: 'art_rock', artist: 'Radiohead' },
-      { source: 'alt_rock', target: 'post_punk', artist: 'Fontaines D.C.' },
-      { source: 'art_rock', target: 'neo_psych', artist: 'Tame Impala' },
-      { source: 'neo_psych', target: 'dream_pop', artist: 'Beach House' },
-      { source: 'dream_pop', target: 'shoegaze', artist: 'Slowdive' },
-      { source: 'shoegaze', target: 'ambient', artist: 'Slowdive / Aphex' },
-      { source: 'post_punk', target: 'darkwave', artist: 'Boy Harsher' },
-      { source: 'darkwave', target: 'synthpop', artist: 'Depeche Mode' },
-      { source: 'synthpop', target: 'french_touch', artist: 'M83 / Daft Punk' },
-      { source: 'dream_pop', target: 'bedroom_pop', artist: 'Men I Trust' },
-      { source: 'classic_rock', target: 'art_rock', artist: 'David Bowie' },
-      { source: 'classic_rock', target: 'alt_rock', artist: 'Fleetwood Mac / Radiohead' },
-      { source: 'french_touch', target: 'neo_psych', artist: 'Tame Impala' }
-    ];
+    this.graphEdges = [...edgeMap.values()]
+      .filter(edge => activeIds.has(edge.source) && activeIds.has(edge.target))
+      .map(edge => ({ ...edge, artist: [...edge.artists].join(' / ') }));
   }
 
   // =========================================================================
@@ -1059,23 +1140,55 @@ export class AudioDnaEngine {
         const h = btn.getAttribute('data-horizon');
         if (h && h !== this.activeHorizon) {
           this.activeHorizon = h;
-          horizonBtns.forEach(b => b.classList.remove('is-active'));
+          horizonBtns.forEach(b => {
+            b.classList.remove('is-active');
+            b.setAttribute('aria-checked', 'false');
+          });
           btn.classList.add('is-active');
+          btn.setAttribute('aria-checked', 'true');
+          this.activeTrack = this.resolveActiveTrack();
+          this.hoveredItem = null;
+          this.draggedNode = null;
+          if (this.tooltipEl) this.tooltipEl.classList.remove('is-visible');
+          if (this.activeViz === 'constellation') this.initConstellationGraph();
           this.updateMetricsUi();
+          this.updateInspectorCard(this.activeTrack);
+          const hintTextEl = document.getElementById('dna-stage-hint-text');
+          if (hintTextEl) hintTextEl.textContent = this.getStageHintText();
+          this.updateAudioPlaybackUi({
+            isPlaying: soundEngine.isPlaying,
+            isPaused: soundEngine.isPaused,
+            isLoading: soundEngine.isLoading,
+            currentTrackId: soundEngine.currentTrackId
+          });
           showToast(`Horizon: ${btn.textContent}`, 'info', 1600);
         }
+      });
+      btn.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        event.preventDefault();
+        const enabled = [...horizonBtns].filter(button => !button.disabled);
+        const currentIndex = enabled.indexOf(btn);
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const next = enabled[(currentIndex + direction + enabled.length) % enabled.length];
+        next?.focus();
+        next?.click();
       });
     });
 
     // Visualization Selector Pills
     const vizBtns = this.container.querySelectorAll('[data-viz]');
-    vizBtns.forEach(btn => {
+    vizBtns.forEach((btn, index) => {
       btn.addEventListener('click', () => {
         const v = btn.getAttribute('data-viz');
         if (v && v !== this.activeViz) {
           this.activeViz = v;
-          vizBtns.forEach(b => b.classList.remove('is-active'));
+          vizBtns.forEach(b => {
+            b.classList.remove('is-active');
+            b.setAttribute('aria-selected', 'false');
+          });
           btn.classList.add('is-active');
+          btn.setAttribute('aria-selected', 'true');
 
           const subToggle = document.getElementById('dna-clock-subtoggle');
           if (subToggle) {
@@ -1094,6 +1207,14 @@ export class AudioDnaEngine {
             this.initConstellationGraph();
           }
         }
+      });
+      btn.addEventListener('keydown', event => {
+        if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
+        event.preventDefault();
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const next = vizBtns[(index + direction + vizBtns.length) % vizBtns.length];
+        next?.focus();
+        next?.click();
       });
     });
 
@@ -1122,7 +1243,7 @@ export class AudioDnaEngine {
     }
 
     // Listen for global soundEngine state changes to update the equalizer bars
-    soundEngine.onStateChange((state) => {
+    this.unsubscribeSoundState = soundEngine.onStateChange((state) => {
       this.updateAudioPlaybackUi(state);
     });
   }
@@ -1138,11 +1259,20 @@ export class AudioDnaEngine {
       valEls[1].style.color = metrics.eraColor;
       valEls[2].textContent = metrics.dominantVibe;
       valEls[2].style.color = metrics.vibeColor;
+      if (lblEls.length >= 3) {
+        lblEls[0].textContent = metrics.hipsterLabel;
+        lblEls[1].textContent = metrics.eraLabel;
+        lblEls[2].textContent = metrics.vibeLabel;
+      }
     }
   }
 
   updateInspectorCard(track) {
-    if (!track) return;
+    if (!track) {
+      const titleEl = document.getElementById('dna-insp-title');
+      if (titleEl) titleEl.textContent = 'No ranked track returned';
+      return;
+    }
     this.activeTrack = track;
     const t = track;
 
@@ -1156,11 +1286,11 @@ export class AudioDnaEngine {
 
     if (titleEl) titleEl.textContent = t.name;
     if (artistEl) artistEl.textContent = Array.isArray(t.artists) ? t.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (t.artistName || 'Artist');
-    if (genreEl) genreEl.textContent = t.genre || 'Alternative Rock';
+    if (genreEl) genreEl.textContent = t.genre || 'Not returned';
     if (durEl) durEl.textContent = t.durationFormatted || formatDuration(t.duration_ms || 240000);
     if (yearEl) yearEl.textContent = t.releaseYear || t.album?.release_date?.slice(0, 4) || '2000';
-    if (popEl) popEl.textContent = `${t.popularity || 76}/100`;
-    if (rankEl) rankEl.textContent = `#${t.userRank || 1}`;
+    if (popEl) popEl.textContent = Number.isFinite(t.popularity) ? `${t.popularity}/100` : '—';
+    if (rankEl) rankEl.textContent = t.userRank ? `#${t.userRank}` : '—';
   }
 
   toggleAudioPlayback() {
@@ -1171,7 +1301,9 @@ export class AudioDnaEngine {
   updateAudioPlaybackUi(state) {
     const playIcon = document.getElementById('dna-play-icon');
     const eqBars = document.getElementById('dna-eq-bars');
+    const playBtn = document.getElementById('dna-btn-play-preview');
     const isThisTrackPlaying = state.isPlaying && state.currentTrackId === this.activeTrack?.id;
+    const isThisTrackPaused = state.isPaused && state.currentTrackId === this.activeTrack?.id;
 
     if (playIcon && eqBars) {
       if (isThisTrackPlaying) {
@@ -1181,6 +1313,11 @@ export class AudioDnaEngine {
         playIcon.style.display = 'inline';
         eqBars.style.display = 'none';
       }
+    }
+    if (playBtn) {
+      const action = isThisTrackPlaying ? 'Pause' : isThisTrackPaused ? 'Resume' : 'Play';
+      playBtn.title = `${action} audio preview`;
+      playBtn.setAttribute('aria-label', `${action} audio preview for ${this.activeTrack?.name || 'selected track'}`);
     }
   }
 
@@ -1446,25 +1583,80 @@ export class AudioDnaEngine {
   // =========================================================================
   // VISUALIZATION 2: THE TASTE DRIFT RIVER (Sankey / Bump Chart)
   // =========================================================================
+  getTasteDriftArtists() {
+    const ranges = ['long_term', 'medium_term', 'short_term'];
+    const rankedLists = Object.fromEntries(ranges.map(range => [range, this.getArtistsList(range)]));
+    const availableRanges = ranges.filter(range => rankedLists[range].length);
+    if (availableRanges.length < 2) return [];
+
+    const union = new Map();
+    const orderedRanges = [this.activeHorizon, ...ranges.filter(range => range !== this.activeHorizon)];
+    orderedRanges.forEach(range => rankedLists[range].slice(0, 10).forEach(artist => {
+      const key = artist?.id || artist?.name?.toLowerCase();
+      if (key && !union.has(key)) union.set(key, artist);
+    }));
+
+    const palette = ['#38bdf8', '#60a5fa', '#c084fc', '#34d399', '#f43f5e', '#f59e0b', '#e879f9', '#2dd4bf', '#fbbf24', '#fb7185'];
+    return [...union.entries()].map(([key, artist], index) => {
+      const ranks = Object.fromEntries(ranges.map(range => {
+        const foundIndex = rankedLists[range].findIndex(candidate => (
+          (artist.id && candidate?.id === artist.id)
+          || candidate?.name?.toLowerCase() === artist.name?.toLowerCase()
+        ));
+        return [range, foundIndex >= 0 ? foundIndex + 1 : 11];
+      }));
+      const diff = ranks.long_term - ranks.short_term;
+      const status = ranks.long_term > 10 && ranks.short_term <= 10
+        ? 'New in recent rotation'
+        : diff >= 3 ? 'Rising' : diff <= -3 ? 'Cooling' : 'Steady';
+      return {
+        id: key,
+        name: artist.name || 'Unknown artist',
+        genre: artist.genres?.[0] || 'Genre not returned',
+        color: palette[index % palette.length],
+        ranks,
+        diff,
+        status
+      };
+    })
+      .sort((a, b) => a.ranks[this.activeHorizon] - b.ranks[this.activeHorizon])
+      .slice(0, 10);
+  }
+
   renderTasteDriftRiver(ctx, w, h) {
-    const pad = { left: 80, right: 80, top: 50, bottom: 40 };
+    const isNarrow = w < 560;
+    const pad = isNarrow
+      ? { left: 44, right: 44, top: 50, bottom: 40 }
+      : { left: 80, right: 80, top: 50, bottom: 40 };
     const plotW = w - pad.left - pad.right;
     const plotH = h - pad.top - pad.bottom;
 
-    const isNarrow = w < 560;
     const stages = [
       { id: 'long_term', label: isNarrow ? '1 Year' : '1 Year (All Time)', x: pad.left },
       { id: 'medium_term', label: isNarrow ? '6 Mos' : '6 Months', x: pad.left + plotW * 0.5 },
       { id: 'short_term', label: isNarrow ? '4 Wks' : '4 Weeks (Now)', x: pad.left + plotW }
     ];
 
-    const artists = TASTE_DRIFT_ARTISTS;
-    const slotH = plotH / 10;
+    const artists = this.getTasteDriftArtists();
+    if (!artists.length) {
+      ctx.save();
+      ctx.fillStyle = '#d4d4d8';
+      ctx.font = '600 14px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Rank drift needs at least two available Spotify windows.', w / 2, h / 2 - 4);
+      ctx.fillStyle = '#71717a';
+      ctx.font = '11px "Space Mono", monospace';
+      ctx.fillText('No comparison curve was inferred from missing data.', w / 2, h / 2 + 18);
+      ctx.restore();
+      return;
+    }
+    const slotH = plotH / 11;
 
     // Stage Column Lines
     ctx.save();
     for (const st of stages) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.strokeStyle = st.id === this.activeHorizon ? 'rgba(216, 201, 170, 0.55)' : 'rgba(255, 255, 255, 0.08)';
+      ctx.lineWidth = st.id === this.activeHorizon ? 2 : 1;
       ctx.setLineDash([4, 4]);
       ctx.beginPath();
       ctx.moveTo(st.x, pad.top);
@@ -1473,7 +1665,7 @@ export class AudioDnaEngine {
       ctx.setLineDash([]);
 
       ctx.font = '11px "Space Mono", monospace';
-      ctx.fillStyle = '#a1a1aa';
+      ctx.fillStyle = st.id === this.activeHorizon ? '#d8c9aa' : '#a1a1aa';
       ctx.textAlign = 'center';
       ctx.fillText(st.label, st.x, pad.top - 18);
     }
@@ -1552,14 +1744,15 @@ export class AudioDnaEngine {
       // Draw End Badge on short_term (4 Weeks column)
       ctx.font = '10px "Inter", sans-serif';
       ctx.fillStyle = isHovered ? '#ffffff' : '#d4d4d8';
-      ctx.textAlign = 'left';
-      ctx.fillText(`${art.name} (#${art.ranks.short_term})`, stages[2].x + 12, y3 + 3);
+      ctx.textAlign = 'right';
+      const endName = isNarrow && art.name.length > 13 ? `${art.name.slice(0, 12)}…` : art.name;
+      ctx.fillText(`${endName} (#${art.ranks.short_term > 10 ? '—' : art.ranks.short_term})`, stages[2].x - 10, y3 + 3);
 
       // Sudden Obsession callout tag
       if (art.diff >= 5) {
         ctx.fillStyle = '#10b981';
         ctx.font = '9px "Space Mono", monospace';
-        ctx.fillText(`▲ +${art.diff} Obsession`, stages[2].x + 12, y3 + 14);
+        ctx.fillText(`▲ +${art.diff}`, stages[2].x - 10, y3 + 14);
       }
 
       ctx.restore();
@@ -1571,7 +1764,7 @@ export class AudioDnaEngine {
         <div class="dna-tt-header">${escapeHtml(hoveredArtist.name)}</div>
         <div class="dna-tt-artist">${escapeHtml(hoveredArtist.genre)}</div>
         <div class="dna-tt-metrics">
-          <span>Trajectory: <b>#${hoveredArtist.ranks.long_term} → #${hoveredArtist.ranks.medium_term} → #${hoveredArtist.ranks.short_term}</b></span>
+          <span>Trajectory: <b>${['long_term', 'medium_term', 'short_term'].map(range => hoveredArtist.ranks[range] > 10 ? '—' : `#${hoveredArtist.ranks[range]}`).join(' → ')}</b></span>
           <span style="color:${hoveredArtist.color};">Status: <b>${hoveredArtist.status}</b></span>
         </div>
       `);
@@ -1608,7 +1801,7 @@ export class AudioDnaEngine {
     ctx.fillText('03:00 AM', cx, cy - 6);
     ctx.font = '9px "Space Mono", monospace';
     ctx.fillStyle = '#a78bfa';
-    ctx.fillText('CONFESSIONAL', cx, cy + 8);
+    ctx.fillText(this.getHorizonLabel().toUpperCase(), cx, cy + 8);
 
     // 24 Radial Hour Segments
     const mouseAngle = Math.atan2(this.mouse.y - cy, this.mouse.x - cx);
@@ -1707,6 +1900,12 @@ export class AudioDnaEngine {
 
     ctx.save();
 
+    ctx.font = '9px "Space Mono", monospace';
+    ctx.fillStyle = '#71717a';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`${this.getHorizonLabel()} • interpretive`, w - pad.right, 12);
+
     // Day labels (Y-axis)
     ctx.font = '10px "Inter", sans-serif';
     ctx.fillStyle = '#a1a1aa';
@@ -1800,6 +1999,19 @@ export class AudioDnaEngine {
     // Simple spring-physics step
     const nodes = this.graphNodes;
     const edges = this.graphEdges;
+
+    if (!nodes.length) {
+      ctx.save();
+      ctx.fillStyle = '#d4d4d8';
+      ctx.font = '600 14px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('Genre metadata was not returned for this window.', cx, cy - 4);
+      ctx.fillStyle = '#71717a';
+      ctx.font = '11px "Space Mono", monospace';
+      ctx.fillText('Try another horizon or inspect Top Artists instead.', cx, cy + 18);
+      ctx.restore();
+      return;
+    }
 
     // Repulsion between all nodes
     for (let i = 0; i < nodes.length; i++) {
@@ -1920,7 +2132,7 @@ export class AudioDnaEngine {
         <div class="dna-tt-header">${escapeHtml(hoveredNode.name)}</div>
         <div class="dna-tt-artist">Constellation Core</div>
         <div class="dna-tt-metrics">
-          <span>Bridging Artists: <b>${escapeHtml(sharedArtists || 'Radiohead, Tame Impala')}</b></span>
+          <span>Bridging Artists: <b>${escapeHtml(sharedArtists || 'No shared artist edge')}</b></span>
         </div>
       `);
     } else if (this.tooltipEl && !hoveredNode) {
@@ -1931,122 +2143,82 @@ export class AudioDnaEngine {
   }
 
   // =========================================================================
-  // VISUALIZATION 5: PLAYLIST ARCHAEOLOGY (5-Year Stacked Area Timeline)
+  // VISUALIZATION 5: RELEASE ERA PROFILE
   // =========================================================================
   renderPlaylistArchaeology(ctx, w, h) {
-    const pad = { left: 60, right: 35, top: 40, bottom: 45 };
+    const pad = { left: 48, right: 28, top: 48, bottom: 52 };
     const plotW = w - pad.left - pad.right;
     const plotH = h - pad.top - pad.bottom;
-
-    const eras = PLAYLIST_ARCHAEOLOGY_ERAS;
-    const xSteps = 60; // 5 years in months
+    const tracks = this.getTracksList();
+    const palette = ['#8aa29b', '#d8c9aa', '#ed6a45', '#8b7fa8', '#b8a369', '#6f8f96', '#a86f5d'];
+    const bins = new Map();
+    tracks.forEach(track => {
+      const year = Number(track.releaseYear);
+      if (!Number.isFinite(year)) return;
+      const decade = Math.floor(year / 10) * 10;
+      if (!bins.has(decade)) bins.set(decade, []);
+      bins.get(decade).push(track);
+    });
+    const eras = [...bins.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([decade, eraTracks], index) => ({ decade, tracks: eraTracks, color: palette[index % palette.length] }));
 
     ctx.save();
+    if (!eras.length) {
+      ctx.fillStyle = '#d4d4d8';
+      ctx.font = '600 14px "Inter", sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('No release dates were returned for this window.', w / 2, h / 2);
+      ctx.restore();
+      return;
+    }
 
-    // Generate stacked curve samples across 5 years
-    // Era ribbons: Dream Pop (2021) -> Hyperpop (2022) -> Post-Punk (2023) -> Neo-Psych (2024) -> Nu-Jazz (2025/2026)
-    const pointsPerEra = eras.map((era, eIdx) => {
-      const pts = [];
-      for (let s = 0; s <= xSteps; s++) {
-        const center = (eIdx / (eras.length - 1)) * xSteps;
-        const dist = Math.abs(s - center);
-        const weight = Math.exp(-(dist * dist) / 60) * era.pct;
-        pts.push(weight);
-      }
-      return pts;
-    });
-
-    // Normalize stacks to fill plotH
+    const maxCount = Math.max(...eras.map(era => era.tracks.length));
+    const gap = Math.max(10, Math.min(24, plotW * 0.035));
+    const barW = Math.max(16, (plotW - gap * (eras.length - 1)) / eras.length);
     const baseline = pad.top + plotH;
-    const stackedTops = [];
-    for (let s = 0; s <= xSteps; s++) {
-      let sum = 0;
-      for (let e = 0; e < eras.length; e++) sum += pointsPerEra[e][s];
-      stackedTops.push(sum || 1);
-    }
+    let hoveredEra = null;
 
-    // Render stacked area ribbons (from bottom to top)
-    let currentBase = new Array(xSteps + 1).fill(baseline);
+    eras.forEach((era, index) => {
+      const barH = Math.max(8, (era.tracks.length / maxCount) * plotH * 0.82);
+      const x = pad.left + index * (barW + gap);
+      const y = baseline - barH;
+      const hovered = this.mouse.x >= x && this.mouse.x <= x + barW && this.mouse.y >= y && this.mouse.y <= baseline;
+      if (hovered) hoveredEra = { ...era, x: x + barW / 2, y };
 
-    for (let e = 0; e < eras.length; e++) {
-      const era = eras[e];
-      const newBase = [];
+      const gradient = ctx.createLinearGradient(0, y, 0, baseline);
+      gradient.addColorStop(0, hovered ? era.color : `${era.color}dd`);
+      gradient.addColorStop(1, `${era.color}55`);
+      ctx.fillStyle = gradient;
+      ctx.fillRect(x, y, barW, barH);
+      ctx.strokeStyle = hovered ? '#f2ead9' : era.color;
+      ctx.lineWidth = hovered ? 2 : 1;
+      ctx.strokeRect(x, y, barW, barH);
 
-      ctx.beginPath();
-      // Forward path (top of current layer)
-      for (let s = 0; s <= xSteps; s++) {
-        const x = pad.left + (s / xSteps) * plotW;
-        const normH = (pointsPerEra[e][s] / stackedTops[s]) * (plotH * 0.85);
-        const y = currentBase[s] - normH;
-        newBase.push(y);
-        if (s === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-
-      // Backward path (bottom of current layer)
-      for (let s = xSteps; s >= 0; s--) {
-        const x = pad.left + (s / xSteps) * plotW;
-        ctx.lineTo(x, currentBase[s]);
-      }
-      ctx.closePath();
-
-      const grad = ctx.createLinearGradient(pad.left, 0, pad.left + plotW, 0);
-      grad.addColorStop(0, `${era.color}cc`);
-      grad.addColorStop(1, `${era.color}77`);
-
-      ctx.fillStyle = grad;
-      ctx.fill();
-      ctx.strokeStyle = era.color;
-      ctx.lineWidth = 1;
-      ctx.stroke();
-
-      currentBase = newBase;
-    }
-
-    // X-Axis Year Labels
-    const years = ['2021', '2022', '2023', '2024', '2025', '2026'];
-    ctx.font = '10px "Space Mono", monospace';
-    ctx.fillStyle = '#a1a1aa';
-    ctx.textAlign = 'center';
-    years.forEach((yr, yIdx) => {
-      const x = pad.left + (yIdx / (years.length - 1)) * plotW;
-      ctx.fillText(yr, x, baseline + 16);
+      ctx.fillStyle = '#f2ead9';
+      ctx.font = '700 11px "Space Mono", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(String(era.tracks.length), x + barW / 2, y - 9);
+      ctx.fillStyle = '#a1a1aa';
+      ctx.font = '10px "Space Mono", monospace';
+      ctx.fillText(`${era.decade}s`, x + barW / 2, baseline + 18);
     });
 
-    // Interactive Archaeological Time Needle
-    if (this.mouse.x >= pad.left && this.mouse.x <= pad.left + plotW) {
-      const scrubT = (this.mouse.x - pad.left) / plotW;
-      const eraIdx = Math.min(eras.length - 1, Math.floor(scrubT * eras.length));
-      const activeEra = eras[eraIdx];
+    ctx.fillStyle = '#71717a';
+    ctx.font = '10px "Inter", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('Release decade of ranked tracks — not the year you listened', pad.left + plotW / 2, baseline + 38);
 
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath();
-      ctx.moveTo(this.mouse.x, pad.top);
-      ctx.lineTo(this.mouse.x, baseline);
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      ctx.beginPath();
-      ctx.arc(this.mouse.x, this.mouse.y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = activeEra.color;
-      ctx.fill();
-
-      if (this.tooltipEl) {
-        this.showTooltip(this.mouse.x, pad.top + 30, `
-          <div class="dna-tt-header">${activeEra.year} Era</div>
-          <div class="dna-tt-artist" style="color:${activeEra.color};">${activeEra.name}</div>
-          <div class="dna-tt-metrics">
-            <span>Peak Anthem: <b>${activeEra.topTrack}</b></span>
-            <span>Flavor: <b>${activeEra.desc}</b></span>
-          </div>
-        `);
-      }
+    if (hoveredEra && this.tooltipEl) {
+      const topNames = hoveredEra.tracks.slice(0, 3).map(track => track.name).join(', ');
+      this.showTooltip(hoveredEra.x, hoveredEra.y, `
+        <div class="dna-tt-header">${hoveredEra.decade}s releases</div>
+        <div class="dna-tt-artist" style="color:${hoveredEra.color};">${hoveredEra.tracks.length} ranked track${hoveredEra.tracks.length === 1 ? '' : 's'}</div>
+        <div class="dna-tt-metrics"><span>Highest ranked: <b>${escapeHtml(topNames)}</b></span></div>
+      `);
     } else if (this.tooltipEl) {
       this.tooltipEl.classList.remove('is-visible');
     }
-
     ctx.restore();
   }
 

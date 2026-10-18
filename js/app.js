@@ -203,6 +203,7 @@ const state = {
   currentData: DEFAULT_CURATED_DATA,
   playbackState: {
     isPlaying: false,
+    isPaused: false,
     isLoading: false,
     trackId: null
   }
@@ -231,6 +232,8 @@ function initElements() {
   elements.dockThumb = document.getElementById('dock-thumb');
   elements.npTrackName = document.getElementById('np-track-name');
   elements.npArtistName = document.getElementById('np-artist-name');
+  elements.npToggleBtn = document.getElementById('np-toggle-btn');
+  elements.npToggleIcon = document.getElementById('np-toggle-icon');
   elements.npStopBtn = document.getElementById('np-stop-btn');
   elements.demoModeIndicator = document.getElementById('demo-mode-indicator');
   elements.btnDemoStageConnect = document.getElementById('btn-demo-stage-connect');
@@ -506,9 +509,13 @@ function attachTrackListeners() {
     };
     const trackId = el.getAttribute('data-track-id');
     const track = data.topTracks.find(t => t.id === trackId);
+    const isCurrentTrack = trackId === state.playbackState.trackId;
+    const action = isCurrentTrack
+      ? (state.playbackState.isPaused ? 'Resume' : state.playbackState.isLoading ? 'Cancel' : 'Pause')
+      : 'Play';
     el.setAttribute('role', 'button');
     el.setAttribute('tabindex', '0');
-    el.setAttribute('aria-label', track ? `Play preview for ${track.name}` : 'Play track preview');
+    el.setAttribute('aria-label', track ? `${action} preview for ${track.name}` : 'Play track preview');
     el.addEventListener('click', activateTrack);
     el.addEventListener('keydown', event => {
       if (event.key === 'Enter' || event.key === ' ') {
@@ -522,28 +529,43 @@ function attachTrackListeners() {
 /**
  * Setup Sound Engine Notifications & Dynamic Island updates
  */
-soundEngine.onStateChange(({ isPlaying, isLoading, currentTrackId }) => {
-  state.playbackState = { isPlaying, isLoading, trackId: currentTrackId };
+soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, currentTrack }) => {
+  state.playbackState = { isPlaying, isPaused, isLoading, trackId: currentTrackId };
   const data = state.currentData || DEFAULT_CURATED_DATA;
 
-  if ((isPlaying || isLoading) && currentTrackId && data) {
-    const track = data.topTracks.find(t => t.id === currentTrackId);
+  if ((isPlaying || isPaused || isLoading) && currentTrackId && data) {
+    const track = currentTrack || data.topTracks.find(t => t.id === currentTrackId);
     if (track) {
       elements.nowPlayingBar.classList.add('active');
+      elements.nowPlayingBar.classList.toggle('is-paused', isPaused);
+      elements.nowPlayingBar.classList.toggle('is-loading', isLoading);
       elements.npTrackName.textContent = track.name;
       elements.npArtistName.textContent = Array.isArray(track.artists)
         ? track.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ')
         : (track.artistName || 'Unknown Artist');
       
       const imgUrl = (track.album && track.album.images && track.album.images[0]?.url) || '';
-      if (imgUrl) elements.dockThumb.src = imgUrl;
+      if (imgUrl) {
+        elements.dockThumb.src = imgUrl;
+      } else {
+        elements.dockThumb.removeAttribute('src');
+      }
+
+      if (elements.npToggleBtn && elements.npToggleIcon) {
+        elements.npToggleBtn.disabled = isLoading;
+        elements.npToggleIcon.textContent = isLoading ? '…' : isPaused ? '▶' : 'Ⅱ';
+        const action = isLoading ? 'Loading audio preview' : `${isPaused ? 'Resume' : 'Pause'} audio preview`;
+        elements.npToggleBtn.title = action;
+        elements.npToggleBtn.setAttribute('aria-label', action);
+      }
 
       if (isPlaying) {
         showToast(`Playing preview: ${track.name}`, 'info', 2000);
       }
     }
-  } else if (!isPlaying && !isLoading) {
+  } else if (!isPlaying && !isPaused && !isLoading) {
     elements.nowPlayingBar.classList.remove('active');
+    elements.nowPlayingBar.classList.remove('is-paused', 'is-loading');
   }
 
   renderCurrentCard();
@@ -622,6 +644,11 @@ function setupEventListeners() {
     soundEngine.stop();
   });
 
+  elements.npToggleBtn?.addEventListener('click', () => {
+    const track = soundEngine.currentTrack;
+    if (track) soundEngine.playTrack(track);
+  });
+
   elements.cardStyleTabs?.forEach(btn => {
     btn.addEventListener('click', () => {
       elements.cardStyleTabs.forEach(b => {
@@ -671,6 +698,7 @@ function setupEventListeners() {
       const direction = event.key === 'ArrowRight' ? 1 : -1;
       const next = elements.timeRangePills[(index + direction + elements.timeRangePills.length) % elements.timeRangePills.length];
       next.focus();
+      next.click();
     });
   });
 

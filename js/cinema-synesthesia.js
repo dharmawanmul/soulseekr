@@ -394,6 +394,10 @@ export class SynesthesiaBarcodeController {
     this.sortMode = 'chronological';
     this.hoverIndex = -1;
     this.hudEl = document.getElementById('barcode-hover-hud');
+    this.isDestroyed = false;
+    this.handleResize = this.render.bind(this);
+    this.handleMouseMove = this.onMouseMove.bind(this);
+    this.handleMouseLeave = this.onMouseLeave.bind(this);
     this.init();
   }
 
@@ -417,33 +421,44 @@ export class SynesthesiaBarcodeController {
       })
     );
 
+    if (this.isDestroyed) return;
     this.setupListeners();
     this.render();
   }
 
   setupListeners() {
-    window.addEventListener('resize', () => this.render());
+    window.addEventListener('resize', this.handleResize);
+    this.canvas.addEventListener('mousemove', this.handleMouseMove);
+    this.canvas.addEventListener('mouseleave', this.handleMouseLeave);
+  }
 
-    this.canvas.addEventListener('mousemove', (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const count = this.getSortedTracks().length;
-      if (count === 0) return;
+  onMouseMove(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const count = this.getSortedTracks().length;
+    if (count === 0) return;
 
-      const stripeWidth = rect.width / count;
-      const index = Math.floor(x / stripeWidth);
-      if (index >= 0 && index < count) {
-        this.hoverIndex = index;
-        this.updateHud(e.clientX, e.clientY);
-        this.render();
-      }
-    });
-
-    this.canvas.addEventListener('mouseleave', () => {
-      this.hoverIndex = -1;
-      if (this.hudEl) this.hudEl.style.display = 'none';
+    const stripeWidth = rect.width / count;
+    const index = Math.floor(x / stripeWidth);
+    if (index >= 0 && index < count) {
+      this.hoverIndex = index;
+      this.updateHud(e.clientX, e.clientY);
       this.render();
-    });
+    }
+  }
+
+  onMouseLeave() {
+    this.hoverIndex = -1;
+    if (this.hudEl) this.hudEl.style.display = 'none';
+    this.render();
+  }
+
+  destroy() {
+    this.isDestroyed = true;
+    window.removeEventListener('resize', this.handleResize);
+    this.canvas?.removeEventListener('mousemove', this.handleMouseMove);
+    this.canvas?.removeEventListener('mouseleave', this.handleMouseLeave);
+    if (this.hudEl) this.hudEl.style.display = 'none';
   }
 
   setSortMode(mode) {

@@ -58,6 +58,10 @@ function getIndicator(trackId, playbackState) {
     return '<span class="mini-spinner" title="Buffering audio preview..."></span>';
   }
 
+  if (typeof playbackState === 'object' && playbackState.isPaused) {
+    return '<span class="play-hint play-hint-paused" title="Resume audio preview">▶</span>';
+  }
+
   return '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>';
 }
 
@@ -563,7 +567,9 @@ export function renderDapCard(data, timeRange, playbackState) {
                     <span class="dap-row-name">${escapeHtml(track.name)}</span>
                   </div>
                   <div class="dap-row-right">
-                    ${active ? '<span class="dap-playing-pulse">▶ PLAYING</span>' : `<span class="dap-row-time">${formatDuration(track.duration_ms)}</span>`}
+                    ${active
+                      ? `<span class="dap-playing-pulse">${playbackState?.isPaused ? '▶ PAUSED' : '▶ PLAYING'}</span>`
+                      : `<span class="dap-row-time">${formatDuration(track.duration_ms)}</span>`}
                   </div>
                 </div>
               `;

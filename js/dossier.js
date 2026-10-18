@@ -198,8 +198,14 @@ export class SonicDossierEngine {
       this.activeControllers.flightMap.destroy();
       this.activeControllers.flightMap = null;
     }
-    this.activeControllers.barcode = null;
-    this.activeControllers.weatherTimeline = null;
+    if (this.activeControllers.barcode) {
+      this.activeControllers.barcode.destroy();
+      this.activeControllers.barcode = null;
+    }
+    if (this.activeControllers.weatherTimeline) {
+      this.activeControllers.weatherTimeline.destroy();
+      this.activeControllers.weatherTimeline = null;
+    }
   }
 
   handleKeyDown(e) {

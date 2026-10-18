@@ -300,6 +300,7 @@ export class WrappedExperience {
     this.onKeyDown = this.handleKeyDown.bind(this);
     this.onWheel = this.handleWheel.bind(this);
     this.lastWheelTime = 0;
+    this.unsubscribeSoundState = soundEngine.onStateChange(state => this.updatePlaybackUi(state));
     this.setupListeners();
   }
 
@@ -528,7 +529,7 @@ export class WrappedExperience {
 
     if (storyTrack) {
       try {
-        await soundEngine.playTrack(storyTrack);
+        await soundEngine.playTrack(storyTrack, { restart: true });
       } catch (err) {
         console.warn('Could not play this story soundtrack:', err);
       }
@@ -653,7 +654,7 @@ export class WrappedExperience {
                 <span class="ladder-title">${track.name}</span>
                 <span class="ladder-artist">${Array.isArray(track.artists) ? track.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (track.artistName || 'Unknown Artist')}</span>
               </div>
-              <span style="font-size:0.75rem; color:#10b981; opacity:0.7;">▶</span>
+              <span class="ladder-play-state" aria-hidden="true">▶</span>
             </div>
           `).join('')}
         </div>
@@ -875,7 +876,6 @@ export class WrappedExperience {
       const playHero = (e) => {
         e.stopPropagation();
         soundEngine.playTrack(topTrack);
-        heroBtn.classList.toggle('is-playing');
       };
       heroBtn.setAttribute('role', 'button');
       heroBtn.setAttribute('tabindex', '0');
@@ -942,6 +942,44 @@ export class WrappedExperience {
     btnReplay?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.goToSlide(0);
+    });
+
+    this.updatePlaybackUi({
+      isPlaying: soundEngine.isPlaying,
+      isPaused: soundEngine.isPaused,
+      isLoading: soundEngine.isLoading,
+      currentTrackId: soundEngine.currentTrackId
+    });
+  }
+
+  updatePlaybackUi({ isPlaying, isPaused, isLoading, currentTrackId }) {
+    if (!this.viewport) return;
+
+    const hero = this.viewport.querySelector('#wrapped-hero-track-btn');
+    if (hero) {
+      const isCurrent = hero.getAttribute('data-track-id') === currentTrackId;
+      hero.classList.toggle('is-playing', isCurrent && isPlaying);
+      hero.classList.toggle('is-paused', isCurrent && isPaused);
+      const action = isCurrent
+        ? (isLoading ? 'Loading preview' : isPaused ? 'Resume preview' : isPlaying ? 'Pause preview' : 'Play preview')
+        : 'Play preview';
+      const label = hero.querySelector('.top-track-play-btn');
+      if (label) label.textContent = action;
+      hero.setAttribute('aria-label', `${action} for ${this.data?.topTracks?.[0]?.name || 'top track'}`);
+    }
+
+    this.viewport.querySelectorAll('.ladder-item[data-track-id]').forEach(item => {
+      const trackId = item.getAttribute('data-track-id');
+      const isCurrent = trackId === currentTrackId;
+      item.classList.toggle('is-playing', isCurrent && isPlaying);
+      item.classList.toggle('is-paused', isCurrent && isPaused);
+      const cue = item.querySelector('.ladder-play-state');
+      if (cue) cue.textContent = isCurrent && isLoading ? '…' : isCurrent && isPlaying ? 'Ⅱ' : '▶';
+      const action = isCurrent
+        ? (isLoading ? 'Cancel' : isPaused ? 'Resume' : isPlaying ? 'Pause' : 'Play')
+        : 'Play';
+      const track = this.data?.topTracks?.find(candidate => candidate.id === trackId);
+      item.setAttribute('aria-label', `${action} preview for ${track?.name || 'track'}`);
     });
   }
 

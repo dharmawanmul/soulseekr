@@ -263,13 +263,18 @@ export class WeatherTimelineController {
     this.canvas = canvasEl;
     this.weather = weatherData;
     this.ctx = canvasEl?.getContext('2d');
+    this.handleResize = this.render.bind(this);
     this.init();
   }
 
   init() {
     if (!this.canvas) return;
-    window.addEventListener('resize', () => this.render());
+    window.addEventListener('resize', this.handleResize);
     this.render();
+  }
+
+  destroy() {
+    window.removeEventListener('resize', this.handleResize);
   }
 
   render() {

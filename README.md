@@ -21,7 +21,8 @@ Connected accounts also unlock the Year in Music story and the Taste Dossier. Ea
 ## Interaction and export
 
 - The artifact selector and listening window work with pointer or keyboard input.
-- Track rows play the preview supplied by Spotify. When Spotify has no preview URL, the audio player checks the public iTunes search endpoint for an available preview.
+- Track rows play the preview supplied by Spotify. When Spotify has no preview URL, the audio player checks the public iTunes search endpoint for an available preview. Preview controls support pause/resume without resetting the position and keep a 30-second listening budget.
+- Audio DNA switches its track, artist, metric, release-era, and genre datasets with the selected Spotify time horizon. Windows Spotify did not return are disabled rather than filled with sample data.
 - The selected artifact can be downloaded in 9:16 or 1:1 format, or copied to the clipboard when the browser supports image clipboard access.
 - Wrapped and dossier dialogs close with Escape and return focus to the control that opened them.
 - Each Year in Music story uses a different unique ranked track when enough tracks are available.

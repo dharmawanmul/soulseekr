@@ -203,7 +203,8 @@
 .vinyl-curator {
   font-size: 0.75rem;
   color: #a1a1aa;
-  margin-top: 0.2rem;
+  margin-top: 0.45rem;
+  line-height: 1.35;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -289,8 +290,8 @@
 }
 
 .hologram-seal {
-  background: linear-gradient(135deg, #e0e7ff 0%, #fae8ff 50%, #fef3c7 100%);
-  color: #1e1b4b;
+  background: #f2ead9;
+  color: #181510;
   font-size: 0.55rem;
   font-weight: 900;
   padding: 0.25rem 0.55rem;

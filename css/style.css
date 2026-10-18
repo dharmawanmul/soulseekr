@@ -667,6 +667,7 @@ body {
   text-overflow: ellipsis;
 }
 
+.btn-dock-control,
 .btn-dock-close {
   background: rgba(255, 255, 255, 0.07);
   border: none;
@@ -682,9 +683,26 @@ body {
   flex-shrink: 0;
 }
 
+.btn-dock-control:hover,
 .btn-dock-close:hover {
   background: rgba(255, 255, 255, 0.18);
   color: #fff;
+}
+
+.btn-dock-control:disabled {
+  cursor: wait;
+  opacity: 0.45;
+}
+
+.dynamic-audio-dock.is-paused .mini-eq .bar,
+.dynamic-audio-dock.is-loading .mini-eq .bar {
+  animation-play-state: paused;
+  height: 28%;
+}
+
+.dynamic-audio-dock.is-paused .dock-disc-art,
+.dynamic-audio-dock.is-loading .dock-disc-art {
+  animation-play-state: paused;
 }
 
 /* --------------------------------------------------------------------------

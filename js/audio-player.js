@@ -13,29 +13,38 @@ class SoundEngine {
     this.audioElement = new Audio();
     this.audioContext = null;
     this.isPlaying = false;
+    this.isPaused = false;
     this.isLoading = false;
     this.currentTrackId = null;
+    this.currentTrack = null;
     this.synthInterval = null;
+    this.synthSeedName = '';
     this.onStateChangeCallbacks = [];
     this.previewCache = new Map(); // cache query -> previewUrl
     this.playRequestId = 0;
     this.previewTimer = null;
     this.previewDurationMs = 30000;
+    this.previewRemainingMs = this.previewDurationMs;
+    this.previewStartedAt = 0;
+    this.isStopping = false;
 
     this.audioElement.addEventListener('ended', () => {
       this.stop();
     });
 
     this.audioElement.addEventListener('pause', () => {
-      if (!this.synthInterval && !this.isLoading) {
+      if (!this.isStopping && !this.synthInterval && !this.isLoading && this.currentTrackId) {
+        if (this.isPaused && !this.isPlaying) return;
         this.isPlaying = false;
+        this.isPaused = true;
+        this.pausePreviewCountdown();
         this.notifyState();
       }
     });
 
     this.audioElement.addEventListener('error', (e) => {
       console.warn('Audio playback error, falling back to synth:', e);
-      if (this.currentTrackId) {
+      if (this.currentTrackId && !this.synthInterval) {
         this.playSynthesizedLoop('Synth Fallback');
       }
     });
@@ -43,22 +52,49 @@ class SoundEngine {
 
   onStateChange(cb) {
     this.onStateChangeCallbacks.push(cb);
+    return () => {
+      this.onStateChangeCallbacks = this.onStateChangeCallbacks.filter(callback => callback !== cb);
+    };
   }
 
   notifyState() {
     this.onStateChangeCallbacks.forEach(cb => cb({
       isPlaying: this.isPlaying,
+      isPaused: this.isPaused,
       isLoading: this.isLoading,
-      currentTrackId: this.currentTrackId
+      currentTrackId: this.currentTrackId,
+      currentTrack: this.currentTrack
     }));
+  }
+
+  resetPreviewCountdown() {
+    if (this.previewTimer) clearTimeout(this.previewTimer);
+    this.previewTimer = null;
+    this.previewRemainingMs = this.previewDurationMs;
+    this.previewStartedAt = 0;
   }
 
   schedulePreviewStop() {
     if (this.previewTimer) clearTimeout(this.previewTimer);
+    if (this.previewRemainingMs <= 0) {
+      this.stop();
+      return;
+    }
+    this.previewStartedAt = performance.now();
     this.previewTimer = setTimeout(() => {
       this.previewTimer = null;
+      this.previewRemainingMs = 0;
       this.stop();
-    }, this.previewDurationMs);
+    }, this.previewRemainingMs);
+  }
+
+  pausePreviewCountdown() {
+    if (!this.previewTimer) return;
+    clearTimeout(this.previewTimer);
+    this.previewTimer = null;
+    const elapsed = Math.max(0, performance.now() - this.previewStartedAt);
+    this.previewRemainingMs = Math.max(0, this.previewRemainingMs - elapsed);
+    this.previewStartedAt = 0;
   }
 
   setPreviewStartPosition() {
@@ -119,27 +155,41 @@ class SoundEngine {
   /**
    * Play track: Resolves real audio and streams
    */
-  async playTrack(track) {
-    if (this.currentTrackId === track.id && this.isPlaying) {
-      this.stop();
-      return;
+  async playTrack(track, { restart = false } = {}) {
+    if (!track?.id) return;
+
+    if (!restart && this.currentTrackId === track.id) {
+      if (this.isPlaying) {
+        this.pause();
+        return;
+      }
+      if (this.isPaused) {
+        await this.resume();
+        return;
+      }
+      if (this.isLoading) {
+        this.stop();
+        return;
+      }
     }
 
-    this.stop();
+    this.stop(false);
+    this.resetPreviewCountdown();
     const requestId = ++this.playRequestId;
     this.currentTrackId = track.id;
+    this.currentTrack = track;
+    this.isPaused = false;
     this.isLoading = true;
     this.notifyState();
 
     let previewUrl = track.preview_url;
 
-    // If Spotify didn't provide a preview_url, resolve genuine 30s studio audio from Apple/iTunes
     if (!previewUrl) {
       const artist = (track.artists && track.artists[0]) ? track.artists[0].name : '';
       previewUrl = await this.resolveRealAudioPreview(track.name, artist);
       if (requestId !== this.playRequestId) return;
       if (previewUrl) {
-        track.preview_url = previewUrl; // cache on object
+        track.preview_url = previewUrl;
       }
     }
 
@@ -153,20 +203,68 @@ class SoundEngine {
         }, { once: true });
         await this.audioElement.play();
         if (requestId !== this.playRequestId) {
+          this.isStopping = true;
           this.audioElement.pause();
+          this.isStopping = false;
           return;
         }
         this.isPlaying = true;
+        this.isPaused = false;
         this.schedulePreviewStop();
         this.notifyState();
       } catch (err) {
         if (requestId !== this.playRequestId) return;
-        console.warn('HTML5 Audio play failed, starting generative synth:', err);
-        this.playSynthesizedLoop(track.name);
+        if (!this.synthInterval) {
+          console.warn('HTML5 Audio play failed, starting generative synth:', err);
+          this.playSynthesizedLoop(track.name);
+        }
       }
     } else {
-      // Fallback only if no preview exists anywhere
       this.playSynthesizedLoop(track.name);
+    }
+  }
+
+  pause() {
+    if (!this.currentTrackId || !this.isPlaying) return;
+
+    this.pausePreviewCountdown();
+    this.isPlaying = false;
+    this.isPaused = true;
+
+    if (this.synthInterval) {
+      clearInterval(this.synthInterval);
+      this.synthInterval = null;
+    } else {
+      this.isStopping = true;
+      this.audioElement.pause();
+      this.isStopping = false;
+    }
+    this.notifyState();
+  }
+
+  async resume() {
+    if (!this.currentTrackId || !this.isPaused || this.previewRemainingMs <= 0) {
+      if (this.previewRemainingMs <= 0) this.stop();
+      return;
+    }
+
+    try {
+      if (this.synthSeedName) {
+        this.isPlaying = true;
+        this.isPaused = false;
+        this.startSynthInterval(this.synthSeedName, true);
+      } else {
+        await this.audioElement.play();
+        this.isPlaying = true;
+        this.isPaused = false;
+      }
+      this.schedulePreviewStop();
+      this.notifyState();
+    } catch (err) {
+      console.warn('Could not resume audio preview:', err);
+      this.isPlaying = false;
+      this.isPaused = true;
+      this.notifyState();
     }
   }
 
@@ -176,9 +274,17 @@ class SoundEngine {
   playSynthesizedLoop(seedName = 'Music') {
     this.initAudioContext();
     this.isPlaying = true;
+    this.isPaused = false;
     this.isLoading = false;
+    this.synthSeedName = seedName;
     this.schedulePreviewStop();
     this.notifyState();
+
+    this.startSynthInterval(seedName);
+  }
+
+  startSynthInterval(seedName = 'Music', isResume = false) {
+    if (this.synthInterval) clearInterval(this.synthInterval);
 
     const charSum = seedName.split('').reduce((sum, c) => sum + c.charCodeAt(0), 0);
     const rootNotes = [220, 246.94, 261.63, 293.66, 329.63, 349.23, 392.00];
@@ -240,18 +346,18 @@ class SoundEngine {
       }
     };
 
-    playChordStep();
+    if (!isResume || this.previewRemainingMs > 0) playChordStep();
     this.synthInterval = setInterval(playChordStep, 1800);
   }
 
-  stop() {
+  stop(shouldNotify = true) {
     this.playRequestId += 1;
-    if (this.previewTimer) {
-      clearTimeout(this.previewTimer);
-      this.previewTimer = null;
-    }
+    this.resetPreviewCountdown();
+    this.isStopping = true;
     this.audioElement.pause();
     this.audioElement.currentTime = 0;
+    this.audioElement.removeAttribute('src');
+    this.isStopping = false;
 
     if (this.synthInterval) {
       clearInterval(this.synthInterval);
@@ -259,9 +365,12 @@ class SoundEngine {
     }
 
     this.isPlaying = false;
+    this.isPaused = false;
     this.isLoading = false;
     this.currentTrackId = null;
-    this.notifyState();
+    this.currentTrack = null;
+    this.synthSeedName = '';
+    if (shouldNotify) this.notifyState();
   }
 }
 

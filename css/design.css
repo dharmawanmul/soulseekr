@@ -323,7 +323,7 @@ a:focus-visible,
 
 .studio-index,
 .auth-gateway-index {
-  margin: 0 0 1.15rem;
+  margin: 0 0 1.5rem;
   color: var(--archive-orange);
   font-family: var(--font-mono);
   font-size: 0.67rem;
@@ -339,7 +339,7 @@ a:focus-visible,
   font-size: clamp(3.3rem, 7vw, 7.25rem);
   font-weight: 500;
   letter-spacing: -0.065em;
-  line-height: 0.88;
+  line-height: 0.94;
 }
 
 .studio-intro h2 em {
@@ -712,6 +712,7 @@ a:focus-visible,
   color: #5d574e;
 }
 
+.btn-dock-control,
 .btn-dock-close {
   width: 44px;
   height: 44px;
@@ -719,6 +720,7 @@ a:focus-visible,
   color: #5d574e;
 }
 
+.btn-dock-control:hover,
 .btn-dock-close:hover {
   background: #dcd3c1;
   color: var(--archive-ink);

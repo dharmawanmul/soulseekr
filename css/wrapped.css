@@ -684,6 +684,18 @@
   transform: translateX(4px);
 }
 
+.ladder-play-state {
+  color: #d8c9aa;
+  font-size: 0.75rem;
+  opacity: 0.78;
+}
+
+.ladder-item.is-playing,
+.ladder-item.is-paused {
+  border-color: rgba(216, 201, 170, 0.48);
+  background: rgba(216, 201, 170, 0.09);
+}
+
 .ladder-rank {
   font-family: var(--font-mono, monospace);
   font-size: 0.8rem;
@@ -864,7 +876,7 @@
   border-radius: 24px;
   display: flex;
   flex-direction: column;
-  gap: 0.65rem;
+  gap: 0.9rem;
 }
 
 .minutes-counter {
@@ -880,6 +892,7 @@
   font-size: 0.8rem;
   color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
+  line-height: 1.4;
 }
 
 .metrics-bento {

@@ -305,12 +305,13 @@ export class FlightMapController {
     this.ctx = canvasEl?.getContext('2d');
     this.animProgress = 0;
     this.animId = null;
+    this.handleResize = this.render.bind(this);
     this.init();
   }
 
   init() {
     if (!this.canvas) return;
-    window.addEventListener('resize', () => this.render());
+    window.addEventListener('resize', this.handleResize);
     this.startAnimation();
   }
 
@@ -325,6 +326,8 @@ export class FlightMapController {
 
   destroy() {
     if (this.animId) cancelAnimationFrame(this.animId);
+    this.animId = null;
+    window.removeEventListener('resize', this.handleResize);
   }
 
   render() {
