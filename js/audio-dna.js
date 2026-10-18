@@ -599,6 +599,7 @@ export class AudioDnaEngine {
     this.particles = [];
     this.graphNodes = [];
     this.graphEdges = [];
+    this.artistImageCache = new Map();
     
     // Resize & interaction bindings
     this.handleResize = this.handleResize.bind(this);
@@ -695,6 +696,84 @@ export class AudioDnaEngine {
       });
     }
     return AUDIO_DNA_TRACKS;
+  }
+
+  getArtistImageUrl(track) {
+    const primaryArtist = Array.isArray(track?.artists) ? track.artists[0] : null;
+    if (!primaryArtist) return '';
+
+    const artistName = typeof primaryArtist === 'object' ? primaryArtist.name : primaryArtist;
+    const artistId = typeof primaryArtist === 'object' ? primaryArtist.id : '';
+    const matchingArtist = (this.data?.topArtists || []).find(artist => {
+      if (artistId && artist?.id) return artist.id === artistId;
+      return artist?.name && artistName && artist.name.toLowerCase() === artistName.toLowerCase();
+    });
+
+    return matchingArtist?.images?.find(image => image?.url)?.url || '';
+  }
+
+  getLoadedArtistImage(track) {
+    const url = this.getArtistImageUrl(track);
+    if (!url) return null;
+
+    let cached = this.artistImageCache.get(url);
+    if (!cached) {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      cached = { image, status: 'loading' };
+      image.addEventListener('load', () => {
+        cached.status = 'loaded';
+      }, { once: true });
+      image.addEventListener('error', () => {
+        cached.status = 'error';
+      }, { once: true });
+      image.src = url;
+      this.artistImageCache.set(url, cached);
+    }
+
+    return cached.status === 'loaded' ? cached.image : null;
+  }
+
+  drawArtistImageBubble(ctx, track, cx, cy, radius, color, emphasized = false) {
+    const image = this.getLoadedArtistImage(track);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.clip();
+
+    if (image) {
+      const cropSize = Math.min(image.naturalWidth, image.naturalHeight);
+      const sourceX = (image.naturalWidth - cropSize) / 2;
+      const sourceY = (image.naturalHeight - cropSize) / 2;
+      ctx.drawImage(
+        image,
+        sourceX,
+        sourceY,
+        cropSize,
+        cropSize,
+        cx - radius,
+        cy - radius,
+        radius * 2,
+        radius * 2
+      );
+      ctx.fillStyle = emphasized ? 'rgba(12, 10, 8, 0.04)' : 'rgba(12, 10, 8, 0.16)';
+      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+    } else {
+      const fallback = ctx.createRadialGradient(cx, cy, radius * 0.15, cx, cy, radius);
+      fallback.addColorStop(0, `${color}ee`);
+      fallback.addColorStop(0.72, `${color}99`);
+      fallback.addColorStop(1, `${color}33`);
+      ctx.fillStyle = fallback;
+      ctx.fillRect(cx - radius, cy - radius, radius * 2, radius * 2);
+    }
+
+    ctx.restore();
+    ctx.beginPath();
+    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
+    ctx.lineWidth = emphasized ? 3 : 1.5;
+    ctx.strokeStyle = emphasized ? '#f2ead9' : color;
+    ctx.stroke();
   }
 
   // =========================================================================
@@ -1288,9 +1367,9 @@ export class AudioDnaEngine {
       const cx = pad.left + ((yr - minYear) / (maxYear - minYear)) * plotW;
       const cy = pad.top + plotH - ((pop - minPop) / (maxPop - minPop)) * plotH;
 
-      // Bubble radius based on rank: #1 largest (radius ~22), #20 smaller (radius ~7)
+      // Bubble radius based on rank: #1 largest, lower ranks still large enough to read as portraits.
       const rank = t.userRank || (i + 1);
-      const baseRadius = Math.max(7, Math.min(23, 24 - rank * 0.75));
+      const baseRadius = Math.max(9, Math.min(25, 26 - rank * 0.72));
 
       // Color based on index or palette matching user screenshot
       const palette = ['#38bdf8', '#818cf8', '#34d399', '#c084fc', '#f43f5e', '#fbbf24', '#e879f9', '#2dd4bf', '#a78bfa', '#f59e0b'];
@@ -1310,28 +1389,25 @@ export class AudioDnaEngine {
       const isCurrentActive = this.activeTrack?.id === t.id;
       const radius = isHovered ? baseRadius * 1.25 : (isCurrentActive ? baseRadius * 1.15 : baseRadius);
 
-      // Draw Glass Glow Halo
-      const grad = ctx.createRadialGradient(cx, cy, radius * 0.2, cx, cy, radius * 1.2);
-      grad.addColorStop(0, `${bubbleColor}dd`);
-      grad.addColorStop(0.7, `${bubbleColor}88`);
-      grad.addColorStop(1, `${bubbleColor}11`);
-
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fillStyle = grad;
-      ctx.fill();
-
-      // Specular rim
-      ctx.lineWidth = isHovered || isCurrentActive ? 2 : 1;
-      ctx.strokeStyle = isHovered || isCurrentActive ? '#ffffff' : `${bubbleColor}aa`;
-      ctx.stroke();
+      this.drawArtistImageBubble(
+        ctx,
+        t,
+        cx,
+        cy,
+        radius,
+        bubbleColor,
+        isHovered || isCurrentActive
+      );
 
       // Active indicator dot
       if (isCurrentActive) {
         ctx.beginPath();
-        ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+        ctx.arc(cx + radius * 0.62, cy + radius * 0.62, 3.5, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
         ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#15130f';
+        ctx.stroke();
       }
     }
 
@@ -2093,7 +2169,8 @@ export class AudioDnaEngine {
       const dx = this.mouse.x - cx;
       const dy = this.mouse.y - cy;
       const dist = Math.sqrt(dx * dx + dy * dy);
-      const isHovered = dist <= 12;
+      const hitRadius = 14;
+      const isHovered = dist <= hitRadius + 3;
 
       if (isHovered && dist < closestDist) {
         closestDist = dist;
@@ -2101,15 +2178,16 @@ export class AudioDnaEngine {
       }
 
       const isCurrentActive = this.activeTrack?.id === t.id;
-      const r = isHovered ? 9 : (isCurrentActive ? 7.5 : 5.5);
-
-      ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI * 2);
-      ctx.fillStyle = isHovered || isCurrentActive ? '#ffffff' : quadColor;
-      ctx.strokeStyle = quadColor;
-      ctx.lineWidth = 2;
-      ctx.fill();
-      ctx.stroke();
+      const r = isHovered ? 17 : (isCurrentActive ? 15 : 12);
+      this.drawArtistImageBubble(
+        ctx,
+        t,
+        cx,
+        cy,
+        r,
+        quadColor,
+        isHovered || isCurrentActive
+      );
     }
 
     this.hoveredItem = closestItem;

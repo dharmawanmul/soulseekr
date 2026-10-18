@@ -16,7 +16,7 @@ The main workspace renders seven formats from the same listening data:
 | Titanium DAP | Compact digital player built around the top track |
 | VIP Pass | Festival credential with a listening timetable |
 
-Connected accounts also unlock the Year in Music story and the Taste Dossier. The dossier includes Audio DNA, cinema and synesthesia, listening-weather, listening-geography, a period comparison, and a data-provenance ledger.
+Connected accounts also unlock the Year in Music story and the Taste Dossier. Each story soundtrack is randomly drawn without replacement from up to 50 ranked tracks. The dossier includes Audio DNA, cinema and synesthesia, listening-weather, listening-geography, a period comparison, and a data-provenance ledger.
 
 ## Interaction and export
 

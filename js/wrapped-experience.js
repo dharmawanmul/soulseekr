@@ -490,12 +490,20 @@ export class WrappedExperience {
 
   selectDistinctSlideTracks(tracks) {
     const seen = new Set();
-    return tracks.filter(track => {
+    const pool = tracks.slice(0, 50).filter(track => {
       const key = track?.id || `${track?.name || ''}:${track?.artists?.[0]?.name || ''}`;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
-    }).slice(0, this.totalSlides);
+    });
+
+    // Shuffle the user's full top-50 pool once per opening, then assign without replacement.
+    for (let index = pool.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [pool[index], pool[swapIndex]] = [pool[swapIndex], pool[index]];
+    }
+
+    return pool.slice(0, this.totalSlides);
   }
 
   async playSlideAudio(slideIndex = this.currentSlideIndex) {
@@ -946,7 +954,7 @@ export class WrappedExperience {
     // Update Progress Bars State
     this.updateProgressBarsState();
 
-    // Each story has its own distinct soundtrack when Spotify returned enough unique tracks.
+    // Each story gets a distinct random pick from the user's top-50 pool.
     this.playSlideAudio(index);
 
     // Start auto-advance progress timer for this slide
