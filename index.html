@@ -16,7 +16,7 @@
   <!-- Google Fonts: Editorial & Physical Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400..700&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:ital,wght@0,300..800;1,300..800&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400..700&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
 
   <!-- Design System & Artifact Stylesheets -->
   <link rel="stylesheet" href="css/style.css?v=3.0">
@@ -24,6 +24,7 @@
   <link rel="stylesheet" href="css/wrapped.css?v=3.0">
   <link rel="stylesheet" href="css/dossier.css?v=3.0">
   <link rel="stylesheet" href="css/design.css?v=4.0">
+  <link rel="stylesheet" href="css/studio-v5.css?v=5.0">
 
   <!-- Three.js WebGL Engine for 3D Wrapped Visualizer -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -32,6 +33,14 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 </head>
 <body>
+  <!--
+    THESIS: Soulseekr is a listening folio, not a dashboard; a compact catalog leaf supports one dominant mounted artifact.
+    OWN-WORLD: Warm black, bone paper, oxidized orange, hairline rules, and editorial type turn every control into print-studio furniture.
+    STORY: Choose an edition and listening window, inspect the artifact, then export it or connect Spotify to open the private archive rooms.
+    FIRST VIEWPORT: A quiet masthead and compact editorial statement lead into a narrow choice leaf beside a large stage with an export colophon.
+    FORM: Listening folio, grounded structure 5, seed 728f2bf9.
+    FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, and DESIGN.md
+  -->
 
   <a class="skip-link" href="#main-content">Skip to the studio</a>
 
@@ -47,7 +56,7 @@
       </div>
       <div class="brand-meta">
         <h1 class="brand-title">Soulseekr</h1>
-        <span class="brand-tagline">Physical Music Artifacts</span>
+        <span class="brand-tagline">Listening archive &amp; print studio</span>
       </div>
     </div>
 
@@ -102,10 +111,17 @@
   <main class="main-layout" id="main-content">
     <section class="studio-intro" aria-labelledby="studio-title">
       <div class="studio-intro-heading">
-        <p class="studio-index">Listening archive / Issue 01</p>
         <h2 id="studio-title">Your music,<br><em>pressed into form.</em></h2>
+        <p class="studio-index">Private archive / Seven collectible editions</p>
       </div>
-      <p class="studio-intro-copy">Choose an edition, set the listening window, then export the artifact that feels most like your collection.</p>
+      <div class="studio-intro-aside">
+        <p class="studio-intro-copy">Choose an edition, set the listening window, then export the artifact that feels most like your collection.</p>
+        <ul class="studio-intro-notes" aria-label="Studio capabilities">
+          <li>Story and square image export</li>
+          <li>Keyboard-ready artifact controls</li>
+          <li>Clearly labelled sample archive</li>
+        </ul>
+      </div>
     </section>
 
     <div class="studio-workbench">
@@ -120,8 +136,8 @@
         </div>
       </div>
       <!-- Artifact formats -->
-      <div class="segmented-toolbar" role="tablist" aria-label="Card Archetype">
-        <button class="seg-btn active" data-style="vinyl" role="tab" aria-selected="true">
+      <div class="segmented-toolbar" role="tablist" aria-label="Artifact edition">
+        <button class="seg-btn active" data-style="vinyl" data-description="A Japanese sleeve with an Obi strip and a side-based track list." role="tab" aria-selected="true" aria-controls="card-display-container" tabindex="0">
           <!-- Vinyl / record groove lines icon -->
           <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <circle cx="12" cy="12" r="10"/>
@@ -130,7 +146,7 @@
           </svg>
           Vinyl Obi
         </button>
-        <button class="seg-btn" data-style="swiss" role="tab" aria-selected="false">
+        <button class="seg-btn" data-style="swiss" data-description="A strict typographic poster built from the hierarchy of your ranked tracks." role="tab" aria-selected="false" aria-controls="card-display-container" tabindex="-1">
           <!-- Grid / layout icon -->
           <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect x="3" y="3" width="7" height="18" rx="1"/>
@@ -139,7 +155,7 @@
           </svg>
           Swiss Poster
         </button>
-        <button class="seg-btn" data-style="prism" role="tab" aria-selected="false">
+        <button class="seg-btn" data-style="prism" data-description="A translucent profile that turns archive indices into a luminous object." role="tab" aria-selected="false" aria-controls="card-display-container" tabindex="-1">
           <!-- Triangle prism icon -->
           <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M12 3L22 21H2L12 3Z"/>
@@ -147,7 +163,7 @@
           </svg>
           Sound Prism
         </button>
-        <button class="seg-btn" data-style="cassette" role="tab" aria-selected="false">
+        <button class="seg-btn" data-style="cassette" data-description="A playable cassette shell and J-card assembled from your selected window." role="tab" aria-selected="false" aria-controls="card-display-container" tabindex="-1">
           <!-- Cassette reel icon -->
           <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect x="2" y="6" width="20" height="14" rx="2"/>
@@ -159,7 +175,7 @@
           </svg>
           Tape Cassette
         </button>
-        <button class="seg-btn" data-style="receipt" role="tab" aria-selected="false">
+        <button class="seg-btn" data-style="receipt" data-description="A record-bar thermal slip with durations and catalog details." role="tab" aria-selected="false" aria-controls="card-display-container" tabindex="-1">
           <!-- Receipt icon -->
           <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <path d="M6 2h12a1 1 0 011 1v17l-3-2-2 2-2-2-2 2-3-2V3a1 1 0 011-1z"/>
@@ -168,7 +184,7 @@
           </svg>
           Thermal Slip
         </button>
-        <button class="seg-btn" data-style="dap" role="tab" aria-selected="false">
+        <button class="seg-btn" data-style="dap" data-description="A compact digital player centered on the highest-ranked track." role="tab" aria-selected="false" aria-controls="card-display-container" tabindex="-1">
           <!-- DAP Hi-Fi Audiophile Player icon -->
           <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect x="4" y="2" width="16" height="20" rx="3"/>
@@ -177,7 +193,7 @@
           </svg>
           Titanium DAP
         </button>
-        <button class="seg-btn" data-style="vippass" role="tab" aria-selected="false">
+        <button class="seg-btn" data-style="vippass" data-description="A festival credential that arranges your tracks as a listening timetable." role="tab" aria-selected="false" aria-controls="card-display-container" tabindex="-1">
           <!-- ID badge / pass icon -->
           <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect x="3" y="4" width="18" height="16" rx="2"/>
@@ -188,6 +204,7 @@
           VIP Pass
         </button>
       </div>
+      <p class="selector-scroll-hint">Swipe or use the arrow keys to see all seven editions.</p>
 
       <div class="control-heading control-heading-time">
         <span class="control-number">02</span>
@@ -198,17 +215,25 @@
       </div>
 
       <!-- Timeframe Segmented Filter -->
-      <div class="timeframe-bar" aria-label="Listening Timeframe">
-        <span class="timeframe-label">Window</span>
-        <div class="time-segmented-group" role="radiogroup">
-          <button class="time-btn active" data-range="short_term" role="radio" aria-checked="true">4 Weeks</button>
-          <button class="time-btn" data-range="medium_term" role="radio" aria-checked="false">6 Months</button>
-          <button class="time-btn" data-range="long_term" role="radio" aria-checked="false">All Time</button>
+      <div class="timeframe-bar">
+        <span class="timeframe-label" id="timeframe-label">Window</span>
+        <div class="time-segmented-group" role="radiogroup" aria-labelledby="timeframe-label">
+          <button class="time-btn active" data-range="short_term" role="radio" aria-checked="true" tabindex="0">4 Weeks</button>
+          <button class="time-btn" data-range="medium_term" role="radio" aria-checked="false" tabindex="-1">6 Months</button>
+          <button class="time-btn" data-range="long_term" role="radio" aria-checked="false" tabindex="-1">All Time</button>
         </div>
       </div>
     </aside>
 
     <div class="studio-preview">
+
+    <div class="stage-heading" aria-live="polite">
+      <div>
+        <h3 id="selected-edition-title">Vinyl Obi</h3>
+        <span class="stage-heading-label">Selected artifact</span>
+      </div>
+      <p id="selected-edition-description">A Japanese sleeve with an Obi strip and a side-based track list.</p>
+    </div>
 
     <!-- Sample archive status -->
     <div class="demo-indicator-bar-wrapper">
@@ -223,7 +248,7 @@
     </div>
 
     <!-- 3D Interactive Card Stage with Specular Glare -->
-    <section class="card-stage-wrapper" aria-label="Interactive Card Stage">
+    <section class="card-stage-wrapper" aria-labelledby="selected-edition-title">
       <div id="card-tilt-container">
         <!-- Rendered dynamically by js/app.js -->
         <div id="card-display-container"></div>
@@ -233,6 +258,11 @@
 
     <!-- Export & Social Action Dock -->
     <section class="export-dock" aria-label="Export Actions">
+      <div class="export-dock-intro">
+        <span>Export the selected edition</span>
+        <p>Save a high-resolution copy for stories, feeds, or your own archive.</p>
+      </div>
+      <div class="export-actions">
       <button id="btn-export-story" class="btn btn-export btn-export-primary" title="Download formatted for Instagram / TikTok Stories">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <rect x="5" y="2" width="14" height="20" rx="3" ry="3"/>
@@ -255,17 +285,23 @@
         </svg>
         Copy Image
       </button>
+      </div>
     </section>
 
     </div>
     </div>
+
+    <footer class="studio-footer">
+      <p>Spotify top items are affinity rankings, not exact play counts.</p>
+      <p>Every connected archive stays in this browser session.</p>
+    </footer>
 
   </main>
 
   <!-- Floating audio preview -->
   <aside id="now-playing-bar" class="dynamic-audio-dock" aria-live="polite">
     <div class="dock-disc-art">
-      <img id="dock-thumb" alt="Album artwork" />
+      <img id="dock-thumb" alt="Album artwork" hidden />
     </div>
     <div class="mini-eq" style="color: #10b981;">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
@@ -314,7 +350,7 @@
         <div class="wrapped-progress-track" id="wrapped-progress-track"></div>
         <div class="wrapped-user-row">
           <div class="wrapped-user-identity">
-            <img id="wrapped-user-avatar" class="wrapped-user-avatar" alt="Spotify profile">
+            <img id="wrapped-user-avatar" class="wrapped-user-avatar" alt="Spotify profile" hidden>
             <div class="wrapped-user-meta">
               <span id="wrapped-user-name" class="wrapped-user-name">Soulseekr Archivist</span>
               <span id="wrapped-user-tag" class="wrapped-user-tag">2026 Archive</span>
@@ -367,8 +403,14 @@
         </svg>
       </button>
 
+      <div class="auth-gateway-cover" aria-hidden="true">
+        <div class="auth-cover-type">
+          <strong>Soulseekr</strong>
+          <span>Listening object / Private edition</span>
+        </div>
+
       <!-- Precision Hi-Fi Turntable Spindle Emblem -->
-      <div class="auth-gateway-disc" aria-hidden="true">
+      <div class="auth-gateway-disc">
         <div class="auth-disc-grooves"></div>
         <div class="auth-disc-center">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="#1db954">
@@ -376,15 +418,17 @@
           </svg>
         </div>
       </div>
+      </div>
 
-      <p class="auth-gateway-index">Listening archive / Issue 01</p>
+      <div class="auth-gateway-content">
       <h2 class="auth-gateway-title">Make something worth keeping from the music you repeat.</h2>
+      <p class="auth-gateway-index">Connect your archive or begin with the labelled sample.</p>
       <p class="auth-gateway-desc">
-        Connect Spotify to turn your listening history into seven exportable print objects and a private taste dossier.
+        Spotify connection turns your listening history into seven exportable print objects, a Year in Music story, and a private taste dossier.
       </p>
 
       <!-- Clean Privacy & Trust Strip -->
-      <div class="auth-security-badges">
+      <div class="auth-security-badges" aria-label="Spotify connection details">
         <span class="auth-sec-item">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           Client-side PKCE
@@ -410,22 +454,17 @@
           <span>Connect with Spotify</span>
         </button>
 
-        <div class="auth-gateway-or">
-          <span class="auth-or-line"></span>
-          <span class="auth-or-text">or explore first</span>
-          <span class="auth-or-line"></span>
-        </div>
-
         <button id="btn-gateway-demo" class="btn-gateway-secondary" type="button">
           <span class="demo-btn-lead">
             <span>Open the sample archive</span>
           </span>
         </button>
       </div>
+      </div>
     </div>
   </div>
 
   <!-- App Main Orchestrator (ES Module) -->
-  <script type="module" src="js/app.js?v=3.0"></script>
+  <script type="module" src="js/app.js?v=5.0"></script>
 </body>
 </html>

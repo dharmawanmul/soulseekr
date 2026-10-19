@@ -68,10 +68,12 @@ The redirect URI is derived from the current origin and path. GitHub Pages subdi
 ```text
 .
 |-- DESIGN.md                 Visual direction and decision reasons
+|-- PRODUCT.md                Product truth, constraints, and preserved behavior
 |-- index.html                Application shell and modal containers
 |-- css/
 |   |-- style.css             Legacy base primitives and shell behavior
 |   |-- design.css            Current editorial design system and responsive layout
+|   |-- studio-v5.css         Listening-folio shell and connection gateway
 |   |-- cards.css             Seven physical artifact treatments
 |   |-- wrapped.css           Year in Music story
 |   `-- dossier.css           Dossier and analysis views
@@ -93,11 +95,11 @@ The redirect URI is derived from the current origin and path. GitHub Pages subdi
 
 ## Design system
 
-The current direction is documented in `DESIGN.md`. The interface uses a warm listening-room palette, Bodoni Moda for editorial display type, DM Sans for interface copy, and IBM Plex Mono for catalog metadata. Spotify green is reserved for Spotify connection actions.
+The current direction is documented in `DESIGN.md`, with durable product constraints in `PRODUCT.md`. The interface uses a warm listening-room palette, Bodoni Moda for editorial display type, DM Sans for interface copy, and IBM Plex Mono for catalog metadata. Spotify green is reserved for Spotify connection actions.
 
 The responsive layout has three deliberate states:
 
-- Wide screens use a narrow catalog rail beside the artifact stage.
+- Wide screens use a parchment catalog leaf beside the mounted artifact stage.
 - Tablets reduce the rail before the layout becomes crowded.
 - Phones stack the rail above the stage, keep format tabs horizontally scrollable, and turn export actions into full-width rows.
 

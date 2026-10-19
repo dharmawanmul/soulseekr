@@ -428,7 +428,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--slide-accent, #10b981);
-  margin-bottom: 0.4rem;
+  margin: 0.25rem 0 0.4rem;
 }
 
 .slide-title {

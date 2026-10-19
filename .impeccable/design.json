@@ -1,0 +1,238 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-19T14:27:49.0440909Z",
+  "title": "Design System: Soulseekr",
+  "extensions": {
+    "colorMeta": {
+      "warm-black": {
+        "role": "neutral",
+        "displayName": "Warm Black",
+        "canonical": "#11100d",
+        "tonalRamp": ["oklch(15% 0.012 80)", "oklch(25% 0.012 80)", "oklch(35% 0.012 80)", "oklch(45% 0.012 80)", "oklch(60% 0.012 80)", "oklch(72% 0.012 80)", "oklch(84% 0.012 80)", "oklch(95% 0.012 80)"]
+      },
+      "stage-black": {
+        "role": "neutral",
+        "displayName": "Stage Black",
+        "canonical": "#090907",
+        "tonalRamp": ["oklch(15% 0.008 80)", "oklch(25% 0.008 80)", "oklch(35% 0.008 80)", "oklch(45% 0.008 80)", "oklch(60% 0.008 80)", "oklch(72% 0.008 80)", "oklch(84% 0.008 80)", "oklch(95% 0.008 80)"]
+      },
+      "muted-black": {
+        "role": "neutral",
+        "displayName": "Muted Black",
+        "canonical": "#1a1814",
+        "tonalRamp": ["oklch(15% 0.014 80)", "oklch(25% 0.014 80)", "oklch(35% 0.014 80)", "oklch(45% 0.014 80)", "oklch(60% 0.014 80)", "oklch(72% 0.014 80)", "oklch(84% 0.014 80)", "oklch(95% 0.014 80)"]
+      },
+      "surface-black": {
+        "role": "neutral",
+        "displayName": "Surface Black",
+        "canonical": "#191713",
+        "tonalRamp": ["oklch(15% 0.015 80)", "oklch(25% 0.015 80)", "oklch(35% 0.015 80)", "oklch(45% 0.015 80)", "oklch(60% 0.015 80)", "oklch(72% 0.015 80)", "oklch(84% 0.015 80)", "oklch(95% 0.015 80)"]
+      },
+      "ink-black": {
+        "role": "neutral",
+        "displayName": "Ink Black",
+        "canonical": "#181611",
+        "tonalRamp": ["oklch(15% 0.018 80)", "oklch(25% 0.018 80)", "oklch(35% 0.018 80)", "oklch(45% 0.018 80)", "oklch(60% 0.018 80)", "oklch(72% 0.018 80)", "oklch(84% 0.018 80)", "oklch(95% 0.018 80)"]
+      },
+      "bone-paper": {
+        "role": "neutral",
+        "displayName": "Bone Paper",
+        "canonical": "#f3ebdc",
+        "tonalRamp": ["oklch(15% 0.025 80)", "oklch(25% 0.025 80)", "oklch(35% 0.025 80)", "oklch(45% 0.025 80)", "oklch(60% 0.025 80)", "oklch(72% 0.025 80)", "oklch(84% 0.025 80)", "oklch(95% 0.025 80)"]
+      },
+      "bone-paper-deep": {
+        "role": "neutral",
+        "displayName": "Deep Bone Paper",
+        "canonical": "#e4d8c2",
+        "tonalRamp": ["oklch(15% 0.03 80)", "oklch(25% 0.03 80)", "oklch(35% 0.03 80)", "oklch(45% 0.03 80)", "oklch(60% 0.03 80)", "oklch(72% 0.03 80)", "oklch(84% 0.03 80)", "oklch(95% 0.03 80)"]
+      },
+      "muted-copy": {
+        "role": "neutral",
+        "displayName": "Muted Copy",
+        "canonical": "#b6ae9e",
+        "tonalRamp": ["oklch(15% 0.018 80)", "oklch(25% 0.018 80)", "oklch(35% 0.018 80)", "oklch(45% 0.018 80)", "oklch(60% 0.018 80)", "oklch(72% 0.018 80)", "oklch(84% 0.018 80)", "oklch(95% 0.018 80)"]
+      },
+      "archive-orange": {
+        "role": "primary",
+        "displayName": "Archive Orange",
+        "canonical": "#ef6b43",
+        "tonalRamp": ["oklch(15% 0.14 40)", "oklch(25% 0.14 40)", "oklch(35% 0.14 40)", "oklch(45% 0.14 40)", "oklch(60% 0.14 40)", "oklch(72% 0.14 40)", "oklch(84% 0.14 40)", "oklch(95% 0.14 40)"]
+      },
+      "archive-line": {
+        "role": "neutral",
+        "displayName": "Archive Line",
+        "canonical": "#3c372e",
+        "tonalRamp": ["oklch(15% 0.02 80)", "oklch(25% 0.02 80)", "oklch(35% 0.02 80)", "oklch(45% 0.02 80)", "oklch(60% 0.02 80)", "oklch(72% 0.02 80)", "oklch(84% 0.02 80)", "oklch(95% 0.02 80)"]
+      },
+      "control-line": {
+        "role": "neutral",
+        "displayName": "Control Line",
+        "canonical": "#706757",
+        "tonalRamp": ["oklch(15% 0.025 80)", "oklch(25% 0.025 80)", "oklch(35% 0.025 80)", "oklch(45% 0.025 80)", "oklch(60% 0.025 80)", "oklch(72% 0.025 80)", "oklch(84% 0.025 80)", "oklch(95% 0.025 80)"]
+      },
+      "spotify-green": {
+        "role": "secondary",
+        "displayName": "Spotify Green",
+        "canonical": "#1ed760",
+        "tonalRamp": ["oklch(15% 0.17 150)", "oklch(25% 0.17 150)", "oklch(35% 0.17 150)", "oklch(45% 0.17 150)", "oklch(60% 0.17 150)", "oklch(72% 0.17 150)", "oklch(84% 0.17 150)", "oklch(95% 0.17 150)"]
+      },
+      "spotify-green-hover": {
+        "role": "secondary",
+        "displayName": "Spotify Green Hover",
+        "canonical": "#4be17c",
+        "tonalRamp": ["oklch(15% 0.15 150)", "oklch(25% 0.15 150)", "oklch(35% 0.15 150)", "oklch(45% 0.15 150)", "oklch(60% 0.15 150)", "oklch(72% 0.15 150)", "oklch(84% 0.15 150)", "oklch(95% 0.15 150)"]
+      },
+      "focus-light": {
+        "role": "neutral",
+        "displayName": "Focus Light",
+        "canonical": "#fff7e8",
+        "tonalRamp": ["oklch(15% 0.02 80)", "oklch(25% 0.02 80)", "oklch(35% 0.02 80)", "oklch(45% 0.02 80)", "oklch(60% 0.02 80)", "oklch(72% 0.02 80)", "oklch(84% 0.02 80)", "oklch(95% 0.02 80)"]
+      },
+      "focus-dark": {
+        "role": "neutral",
+        "displayName": "Focus Dark",
+        "canonical": "#211e18",
+        "tonalRamp": ["oklch(15% 0.018 80)", "oklch(25% 0.018 80)", "oklch(35% 0.018 80)", "oklch(45% 0.018 80)", "oklch(60% 0.018 80)", "oklch(72% 0.018 80)", "oklch(84% 0.018 80)", "oklch(95% 0.018 80)"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Folio Display", "purpose": "Studio statements, gateway proposition, and major story moments." },
+      "headline": { "displayName": "Artifact Headline", "purpose": "Selected edition, dialog, and archive-room headings." },
+      "title": { "displayName": "Interface Title", "purpose": "Control headings and concise action labels." },
+      "body": { "displayName": "Editorial Body", "purpose": "Instructions, descriptions, and factual product copy." },
+      "label": { "displayName": "Archive Metadata", "purpose": "Catalog indices, provenance, timeframes, and measurements." }
+    },
+    "shadows": [
+      { "name": "gateway-lift", "value": "0 34px 90px rgba(0, 0, 0, 0.5)", "purpose": "Separates the authentication decision from the studio." },
+      { "name": "gateway-record-lift", "value": "0 24px 44px rgba(0, 0, 0, 0.45)", "purpose": "Makes the gateway record feel physical." },
+      { "name": "floating-utility", "value": "0 16px 50px rgba(0, 0, 0, 0.4)", "purpose": "Lifts the active audio dock above content." },
+      { "name": "transient-notice", "value": "0 18px 50px rgba(0, 0, 0, 0.28)", "purpose": "Separates temporary toast feedback." }
+    ],
+    "motion": [
+      { "name": "press", "value": "110ms cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Immediate tactile button feedback." },
+      { "name": "state", "value": "160ms ease", "purpose": "Color, underline, and selector state changes." },
+      { "name": "overlay", "value": "180ms ease-out", "purpose": "Short modal backdrop transitions." },
+      { "name": "audio-sheet", "value": "320ms cubic-bezier(0.32, 0.72, 0, 1)", "purpose": "Introduces and dismisses the floating playback utility." }
+    ],
+    "breakpoints": [
+      { "name": "header-reflow", "value": "1160px" },
+      { "name": "workbench-stack", "value": "940px" },
+      { "name": "compact-stack", "value": "700px" },
+      { "name": "narrow", "value": "520px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Spotify Connection Button",
+      "kind": "button",
+      "refersTo": "button-spotify",
+      "description": "The only solid green action, reserved for connecting Spotify.",
+      "html": "<button class=\"ds-btn-spotify\" type=\"button\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"10\" fill=\"currentColor\"/><path d=\"M7 10.3c3.8-1 7.6-.5 10.4 1.1M7.8 13.2c3-.7 6.1-.3 8.4.9M8.6 16c2.3-.5 4.7-.2 6.5.7\" fill=\"none\" stroke=\"#08150c\" stroke-width=\"1.25\" stroke-linecap=\"round\"/></svg><span>Connect Spotify</span></button>",
+      "css": ".ds-btn-spotify { min-height: 46px; padding: 0 1.15rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; background: var(--spotify-emerald, #1ed760); border: 1px solid var(--spotify-emerald, #1ed760); border-radius: 0; color: #08150c; font: 700 .8rem/1 'DM Sans', sans-serif; cursor: pointer; transition: background 160ms ease, transform 110ms cubic-bezier(.16,1,.3,1); } .ds-btn-spotify svg { width: 18px; height: 18px; color: var(--spotify-emerald, #1ed760); } .ds-btn-spotify:hover { background: #4be17c; border-color: #4be17c; transform: translateY(-1px); } .ds-btn-spotify:active { transform: scale(.96); } .ds-btn-spotify:focus-visible { outline: 2px solid var(--focus-light, #fff7e8); outline-offset: 4px; }"
+    },
+    {
+      "name": "Paper Secondary Button",
+      "kind": "button",
+      "description": "A bordered alternative for sample mode and secondary dialog choices.",
+      "html": "<button class=\"ds-btn-paper-secondary\" type=\"button\">Open the sample archive</button>",
+      "css": ".ds-btn-paper-secondary { min-height: 52px; padding: 0 1rem; background: transparent; border: 1px solid #857b69; border-radius: 0; color: var(--archive-ink, #181611); font: 600 .8rem/1.25 'DM Sans', sans-serif; cursor: pointer; transition: background 160ms ease, color 160ms ease; } .ds-btn-paper-secondary:hover { background: var(--archive-ink, #181611); border-color: var(--archive-ink, #181611); color: var(--archive-paper, #f3ebdc); } .ds-btn-paper-secondary:focus-visible { outline: 2px solid var(--focus-dark, #211e18); outline-offset: 4px; }"
+    },
+    {
+      "name": "Edition Row",
+      "kind": "nav",
+      "refersTo": "edition-row-active",
+      "description": "A ruled archive tab whose reverse state identifies the selected artifact.",
+      "html": "<button class=\"ds-edition-row\" type=\"button\" role=\"tab\" aria-selected=\"true\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"9\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg><span>Vinyl Obi</span><i aria-hidden=\"true\"></i></button>",
+      "css": ".ds-edition-row { width: 100%; min-height: 47px; padding: .68rem .65rem; display: flex; align-items: center; justify-content: flex-start; gap: .55rem; background: var(--archive-ink, #181611); border: 0; border-bottom: 1px solid #a99d88; border-radius: 0; color: var(--archive-paper, #f3ebdc); font: 700 .76rem/1.2 'DM Sans', sans-serif; cursor: pointer; } .ds-edition-row svg { width: 14px; height: 14px; fill: none; stroke: var(--archive-orange, #ef6b43); stroke-width: 1.8; } .ds-edition-row i { width: .45rem; height: 1px; margin-left: auto; background: var(--archive-orange, #ef6b43); } .ds-edition-row:hover { background: #211e18; } .ds-edition-row:focus-visible { outline: 2px solid var(--focus-dark, #211e18); outline-offset: 3px; }"
+    },
+    {
+      "name": "Time Window",
+      "kind": "chip",
+      "refersTo": "timeframe-active",
+      "description": "A square radio segment for the selected listening window.",
+      "html": "<button class=\"ds-time-window\" type=\"button\" role=\"radio\" aria-checked=\"true\">4 Weeks</button>",
+      "css": ".ds-time-window { min-width: 7rem; min-height: 46px; padding: .5rem .35rem; background: var(--archive-orange, #ef6b43); border: 1px solid var(--archive-control-line, #706757); border-radius: 0; color: #1b100b; font: 600 .66rem/1.2 'DM Sans', sans-serif; cursor: pointer; transition: filter 160ms ease; } .ds-time-window:hover { filter: brightness(1.06); } .ds-time-window:focus-visible { outline: 2px solid var(--focus-dark, #211e18); outline-offset: 3px; }"
+    },
+    {
+      "name": "Primary Export Action",
+      "kind": "button",
+      "refersTo": "export-primary",
+      "description": "The paper-filled leading action in the export colophon.",
+      "html": "<button class=\"ds-export-primary\" type=\"button\"><svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><rect x=\"5\" y=\"2\" width=\"14\" height=\"20\" rx=\"3\"/><path d=\"M12 17v.1\"/></svg><span>Download Story (9:16)</span></button>",
+      "css": ".ds-export-primary { min-height: 58px; padding: 0 .75rem; display: inline-flex; align-items: center; justify-content: center; gap: .45rem; background: var(--archive-paper, #f3ebdc); border: 0; border-radius: 0; color: var(--archive-ink, #181611); font: 600 .74rem/1.25 'DM Sans', sans-serif; cursor: pointer; transition: filter 160ms ease, transform 110ms cubic-bezier(.16,1,.3,1); } .ds-export-primary svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2.2; } .ds-export-primary:hover { filter: brightness(.94); } .ds-export-primary:active { transform: scale(.98); } .ds-export-primary:focus-visible { outline: 2px solid var(--focus-light, #fff7e8); outline-offset: 4px; }"
+    },
+    {
+      "name": "Archive Masthead Navigation",
+      "kind": "nav",
+      "description": "Flat private-view navigation with a short orange hover rule.",
+      "html": "<nav class=\"ds-archive-nav\" aria-label=\"Personal listening views\"><button type=\"button\">Year in Music</button><button type=\"button\">Taste Dossier</button></nav>",
+      "css": ".ds-archive-nav { display: flex; background: var(--background, #11100d); border-top: 1px solid var(--archive-line, #3c372e); border-bottom: 1px solid var(--archive-line, #3c372e); } .ds-archive-nav button { position: relative; min-height: 52px; padding: 0 1.35rem; background: transparent; border: 0; border-right: 1px solid transparent; border-radius: 0; color: #c9c1b2; font: 600 .76rem/1 'DM Sans', sans-serif; cursor: pointer; } .ds-archive-nav button::after { content: ''; position: absolute; right: 1.35rem; bottom: 0; left: 1.35rem; height: 2px; background: var(--archive-orange, #ef6b43); transform: scaleX(0); transform-origin: left; transition: transform 160ms ease; } .ds-archive-nav button:hover { background: #211e18; color: var(--archive-paper, #f3ebdc); } .ds-archive-nav button:hover::after { transform: scaleX(1); } .ds-archive-nav button:focus-visible { outline: 2px solid var(--focus-light, #fff7e8); outline-offset: -4px; }"
+    },
+    {
+      "name": "Archive Period Select",
+      "kind": "input",
+      "description": "A square dark select used for period comparison inside the dossier.",
+      "html": "<label class=\"ds-period-field\"><span>First period</span><select><option>4 Weeks</option><option>6 Months</option><option>All Time</option></select></label>",
+      "css": ".ds-period-field { display: grid; gap: .45rem; color: #c7bfaf; font: 500 .66rem/1.4 'IBM Plex Mono', monospace; letter-spacing: .055em; text-transform: uppercase; } .ds-period-field select { min-width: 13rem; min-height: 44px; padding: .65rem 2.2rem .65rem .75rem; background: #12110e; border: 1px solid var(--archive-control-line, #706757); border-radius: 0; color: var(--archive-paper, #f3ebdc); font: 600 .84rem/1.2 'DM Sans', sans-serif; } .ds-period-field select:hover { border-color: var(--archive-paper, #f3ebdc); } .ds-period-field select:focus-visible { outline: 2px solid var(--focus-light, #fff7e8); outline-offset: 3px; }"
+    },
+    {
+      "name": "Mounted Preview Stage",
+      "kind": "card",
+      "refersTo": "mounted-stage",
+      "description": "The deep-black mount that makes the selected artifact the sole focal point.",
+      "html": "<section class=\"ds-mounted-stage\"><div class=\"ds-stage-disc\" aria-hidden=\"true\"></div><div class=\"ds-stage-object\">Selected artifact</div><span>MOUNTED PREVIEW / SOULSEEKR</span></section>",
+      "css": ".ds-mounted-stage { position: relative; isolation: isolate; min-width: 320px; min-height: 360px; padding: 3rem 1rem; display: grid; place-items: center; overflow: hidden; background: var(--stage-black, #090907); border: 1px solid #443f35; border-radius: 0; color: var(--archive-paper, #f3ebdc); } .ds-stage-disc { position: absolute; z-index: -1; width: 320px; aspect-ratio: 1; border-radius: 50%; background: repeating-radial-gradient(circle, transparent 0 17px, rgba(243,235,220,.048) 18px 19px); opacity: .72; } .ds-stage-object { width: min(230px, 75%); aspect-ratio: 1; display: grid; place-items: center; background: var(--archive-paper, #f3ebdc); color: var(--archive-ink, #181611); font: 600 1.25rem/1 'Bodoni Moda', serif; box-shadow: 0 16px 40px rgba(0,0,0,.4); } .ds-mounted-stage > span { position: absolute; right: 1rem; bottom: .85rem; color: #9d9485; font: 500 .56rem/1.4 'IBM Plex Mono', monospace; letter-spacing: .08em; }"
+    },
+    {
+      "name": "Archive Toast",
+      "kind": "custom",
+      "description": "Compact text-first feedback with a narrow semantic edge.",
+      "html": "<div class=\"ds-archive-toast\" role=\"status\">Story image downloaded.</div>",
+      "css": ".ds-archive-toast { min-height: 48px; padding: .7rem .9rem; display: flex; align-items: center; background: var(--archive-paper, #f3ebdc); border: 0; border-left: 4px solid #357a4f; border-radius: 2px; box-shadow: 0 18px 50px rgba(0,0,0,.28); color: var(--archive-ink, #181611); font: 600 .78rem/1.4 'DM Sans', sans-serif; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Listening Folio",
+    "overview": "Soulseekr is a listening folio, not a dashboard: choose an edition and window, inspect the mounted artifact, then export it. The interface combines an independent record shop, a well-kept listening room, and an editorial design studio. It should feel warm, tactile, precise, private, and slightly obsessive.\n\nThe shell behaves like a catalog leaf around one dominant physical-media object. Dense tools live on an asymmetric paper control leaf while the selected artifact receives the dark, generous stage. Hairline rules, catalog numbering, compact metadata, and controlled asymmetry create identity without competing with album artwork or the seven artifact editions.",
+    "keyCharacteristics": [
+      "Warm black workspace paired with bone-paper controls and one archive-orange accent.",
+      "Bodoni Moda display statements, DM Sans interface copy, and IBM Plex Mono metadata.",
+      "An asymmetric control leaf beside a mounted artifact stage, never a card-grid dashboard.",
+      "Record grooves localized to preview and audio contexts where they describe the product.",
+      "Restrained, task-led motion with a dedicated exception for the immersive Year in Music story."
+    ],
+    "rules": [
+      { "name": "The One Archive Accent Rule", "body": "Orange is rare and structural. Use it for selection, indexing, progress, and one small identifying gesture, never as an all-purpose fill.", "section": "colors" },
+      { "name": "The Spotify Exception Rule", "body": "Green belongs only to Spotify connection or an explicit Spotify state. Export, navigation, artifact selection, and generic success remain inside the archive palette.", "section": "colors" },
+      { "name": "The Artwork Carries Color Rule", "body": "Let album artwork and the artifact editions provide color variety. Keep the surrounding studio materially quiet.", "section": "colors" },
+      { "name": "The Three Voices Rule", "body": "Bodoni names the artifact, DM Sans operates the studio, and IBM Plex Mono verifies the archive. Do not exchange those roles casually.", "section": "typography" },
+      { "name": "The Quiet Metadata Rule", "body": "Metadata follows the heading it qualifies and stays visibly subordinate through size, weight, and spacing. It must never compete with the artifact name.", "section": "typography" },
+      { "name": "The Artifact First Rule", "body": "At every width, the current artifact is the single focal point. Controls, copy, and exports clarify it rather than form competing cards.", "section": "layout" },
+      { "name": "The Mobile Discovery Rule", "body": "On stacked layouts, every edition remains discoverable through horizontal scrolling, snap alignment, visible instruction, and keyboard arrow behavior.", "section": "layout" },
+      { "name": "The Flat Workbench Rule", "body": "Do not give stationary navigation, selectors, panels, or export rows floating shadows. Use a line or tonal step first.", "section": "elevation" },
+      { "name": "The Motion Has a Job Rule", "body": "Motion may confirm a selection, introduce a temporary layer, indicate active playback, or support the dedicated story. Decorative loops and page-wide reveals do not belong in the studio.", "section": "elevation" },
+      { "name": "The Meaningful Circle Rule", "body": "A circle must describe a record, avatar, center label, or playback object. It is not a general decoration.", "section": "shapes" },
+      { "name": "The Local Groove Rule", "body": "Repeating radial grooves belong behind the mounted preview, inside the gateway record, and on audio surfaces. Never turn them into a page-wide wallpaper.", "section": "shapes" }
+    ],
+    "dos": [
+      "**Do** make the selected artifact the brightest and most memorable object on the studio screen.",
+      "**Do** preserve the full workflow: choose one of seven editions, choose a listening window, inspect the mounted preview, then export it.",
+      "**Do** use Archive Orange sparingly for selection, indexing, progress, and catalog detail.",
+      "**Do** reserve Spotify Green for explicit connection actions and Spotify state.",
+      "**Do** keep Bodoni, DM Sans, and IBM Plex Mono in their established display, interface, and metadata roles.",
+      "**Do** keep controls at least 44px, expose visible focus, support logical keyboard order, and honor reduced motion.",
+      "**Do** label sample data, locked features, disabled time windows, loading, empty, and error states in plain language.",
+      "**Do** distinguish direct Spotify fields, local calculations, and creative interpretations in the dossier."
+    ],
+    "donts": [
+      "**Don't** turn the studio into a dashboard, a bento grid, or a wall of equal cards.",
+      "**Don't** use Spotify Green for export, navigation, general success, decorative glow, or artifact styling.",
+      "**Don't** spread grooves, grids, blur, glow, large shadows, rounded pills, or orange fills across the whole interface.",
+      "**Don't** place explanatory metadata above or at the same weight as the heading it qualifies.",
+      "**Don't** homogenize the seven artifact editions into one generic card template.",
+      "**Don't** imply that Spotify affinity rankings are stream counts, total minutes, or any unsupported measurement.",
+      "**Don't** disguise sample data as connected data or substitute sample values into unavailable connected windows.",
+      "**Don't** add decorative perpetual motion. Keep the studio restrained and let Year in Music own the richer choreography."
+    ]
+  }
+}

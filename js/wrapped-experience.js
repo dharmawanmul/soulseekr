@@ -415,9 +415,11 @@ export class WrappedExperience {
     if (this.userAvatar) {
       const avatarUrl = user.images && user.images[0]?.url;
       if (avatarUrl) {
+        this.userAvatar.hidden = false;
         this.userAvatar.src = avatarUrl;
       } else {
         this.userAvatar.removeAttribute('src');
+        this.userAvatar.hidden = true;
       }
     }
     if (this.userTag) {
@@ -601,8 +603,8 @@ export class WrappedExperience {
       <!-- Slide 0: Prologue / Cosmic Identity -->
       <div class="wrapped-slide" data-slide="0">
         <div>
-          <span class="slide-eyebrow">Listening archive / ${windowLabel}</span>
           <h2 class="slide-title">Your Year in Music</h2>
+          <span class="slide-eyebrow">Listening archive / ${windowLabel}</span>
           <p class="slide-desc">The artists, albums, and patterns that stayed in rotation.</p>
         </div>
 
@@ -625,8 +627,8 @@ export class WrappedExperience {
       <!-- Slide 1: Top 5 Tracks (The Anthems) -->
       <div class="wrapped-slide" data-slide="1">
         <div>
-          <span class="slide-eyebrow">Spotify affinity / Tracks</span>
           <h2 class="slide-title">Kept in Rotation</h2>
+          <span class="slide-eyebrow">Spotify affinity / Tracks</span>
           <p class="slide-desc">Your highest-ranked tracks in this Spotify window.</p>
         </div>
 
@@ -667,8 +669,8 @@ export class WrappedExperience {
       <!-- Slide 2: Top 5 Albums (Heavy Rotations) -->
       <div class="wrapped-slide" data-slide="2">
         <div>
-          <span class="slide-eyebrow">Derived from ranked tracks / Albums</span>
           <h2 class="slide-title">Top 5 Albums</h2>
+          <span class="slide-eyebrow">Derived from ranked tracks / Albums</span>
           <p class="slide-desc">Albums appearing most often inside the ranked track set.</p>
         </div>
 
@@ -703,8 +705,8 @@ export class WrappedExperience {
       <!-- Slide 3: Minutes & Sonic DNA -->
       <div class="wrapped-slide" data-slide="3">
         <div>
-          <span class="slide-eyebrow">Listening profile / Local reading</span>
           <h2 class="slide-title">The Shape of Your Listening</h2>
+          <span class="slide-eyebrow">Listening profile / Local reading</span>
           <p class="slide-desc">Direct catalog fields alongside clearly marked Soulseekr interpretations.</p>
         </div>
 
@@ -748,8 +750,8 @@ export class WrappedExperience {
       <!-- Slide 4: Genre Mix or Ranked-Artist Fallback & Sonic Aura -->
       <div class="wrapped-slide" data-slide="4">
         <div>
-          <span class="slide-eyebrow">Listening profile / ${hasGenreData ? 'Genres' : 'Artist signals'}</span>
           <h2 class="slide-title">${hasGenreData ? 'Top 5 Genres' : 'Top 5 Artists'}</h2>
+          <span class="slide-eyebrow">Listening profile / ${hasGenreData ? 'Genres' : 'Artist signals'}</span>
           <p class="slide-desc">${hasGenreData
             ? 'The genre mix attached to your affinity-ranked artists.'
             : 'Spotify did not provide genre tags, so your ranked artists are shown instead.'}</p>
@@ -805,8 +807,8 @@ export class WrappedExperience {
       <!-- Slide 5: Master Recap Archive Card -->
       <div class="wrapped-slide" data-slide="5">
         <div>
-          <span class="slide-eyebrow">Archive card / ${windowLabel}</span>
           <h2 class="slide-title">Your Listening Archive</h2>
+          <span class="slide-eyebrow">Archive card / ${windowLabel}</span>
           <p class="slide-desc">A compact record of the music you kept close.</p>
         </div>
 

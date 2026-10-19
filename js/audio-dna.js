@@ -676,10 +676,10 @@ export class AudioDnaEngine {
     const dominantGenre = [...genreCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] || 'Not returned';
 
     return {
-      hipsterIndex: averagePopularity === null ? '—' : `${Math.round(100 - averagePopularity)}%`,
+      hipsterIndex: averagePopularity === null ? 'N/A' : `${Math.round(100 - averagePopularity)}%`,
       hipsterLabel: popularityValues.length ? 'From artist popularity' : trackPopularityValues.length ? 'Track popularity proxy' : 'No popularity data',
       hipsterColor: palette[0],
-      averageEra: averageYear === null ? '—' : String(averageYear),
+      averageEra: averageYear === null ? 'N/A' : String(averageYear),
       eraLabel: releaseYears.length ? `${releaseYears.length} ranked releases` : 'No release dates',
       eraColor: palette[1],
       dominantVibe: dominantGenre,
@@ -751,7 +751,7 @@ export class AudioDnaEngine {
           popularity: pop,
           userRank: idx + 1,
           genre: (t.genres && t.genres[0]) || matchingArtist?.genres?.[0] || 'Not returned',
-          durationFormatted: Number.isFinite(Number(t.duration_ms)) ? formatDuration(t.duration_ms) : '—',
+          durationFormatted: Number.isFinite(Number(t.duration_ms)) ? formatDuration(t.duration_ms) : 'N/A',
           valence: typeof t.valence === 'number' && Number.isFinite(t.valence) ? t.valence : null,
           energy: typeof t.energy === 'number' && Number.isFinite(t.energy) ? t.energy : null
         };
@@ -878,8 +878,8 @@ export class AudioDnaEngine {
       name: 'No ranked track returned',
       artists: [],
       genre: 'Not available',
-      durationFormatted: '—',
-      releaseYear: '—',
+      durationFormatted: 'N/A',
+      releaseYear: 'N/A',
       popularity: null,
       userRank: null
     };
@@ -976,22 +976,22 @@ export class AudioDnaEngine {
             <div class="dna-inspector-sub">
               <span>Genre: <b id="dna-insp-genre">${t.genre || 'Not returned'}</b></span>
               <span class="dna-dot">•</span>
-              <span>Duration: <b id="dna-insp-duration">${t.durationFormatted || '—'}</b></span>
+              <span>Duration: <b id="dna-insp-duration">${t.durationFormatted || 'N/A'}</b></span>
             </div>
           </div>
 
           <div class="dna-inspector-right">
             <div class="dna-chip-item">
               <span class="dna-chip-lbl">Year:</span>
-              <span class="dna-chip-val" id="dna-insp-year">${t.releaseYear || '—'}</span>
+              <span class="dna-chip-val" id="dna-insp-year">${t.releaseYear || 'N/A'}</span>
             </div>
             <div class="dna-chip-item">
               <span class="dna-chip-lbl">Pop:</span>
-              <span class="dna-chip-val" id="dna-insp-pop">${Number.isFinite(t.popularity) ? `${t.popularity}/100` : '—'}</span>
+              <span class="dna-chip-val" id="dna-insp-pop">${Number.isFinite(t.popularity) ? `${t.popularity}/100` : 'N/A'}</span>
             </div>
             <div class="dna-chip-item dna-chip-rank">
               <span class="dna-chip-lbl">Rank</span>
-              <span class="dna-chip-val" id="dna-insp-rank">${t.userRank ? `#${t.userRank}` : '—'}</span>
+              <span class="dna-chip-val" id="dna-insp-rank">${t.userRank ? `#${t.userRank}` : 'N/A'}</span>
             </div>
 
             <!-- Play Audio Preview Button with Animated Equalizer Bars -->
@@ -1306,8 +1306,8 @@ export class AudioDnaEngine {
     if (genreEl) genreEl.textContent = t.genre || 'Not returned';
     if (durEl) durEl.textContent = t.durationFormatted || formatDuration(t.duration_ms || 240000);
     if (yearEl) yearEl.textContent = t.releaseYear || t.album?.release_date?.slice(0, 4) || '2000';
-    if (popEl) popEl.textContent = Number.isFinite(t.popularity) ? `${t.popularity}/100` : '—';
-    if (rankEl) rankEl.textContent = t.userRank ? `#${t.userRank}` : '—';
+    if (popEl) popEl.textContent = Number.isFinite(t.popularity) ? `${t.popularity}/100` : 'N/A';
+    if (rankEl) rankEl.textContent = t.userRank ? `#${t.userRank}` : 'N/A';
   }
 
   toggleAudioPlayback() {
@@ -1763,7 +1763,7 @@ export class AudioDnaEngine {
       ctx.fillStyle = isHovered ? '#ffffff' : '#d4d4d8';
       ctx.textAlign = 'right';
       const endName = isNarrow && art.name.length > 13 ? `${art.name.slice(0, 12)}…` : art.name;
-      ctx.fillText(`${endName} (#${art.ranks.short_term > 10 ? '—' : art.ranks.short_term})`, stages[2].x - 10, y3 + 3);
+      ctx.fillText(`${endName} (#${art.ranks.short_term > 10 ? 'N/A' : art.ranks.short_term})`, stages[2].x - 10, y3 + 3);
 
       // Sudden Obsession callout tag
       if (art.diff >= 5) {
@@ -1781,7 +1781,7 @@ export class AudioDnaEngine {
         <div class="dna-tt-header">${escapeHtml(hoveredArtist.name)}</div>
         <div class="dna-tt-artist">${escapeHtml(hoveredArtist.genre)}</div>
         <div class="dna-tt-metrics">
-          <span>Trajectory: <b>${['long_term', 'medium_term', 'short_term'].map(range => hoveredArtist.ranks[range] > 10 ? '—' : `#${hoveredArtist.ranks[range]}`).join(' → ')}</b></span>
+          <span>Trajectory: <b>${['long_term', 'medium_term', 'short_term'].map(range => hoveredArtist.ranks[range] > 10 ? 'N/A' : `#${hoveredArtist.ranks[range]}`).join(' → ')}</b></span>
           <span style="color:${hoveredArtist.color};">Status: <b>${hoveredArtist.status}</b></span>
         </div>
       `);
@@ -2224,7 +2224,7 @@ export class AudioDnaEngine {
     ctx.fillStyle = '#71717a';
     ctx.font = '10px "Inter", sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText('Release decade of ranked tracks — not the year you listened', pad.left + plotW / 2, baseline + 38);
+    ctx.fillText('Release decade of ranked tracks, not the year you listened', pad.left + plotW / 2, baseline + 38);
 
     if (hoveredEra && this.tooltipEl) {
       const topNames = hoveredEra.tracks.slice(0, 3).map(track => track.name).join(', ');

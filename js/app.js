@@ -243,6 +243,18 @@ function initElements() {
   elements.btnGatewayClose = document.getElementById('btn-gateway-close');
   elements.btnGatewayConnect = document.getElementById('btn-gateway-connect');
   elements.btnGatewayDemo = document.getElementById('btn-gateway-demo');
+  elements.selectedEditionTitle = document.getElementById('selected-edition-title');
+  elements.selectedEditionDescription = document.getElementById('selected-edition-description');
+}
+
+function updateEditionSummary(button) {
+  if (!button) return;
+  if (elements.selectedEditionTitle) {
+    elements.selectedEditionTitle.textContent = button.textContent.trim();
+  }
+  if (elements.selectedEditionDescription) {
+    elements.selectedEditionDescription.textContent = button.dataset.description || '';
+  }
 }
 
 /**
@@ -560,9 +572,11 @@ soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, cur
       
       const imgUrl = (track.album && track.album.images && track.album.images[0]?.url) || '';
       if (imgUrl) {
+        elements.dockThumb.hidden = false;
         elements.dockThumb.src = imgUrl;
       } else {
         elements.dockThumb.removeAttribute('src');
+        elements.dockThumb.hidden = true;
       }
 
       if (elements.npToggleBtn && elements.npToggleIcon) {
@@ -676,20 +690,29 @@ function setupEventListeners() {
       elements.cardStyleTabs.forEach(b => {
         b.classList.remove('active');
         b.setAttribute('aria-selected', 'false');
+        b.tabIndex = -1;
       });
       btn.classList.add('active');
       btn.setAttribute('aria-selected', 'true');
+      btn.tabIndex = 0;
       state.cardStyle = btn.getAttribute('data-style');
+      updateEditionSummary(btn);
       renderCurrentCard();
     });
   });
 
   elements.cardStyleTabs?.forEach((btn, index) => {
     btn.addEventListener('keydown', event => {
-      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
+      const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
+      if (!forward && !backward && event.key !== 'Home' && event.key !== 'End') return;
       event.preventDefault();
-      const direction = event.key === 'ArrowRight' ? 1 : -1;
-      const next = elements.cardStyleTabs[(index + direction + elements.cardStyleTabs.length) % elements.cardStyleTabs.length];
+      const nextIndex = event.key === 'Home'
+        ? 0
+        : event.key === 'End'
+          ? elements.cardStyleTabs.length - 1
+          : (index + (forward ? 1 : -1) + elements.cardStyleTabs.length) % elements.cardStyleTabs.length;
+      const next = elements.cardStyleTabs[nextIndex];
       next.focus();
       next.click();
     });
@@ -705,9 +728,11 @@ function setupEventListeners() {
       elements.timeRangePills.forEach(p => {
         p.classList.remove('active');
         p.setAttribute('aria-checked', 'false');
+        p.tabIndex = -1;
       });
       pill.classList.add('active');
       pill.setAttribute('aria-checked', 'true');
+      pill.tabIndex = 0;
       state.timeRange = pill.getAttribute('data-range');
       loadData();
     });
@@ -830,6 +855,7 @@ async function initApp() {
   isAppInitialized = true;
 
   initElements();
+  updateEditionSummary(document.querySelector('.seg-btn.active'));
   setupEventListeners();
   init3DCardTilt();
 
