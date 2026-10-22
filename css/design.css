@@ -739,8 +739,9 @@ a:focus-visible,
   align-items: center;
   column-gap: clamp(2rem, 5vw, 4.5rem);
   max-width: 880px;
+  max-height: calc(100dvh - 3rem);
   padding: clamp(2rem, 5vw, 4.5rem);
-  overflow: visible;
+  overflow-y: auto;
   background: var(--archive-paper);
   border: 0;
   border-radius: 2px;

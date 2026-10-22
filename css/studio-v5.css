@@ -442,7 +442,8 @@ body {
   gap: 0;
   width: min(1000px, calc(100vw - 2rem));
   max-width: 1000px;
-  min-height: 620px;
+  min-height: min(620px, calc(100dvh - 3rem));
+  max-height: calc(100dvh - 3rem);
   padding: 0;
   overflow: hidden;
   border-radius: 4px;
@@ -459,7 +460,7 @@ body {
 .auth-gateway-cover {
   position: relative;
   align-self: stretch;
-  min-height: 620px;
+  min-height: 0;
   overflow: hidden;
   background: #15130f;
   color: var(--archive-paper);
@@ -521,6 +522,7 @@ body {
   justify-content: center;
   background: var(--archive-paper);
   color: var(--archive-ink);
+  overflow-y: auto;
 }
 
 .auth-gateway-title,
@@ -654,11 +656,12 @@ body {
 
   .auth-gateway-card {
     grid-template-columns: minmax(15rem, 0.72fr) minmax(22rem, 1.28fr);
+    min-height: min(570px, calc(100dvh - 3rem));
+    max-height: calc(100dvh - 3rem);
   }
 
-  .auth-gateway-cover,
-  .auth-gateway-card {
-    min-height: 570px;
+  .auth-gateway-cover {
+    min-height: 0;
   }
 }
 
