@@ -439,6 +439,7 @@ body {
 /* The cover is a functional preview of Soulseekr's physical-media world. */
 .auth-gateway-card {
   grid-template-columns: minmax(20rem, 0.9fr) minmax(25rem, 1.1fr);
+  grid-template-rows: minmax(0, 1fr);
   gap: 0;
   width: min(1000px, calc(100vw - 2rem));
   max-width: 1000px;
@@ -516,10 +517,11 @@ body {
 
 .auth-gateway-content {
   display: flex;
+  min-height: 0;
   min-width: 0;
-  padding: clamp(3.5rem, 6vw, 5.5rem) clamp(2rem, 5vw, 4.5rem) 3.25rem;
+  padding: clamp(2.5rem, 4vw, 4rem) clamp(2rem, 5vw, 4.5rem) 2.5rem;
   flex-direction: column;
-  justify-content: center;
+  justify-content: safe center;
   background: var(--archive-paper);
   color: var(--archive-ink);
   overflow-y: auto;
