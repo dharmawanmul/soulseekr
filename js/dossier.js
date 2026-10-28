@@ -161,16 +161,6 @@ export class SonicDossierEngine {
     this.isOpen = true;
     document.body.style.overflow = 'hidden';
 
-    // Start background weather fetch if not yet loaded
-    if (!this.weatherData) {
-      fetchLiveWeatherData().then(w => {
-        this.weatherData = w;
-        if (this.isOpen && this.activeDept === 'weather') {
-          this.render();
-        }
-      });
-    }
-
     window.addEventListener('keydown', this.onKeyDown);
     this.render();
     requestAnimationFrame(() => this.modal.querySelector('#btn-dossier-close')?.focus());
@@ -570,6 +560,17 @@ export class SonicDossierEngine {
 
     // 3. Atmosphere & Weather
     if (this.activeDept === 'weather') {
+      if (!this.weatherData && !this.isWeatherFetching) {
+        this.isWeatherFetching = true;
+        fetchLiveWeatherData().then(w => {
+          this.weatherData = w;
+          this.isWeatherFetching = false;
+          if (this.isOpen && this.activeDept === 'weather') {
+            this.render();
+          }
+        });
+        return `<div class="dossier-card provenance-empty-state" role="status"><strong>Retrieving local weather telemetry...</strong><span>Requesting live atmospheric conditions for your listening location.</span></div>`;
+      }
       if (!this.weatherData?.available) {
         return `<div class="dossier-card provenance-empty-state" role="status"><strong>Local weather unavailable.</strong><span>Allow location access and keep an internet connection to build this report. No substitute city or simulated forecast is used.</span></div>`;
       }

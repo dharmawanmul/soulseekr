@@ -18,7 +18,9 @@ import {
   renderReceiptCard,
   renderDapCard,
   renderGameboyCard,
-  renderVipPassCard
+  renderVipPassCard,
+  getIndicator,
+  formatDuration
 } from './card-renderer.js';
 import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
@@ -50,7 +52,7 @@ function writeSessionValue(key, value) {
   }
 }
 
-// Curated default preview data allowing instant, responsive exploration across all 7 card archetypes
+// Curated default preview data allowing instant, responsive exploration across all 8 card archetypes
 export const DEFAULT_CURATED_DATA = {
   provenance: { mode: 'sample', selectedRange: 'short_term' },
   user: {
@@ -650,37 +652,107 @@ function renderCurrentCard() {
     return;
   }
   let html = '';
+  try {
+    switch (state.cardStyle) {
+      case 'vinyl':
+        html = renderVinylCard(data, state.timeRange, state.playbackState);
+        break;
+      case 'swiss':
+        html = renderSwissCard(data, state.timeRange, state.playbackState);
+        break;
+      case 'prism':
+        html = renderPrismCard(data, state.timeRange, state.playbackState);
+        break;
+      case 'cassette':
+        html = renderCassetteCard(data, state.timeRange, state.playbackState);
+        break;
+      case 'receipt':
+        html = renderReceiptCard(data, state.timeRange, state.playbackState);
+        break;
+      case 'dap':
+        html = renderDapCard(data, state.timeRange, state.playbackState);
+        break;
+      case 'gameboy':
+        html = renderGameboyCard(data, state.timeRange, state.playbackState);
+        break;
+      case 'vippass':
+        html = renderVipPassCard(data, state.timeRange, state.playbackState);
+        break;
+      default:
+        html = renderReceiptCard(data, state.timeRange, state.playbackState);
+        break;
+    }
 
-  switch (state.cardStyle) {
-    case 'vinyl':
-      html = renderVinylCard(data, state.timeRange, state.playbackState);
-      break;
-    case 'swiss':
-      html = renderSwissCard(data, state.timeRange, state.playbackState);
-      break;
-    case 'prism':
-      html = renderPrismCard(data, state.timeRange, state.playbackState);
-      break;
-    case 'cassette':
-      html = renderCassetteCard(data, state.timeRange, state.playbackState);
-      break;
-    case 'receipt':
-      html = renderReceiptCard(data, state.timeRange, state.playbackState);
-      break;
-    case 'dap':
-    case 'gameboy':
-      html = renderDapCard(data, state.timeRange, state.playbackState);
-      break;
-    case 'vippass':
-      html = renderVipPassCard(data, state.timeRange, state.playbackState);
-      break;
-    default:
-      html = renderReceiptCard(data, state.timeRange, state.playbackState);
-      break;
+    elements.cardContainer.innerHTML = html;
+    attachTrackListeners();
+  } catch (err) {
+    console.error('Card rendering error:', err);
+    elements.cardContainer.innerHTML = `
+      <div class="studio-state studio-state-error" role="alert">
+        <span class="studio-state-index">Render error</span>
+        <h3>This edition could not be prepared.</h3>
+        <p>A rendering issue occurred while preparing this card. You can try another format or reset to the sample archive.</p>
+        <button class="btn-primary" type="button" id="btn-recovery-sample">Reset to sample archive</button>
+      </div>
+    `;
+    document.getElementById('btn-recovery-sample')?.addEventListener('click', () => {
+      enterSampleArchive({ announce: true });
+    });
   }
+}
 
-  elements.cardContainer.innerHTML = html;
-  attachTrackListeners();
+/**
+ * Surgically update track play/pause indicators and labels without rebuilding DOM
+ */
+function updateCardPlaybackUI() {
+  const triggers = elements.cardContainer.querySelectorAll('.track-play-trigger');
+  const ps = state.playbackState;
+  const data = state.currentData;
+  if (!triggers.length || !data) return;
+
+  triggers.forEach(el => {
+    const trackId = el.getAttribute('data-track-id');
+    const track = data.topTracks?.find(t => t.id === trackId);
+    const isActive = trackId === ps.trackId && (ps.isPlaying || ps.isPaused || ps.isLoading);
+    el.classList.toggle('active', isActive);
+
+    const action = isActive
+      ? (ps.isPaused ? 'Resume' : ps.isLoading ? 'Cancel' : 'Pause')
+      : 'Play';
+    el.setAttribute('aria-label', track ? `${action} preview for ${track.name}` : 'Play track preview');
+
+    const indicator = el.querySelector('.track-indicator');
+    if (indicator) {
+      indicator.innerHTML = getIndicator(trackId, ps);
+    }
+
+    const gbDur = el.querySelector('.gb-track-dur');
+    if (gbDur && track) {
+      gbDur.textContent = isActive
+        ? (ps.isPaused ? '❚❚' : '▶▶')
+        : formatDuration(track.duration_ms);
+    }
+
+    const dapMeta = el.querySelector('.dap-track-meta');
+    if (dapMeta) {
+      let pulse = el.querySelector('.dap-playing-pulse');
+      if (isActive) {
+        if (!pulse) {
+          pulse = document.createElement('span');
+          pulse.className = 'dap-playing-pulse';
+          dapMeta.appendChild(pulse);
+        }
+        pulse.textContent = ps.isPaused ? '❚❚ PAUSED' : '▶ PLAYING';
+      } else if (pulse) {
+        pulse.remove();
+      }
+    }
+  });
+
+  const cassetteReels = elements.cardContainer.querySelector('.cassette-reels-container');
+  if (cassetteReels) {
+    cassetteReels.classList.toggle('is-spinning', Boolean(ps.isPlaying));
+  }
 }
 
 /**
@@ -761,10 +833,8 @@ soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, cur
     elements.nowPlayingBar.classList.remove('is-paused', 'is-loading');
   }
 
-  renderCurrentCard();
+  updateCardPlaybackUI();
 });
-
-
 
 /**
  * Motion-Primitives: Interactive 3D Card Tilt & Specular Glare
@@ -773,7 +843,26 @@ function init3DCardTilt() {
   const box = elements.cardTiltBox;
   if (!box) return;
 
+  const motionQuery = window.matchMedia ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+  const isReducedMotion = () => Boolean(motionQuery && motionQuery.matches);
+
+  const resetTilt = () => {
+    box.style.transition = 'transform 400ms cubic-bezier(0.23, 1, 0.32, 1)';
+    box.style.transform = 'rotateX(0deg) rotateY(0deg)';
+    box.style.setProperty('--glare-x', '50%');
+    box.style.setProperty('--glare-y', '50%');
+  };
+
+  motionQuery?.addEventListener?.('change', () => {
+    if (isReducedMotion()) {
+      box.style.transition = 'none';
+      box.style.transform = 'none';
+    }
+  });
+
   box.addEventListener('mousemove', (e) => {
+    if (isReducedMotion()) return;
+
     const rect = box.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
@@ -791,9 +880,11 @@ function init3DCardTilt() {
   });
 
   box.addEventListener('mouseleave', () => {
-    // Re-enable transition so the spring-back is smooth
-    box.style.transition = 'transform 400ms cubic-bezier(0.23, 1, 0.32, 1)';
-    box.style.transform = 'rotateX(0deg) rotateY(0deg)';
+    if (isReducedMotion()) {
+      box.style.transform = 'none';
+      return;
+    }
+    resetTilt();
   });
 }
 

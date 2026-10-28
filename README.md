@@ -6,7 +6,7 @@ The studio opens directly in the sample archive so visitors can inspect and expo
 
 ## What is in the studio
 
-The main workspace renders seven formats from the same listening data:
+The main workspace renders eight formats from the same listening data:
 
 | Format | Visual language |
 | --- | --- |
@@ -16,6 +16,7 @@ The main workspace renders seven formats from the same listening data:
 | Tape Cassette | Cassette shell, J-card, and playable track list |
 | Thermal Slip | Record-bar receipt with durations and catalog details |
 | Titanium DAP | Compact digital player built around the top track |
+| Retro Handheld | Game Boy-inspired cartridge console with a green-tint dot-matrix LCD |
 | VIP Pass | Festival credential with a listening timetable |
 
 Connected accounts also unlock the Year in Music story and the Taste Dossier. Each story soundtrack is randomly drawn without replacement from up to 50 ranked tracks and is capped at a 30-second preview. The dossier includes Audio DNA, cinema and synesthesia, listening-weather, listening-geography, a period comparison, and a data-provenance ledger.

@@ -51,9 +51,12 @@ export async function exportCardAsImage(format = 'card', target = null) {
     ctx.fillStyle = radial;
     ctx.fillRect(0, 0, 1080, 1920);
 
-    // Calculate scaling to center card
-    const targetW = 920;
-    const targetH = (canvas.height / canvas.width) * targetW;
+    // Calculate scaling to center card within story boundaries
+    const maxStoryW = 920;
+    const maxStoryH = 1520;
+    const scaleStory = Math.min(maxStoryW / canvas.width, maxStoryH / canvas.height);
+    const targetW = canvas.width * scaleStory;
+    const targetH = canvas.height * scaleStory;
     const targetX = (1080 - targetW) / 2;
     const targetY = (1920 - targetH) / 2;
 
@@ -79,15 +82,18 @@ export async function exportCardAsImage(format = 'card', target = null) {
     sqCanvas.height = 1200;
     const ctx = sqCanvas.getContext('2d');
 
-    // Dark gradient — correct direction: top-to-bottom
+    // Dark gradient with smooth top-to-bottom transition
     const grad = ctx.createLinearGradient(0, 0, 0, 1200);
-    grad.addColorStop(0, '#171510');
-    grad.addColorStop(1, '#0c0b09');
+    grad.addColorStop(0, '#11100d');
+    grad.addColorStop(1, '#090907');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 1200, 1200);
 
-    const targetH = 1050;
-    const targetW = (canvas.width / canvas.height) * targetH;
+    // Fit with aspect ratio preservation to prevent clipping on wide cards
+    const maxSquareDim = 1040;
+    const scaleSq = Math.min(maxSquareDim / canvas.width, maxSquareDim / canvas.height);
+    const targetW = canvas.width * scaleSq;
+    const targetH = canvas.height * scaleSq;
     const targetX = (1200 - targetW) / 2;
     const targetY = (1200 - targetH) / 2;
 

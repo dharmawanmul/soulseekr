@@ -242,7 +242,7 @@ export function logoutSpotify() {
 /**
  * Generic Spotify API caller
  */
-async function spotifyFetch(endpoint, token) {
+async function spotifyFetch(endpoint, token, isRetry = false) {
   const res = await fetch(`${SPOTIFY_CONFIG.apiEndpoint}${endpoint}`, {
     headers: {
       Authorization: `Bearer ${token}`
@@ -250,10 +250,12 @@ async function spotifyFetch(endpoint, token) {
   });
 
   if (res.status === 401) {
-    // Try one refresh
-    const refreshedToken = await refreshAccessToken();
-    if (refreshedToken) {
-      return spotifyFetch(endpoint, refreshedToken);
+    if (!isRetry) {
+      // Try one refresh
+      const refreshedToken = await refreshAccessToken();
+      if (refreshedToken) {
+        return spotifyFetch(endpoint, refreshedToken, true);
+      }
     }
     logoutSpotify();
     throw new Error('Spotify session expired. Please reconnect.');
@@ -567,15 +569,6 @@ export function extractTopGenres(artists = []) {
 
   // Normalize percentages so they look great
   return top5;
-}
-
-/**
- * Estimate listening minutes for time range
- */
-export function estimateListeningMinutes(tracks = [], timeRange = 'short_term') {
-  void tracks;
-  void timeRange;
-  return null;
 }
 
 /**

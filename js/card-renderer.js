@@ -44,7 +44,7 @@ export function getTimeRangeLabel(timeRange) {
   }
 }
 
-function getIndicator(trackId, playbackState) {
+export function getIndicator(trackId, playbackState) {
   const isMatch = playbackState && (
     (typeof playbackState === 'string' && playbackState === trackId) ||
     (typeof playbackState === 'object' && playbackState.trackId === trackId)
@@ -65,7 +65,7 @@ function getIndicator(trackId, playbackState) {
   return '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>';
 }
 
-function isTrackActive(trackId, playbackState) {
+export function isTrackActive(trackId, playbackState) {
   if (!playbackState) return false;
   if (typeof playbackState === 'string') return playbackState === trackId;
   return playbackState.trackId === trackId;
@@ -580,8 +580,125 @@ export function renderDapCard(data, timeRange, playbackState) {
   `;
 }
 
-// Preserve the previous renderer import name.
-export const renderGameboyCard = renderDapCard;
+/**
+ * 6b. THE RETRO HANDHELD (Game Boy–inspired listening device)
+ * Chunky shell, green-tint dot-matrix LCD, D-pad, A/B buttons, speaker grille.
+ */
+export function renderGameboyCard(data, timeRange, playbackState) {
+  const tracks = data.topTracks || [];
+  const stats = data.stats || {};
+  const rangeLabel = getTimeRangeLabel(timeRange);
+  const topSong = tracks[0];
+  const topCover = topSong?.album?.images?.[0]?.url || '';
+  const hasObscurityScore = Number.isFinite(stats.obscurityScore);
+  const obscurityScore = hasObscurityScore ? Math.max(0, Math.min(100, stats.obscurityScore)) : 0;
+  const obscurityLabel = hasObscurityScore ? `${Math.round(obscurityScore)}%` : 'N/A';
+
+  return `
+    <div class="card-inner card-gameboy" id="exportable-card">
+
+      <!-- Shell top notch -->
+      <div class="gb-top-notch">
+        <span class="gb-power-led" title="Power indicator"></span>
+        <span class="gb-power-label">POWER</span>
+      </div>
+
+      <!-- LCD Screen bezel -->
+      <div class="gb-screen-bezel">
+        <div class="gb-screen-label-row">
+          <span class="gb-dot-matrix-badge">DOT MATRIX WITH STEREO SOUND</span>
+        </div>
+        <div class="gb-lcd">
+          <div class="gb-lcd-scanlines" aria-hidden="true"></div>
+
+          <!-- Status bar -->
+          <div class="gb-status-bar">
+            <span>♪ SOULSEEKR</span>
+            <span>${escapeHtml(rangeLabel)}</span>
+          </div>
+
+          <!-- Hero track -->
+          <div class="gb-hero">
+            ${topCover
+              ? `<img src="${escapeHtml(topCover)}" class="gb-album-art" alt="Album cover">`
+              : '<div class="gb-album-placeholder">♪</div>'}
+            <div class="gb-hero-meta">
+              <span class="gb-hero-rank">NOW PLAYING #01</span>
+              <h3 class="gb-hero-title">${escapeHtml(topSong?.name || 'No Track')}</h3>
+              <p class="gb-hero-artist">${escapeHtml(topSong ? getTrackArtistNames(topSong) : '')}</p>
+            </div>
+          </div>
+
+          <!-- Track list -->
+          <div class="gb-track-list">
+            ${tracks.slice(0, 5).map((track, i) => {
+              const active = isTrackActive(track.id, playbackState);
+              return `
+                <div class="gb-track-row track-play-trigger ${active ? 'active' : ''}" data-track-id="${track.id}">
+                  <span class="gb-track-num">${String(i + 1).padStart(2, '0')}</span>
+                  <span class="gb-track-name">${escapeHtml(track.name)}</span>
+                  <span class="gb-track-dur">${active
+                    ? (playbackState?.isPaused ? '❚❚' : '▶▶')
+                    : formatDuration(track.duration_ms)}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+
+          ${hasObscurityScore ? `
+          <div class="gb-meter">
+            <span class="gb-meter-label">RARITY LV</span>
+            <div class="gb-meter-bar">
+              <div class="gb-meter-fill" style="width: ${obscurityScore}%"></div>
+            </div>
+            <span class="gb-meter-val">${obscurityLabel}</span>
+          </div>` : ''}
+        </div>
+      </div>
+
+      <!-- Brand plate -->
+      <div class="gb-brand-plate">
+        <span class="gb-brand-name">Soulseekr</span>
+        <span class="gb-brand-sub">LISTENING ARCHIVE</span>
+      </div>
+
+      <!-- Controls: D-pad + face buttons -->
+      <div class="gb-controls">
+        <div class="gb-dpad" aria-hidden="true">
+          <div class="gb-dpad-v"></div>
+          <div class="gb-dpad-h"></div>
+          <div class="gb-dpad-center"></div>
+        </div>
+        <div class="gb-face-btns" aria-hidden="true">
+          <div class="gb-btn-cluster">
+            <span class="gb-btn gb-btn-b">B</span>
+            <span class="gb-btn gb-btn-a">A</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Start/Select -->
+      <div class="gb-start-select" aria-hidden="true">
+        <div class="gb-pill-btn">SELECT</div>
+        <div class="gb-pill-btn">START</div>
+      </div>
+
+      <!-- Speaker grille -->
+      <div class="gb-speaker" aria-hidden="true">
+        <div class="gb-speaker-line"></div>
+        <div class="gb-speaker-line"></div>
+        <div class="gb-speaker-line"></div>
+        <div class="gb-speaker-line"></div>
+        <div class="gb-speaker-line"></div>
+        <div class="gb-speaker-line"></div>
+      </div>
+
+      <div class="gb-footer-meta">
+        <span>SOULSEEKR EDITION • HANDHELD ARCHIVE</span>
+      </div>
+    </div>
+  `;
+}
 
 /**
  * 7. THE ALL-ACCESS VIP FESTIVAL PASS (Holographic Band & Security RFID)

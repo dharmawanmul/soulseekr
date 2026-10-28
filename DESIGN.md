@@ -1,103 +1,104 @@
----
+L---
 name: Soulseekr
 description: A private listening folio and print-object studio for Spotify history.
 colors:
-  warm-black: "#11100d"
-  stage-black: "#090907"
-  muted-black: "#1a1814"
-  surface-black: "#191713"
-  ink-black: "#181611"
-  bone-paper: "#f3ebdc"
-  bone-paper-deep: "#e4d8c2"
-  muted-copy: "#b6ae9e"
-  archive-orange: "#ef6b43"
-  archive-line: "#3c372e"
-  control-line: "#706757"
-  spotify-green: "#1ed760"
-  spotify-green-hover: "#4be17c"
-  focus-light: "#fff7e8"
-  focus-dark: "#211e18"
+warm-black: "#11100d"
+stage-black: "#090907"
+muted-black: "#1a1814"
+surface-black: "#191713"
+ink-black: "#181611"
+bone-paper: "#f3ebdc"
+bone-paper-deep: "#e4d8c2"
+muted-copy: "#b6ae9e"
+archive-orange: "#ef6b43"
+archive-line: "#3c372e"
+control-line: "#706757"
+spotify-green: "#1ed760"
+spotify-green-hover: "#4be17c"
+focus-light: "#fff7e8"
+focus-dark: "#211e18"
 typography:
-  display:
-    fontFamily: "Bodoni Moda, Georgia, serif"
-    fontSize: "clamp(3.75rem, 7vw, 6rem)"
-    fontWeight: 500
-    lineHeight: 0.92
-    letterSpacing: "-0.035em"
-  headline:
-    fontFamily: "Bodoni Moda, Georgia, serif"
-    fontSize: "clamp(1.8rem, 3vw, 2.8rem)"
-    fontWeight: 600
-    lineHeight: 1
-    letterSpacing: "-0.03em"
-  title:
-    fontFamily: "DM Sans, Segoe UI, sans-serif"
-    fontSize: "0.9rem"
-    fontWeight: 700
-    lineHeight: 1.2
-    letterSpacing: "-0.02em"
-  body:
-    fontFamily: "DM Sans, Segoe UI, sans-serif"
-    fontSize: "clamp(1rem, 1.25vw, 1.1rem)"
-    fontWeight: 400
-    lineHeight: 1.65
-    letterSpacing: "-0.012em"
-  label:
-    fontFamily: "IBM Plex Mono, Consolas, monospace"
-    fontSize: "0.64rem"
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: "0.055em"
+display:
+fontFamily: "Bodoni Moda, Georgia, serif"
+fontSize: "clamp(3.75rem, 7vw, 6rem)"
+fontWeight: 500
+lineHeight: 0.92
+letterSpacing: "-0.035em"
+headline:
+fontFamily: "Bodoni Moda, Georgia, serif"
+fontSize: "clamp(1.8rem, 3vw, 2.8rem)"
+fontWeight: 600
+lineHeight: 1
+letterSpacing: "-0.03em"
+title:
+fontFamily: "DM Sans, Segoe UI, sans-serif"
+fontSize: "0.9rem"
+fontWeight: 700
+lineHeight: 1.2
+letterSpacing: "-0.02em"
+body:
+fontFamily: "DM Sans, Segoe UI, sans-serif"
+fontSize: "clamp(1rem, 1.25vw, 1.1rem)"
+fontWeight: 400
+lineHeight: 1.65
+letterSpacing: "-0.012em"
+label:
+fontFamily: "IBM Plex Mono, Consolas, monospace"
+fontSize: "0.64rem"
+fontWeight: 500
+lineHeight: 1.4
+letterSpacing: "0.055em"
 rounded:
-  square: "0"
-  raised: "2px"
-  dialog: "4px"
-  round: "50%"
+square: "0"
+raised: "2px"
+dialog: "4px"
+round: "50%"
 spacing:
-  compact: "0.55rem"
-  standard: "0.75rem"
-  field: "1rem"
-  section: "1.5rem"
-  major: "2.25rem"
+compact: "0.55rem"
+standard: "0.75rem"
+field: "1rem"
+section: "1.5rem"
+major: "2.25rem"
 components:
-  button-spotify:
-    backgroundColor: "{colors.spotify-green}"
-    textColor: "{colors.ink-black}"
-    rounded: "{rounded.square}"
-    padding: "0 1.15rem"
-    height: "46px"
-  button-spotify-hover:
-    backgroundColor: "{colors.spotify-green-hover}"
-    textColor: "{colors.ink-black}"
-  edition-row:
-    backgroundColor: "transparent"
-    textColor: "{colors.ink-black}"
-    rounded: "{rounded.square}"
-    padding: "0.68rem 0.65rem"
-    height: "47px"
-  edition-row-active:
-    backgroundColor: "{colors.ink-black}"
-    textColor: "{colors.bone-paper}"
-    rounded: "{rounded.square}"
-  timeframe-active:
-    backgroundColor: "{colors.archive-orange}"
-    textColor: "{colors.ink-black}"
-    rounded: "{rounded.square}"
-    height: "46px"
-  export-primary:
-    backgroundColor: "{colors.bone-paper}"
-    textColor: "{colors.ink-black}"
-    rounded: "{rounded.square}"
-    height: "58px"
-  mounted-stage:
-    backgroundColor: "{colors.stage-black}"
-    textColor: "{colors.bone-paper}"
-    rounded: "{rounded.square}"
-    padding: "clamp(2.5rem, 6vw, 5.75rem) clamp(0.75rem, 4vw, 3.75rem)"
-  gateway-dialog:
-    backgroundColor: "{colors.bone-paper}"
-    textColor: "{colors.ink-black}"
-    rounded: "{rounded.dialog}"
+button-spotify:
+backgroundColor: "{colors.spotify-green}"
+textColor: "{colors.ink-black}"
+rounded: "{rounded.square}"
+padding: "0 1.15rem"
+height: "46px"
+button-spotify-hover:
+backgroundColor: "{colors.spotify-green-hover}"
+textColor: "{colors.ink-black}"
+edition-row:
+backgroundColor: "transparent"
+textColor: "{colors.ink-black}"
+rounded: "{rounded.square}"
+padding: "0.68rem 0.65rem"
+height: "47px"
+edition-row-active:
+backgroundColor: "{colors.ink-black}"
+textColor: "{colors.bone-paper}"
+rounded: "{rounded.square}"
+timeframe-active:
+backgroundColor: "{colors.archive-orange}"
+textColor: "{colors.ink-black}"
+rounded: "{rounded.square}"
+height: "46px"
+export-primary:
+backgroundColor: "{colors.bone-paper}"
+textColor: "{colors.ink-black}"
+rounded: "{rounded.square}"
+height: "58px"
+mounted-stage:
+backgroundColor: "{colors.stage-black}"
+textColor: "{colors.bone-paper}"
+rounded: "{rounded.square}"
+padding: "clamp(2.5rem, 6vw, 5.75rem) clamp(0.75rem, 4vw, 3.75rem)"
+gateway-dialog:
+backgroundColor: "{colors.bone-paper}"
+textColor: "{colors.ink-black}"
+rounded: "{rounded.dialog}"
+
 ---
 
 # Design System: Soulseekr
@@ -106,9 +107,9 @@ components:
 
 **Creative North Star: "The Listening Folio"**
 
-Soulseekr is a listening folio, not a dashboard: begin with a working sample artifact, choose an edition and available window, then export it or connect Spotify to make it personal. The interface combines an independent record shop, a well-kept listening room, and an editorial design studio. It should feel warm, tactile, precise, private, and slightly obsessive.
+Soulseekr is a listening folio, not a dashboard: choose an edition and window, inspect the mounted artifact, then export it. The interface combines an independent record shop, a well-kept listening room, and an editorial design studio. It should feel warm, tactile, precise, private, and slightly obsessive.
 
-The shell behaves like a catalog leaf around one dominant physical-media object. Dense tools live on an asymmetric paper control leaf while the selected artifact receives the dark, generous stage. Hairline rules, catalog numbering, compact metadata, and controlled asymmetry create identity without competing with album artwork or the seven artifact editions.
+The shell behaves like a catalog leaf around one dominant physical-media object. Dense tools live on an asymmetric paper control leaf while the selected artifact receives the dark, generous stage. Hairline rules, catalog numbering, compact metadata, and controlled asymmetry create identity without competing with album artwork or the eight artifact editions.
 
 Reading this as: an operate-mode archive studio for privacy-conscious Spotify listeners, in a warm editorial physical-media language, dial ENERGY 2 / RHYTHM 3 / MOTION 2.
 
@@ -177,7 +178,7 @@ Spacing alternates compact tool density with generous artifact space. Controls u
 
 - **Wide screens:** keep the control leaf and preview side by side. The control leaf may stay sticky while the artifact remains the focal point.
 - **Below 1160px:** the header navigation becomes a full second row so labels and session actions remain comfortable.
-- **Below 940px:** stack the control leaf above the preview. Turn the seven-edition selector into a horizontally scrollable, snap-aligned row and expose the swipe or arrow-key hint.
+- **Below 940px:** stack the control leaf above the preview. Turn the eight-edition selector into a horizontally scrollable, snap-aligned row and expose the swipe or arrow-key hint.
 - **Below 700px:** stack the intro, stage heading, export dock, and connection gateway. Export actions become full-width rows and the gateway scrolls within the dynamic viewport.
 - **Below 520px:** tighten page and panel padding, wrap long labels, keep the three time windows equal, and preserve the artifact canvas without horizontal overflow.
 
@@ -241,21 +242,20 @@ One-pixel rules create sections and states. Avoid soft floating cards, broad cap
 
 - The stage is the deepest black plane, framed by a one-pixel archive line and a localized record-groove field.
 - A small mono mount label sits at the lower edge. The selected edition name and descriptive metadata sit above the stage, not over the artifact.
-- The preview container is capped near 460px while the surrounding stage remains generous. Each of the seven editions keeps its own internal typography, material, and interaction behavior.
+- The preview container is capped near 460px while the surrounding stage remains generous. Each of the eight editions keeps its own internal typography, material, and interaction behavior.
 - Empty, loading, and error states use the same stage and explain what is happening and what the listener can do next.
 
 ### Export Dock
 
 - The dock reads like a colophon: an explanatory block followed by Story, Square, and Clipboard actions.
 - Desktop actions share one ruled row; phone actions stack. The leading download is the paper-filled primary action.
-- Export copy names the actual result and aspect ratio. Success and recovery feedback stays beside the export actions with text, not color alone.
+- Export copy names the actual result and aspect ratio. Feedback appears through toasts with text, not color alone.
 
 ### Connection Gateway
 
-- The studio opens in the clearly labelled sample archive. The gateway appears only when a visitor chooses to connect Spotify, so authorization never blocks the first useful artifact.
 - The gateway is a split listening-object cover: warm-black record art on one side and a bone-paper decision surface on the other.
 - The cover uses one vertical orange band and localized grooves. Spotify Green appears only on the connection button; the sample archive remains a bordered ink-and-paper alternative.
-- Security copy stays factual and compact: browser-based sign-in, read-only Spotify access, and no Spotify password shared with Soulseekr. The dialog closes with its button, backdrop behavior, and Escape, returns focus appropriately, and always leaves the sample archive working.
+- Security copy stays factual and compact: client-side PKCE, read-only access, and no stored Spotify password. The dialog closes with its button, backdrop behavior, and Escape, and returns focus appropriately.
 - On phones, the cover compresses into a short masthead, the content stacks, and the dialog scrolls inside `100dvh` bounds.
 
 ### Audio Dock, Year in Music, and Taste Dossier
@@ -275,7 +275,7 @@ One-pixel rules create sections and states. Avoid soft floating cards, broad cap
 ### Do:
 
 - **Do** make the selected artifact the brightest and most memorable object on the studio screen.
-- **Do** preserve the full workflow: choose one of seven editions, choose a listening window, inspect the mounted preview, then export it.
+- **Do** preserve the full workflow: choose one of eight editions, choose a listening window, inspect the mounted preview, then export it.
 - **Do** use Archive Orange sparingly for selection, indexing, progress, and catalog detail.
 - **Do** reserve Spotify Green for explicit connection actions and Spotify state.
 - **Do** keep Bodoni, DM Sans, and IBM Plex Mono in their established display, interface, and metadata roles.
@@ -289,7 +289,7 @@ One-pixel rules create sections and states. Avoid soft floating cards, broad cap
 - **Don't** use Spotify Green for export, navigation, general success, decorative glow, or artifact styling.
 - **Don't** spread grooves, grids, blur, glow, large shadows, rounded pills, or orange fills across the whole interface.
 - **Don't** place explanatory metadata above or at the same weight as the heading it qualifies.
-- **Don't** homogenize the seven artifact editions into one generic card template.
+- **Don't** homogenize the eight artifact editions into one generic card template.
 - **Don't** imply that Spotify affinity rankings are stream counts, total minutes, or any unsupported measurement.
 - **Don't** disguise sample data as connected data or substitute sample values into unavailable connected windows.
 - **Don't** add decorative perpetual motion. Keep the studio restrained and let Year in Music own the richer choreography.

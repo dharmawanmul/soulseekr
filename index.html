@@ -16,7 +16,7 @@
   <!-- Google Fonts: Editorial & Physical Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..900&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=DM+Sans:opsz,wght@9..40,400..700&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bodoni+Moda:opsz,wght@6..96,400..900&family=DM+Sans:opsz,wght@9..40,400..700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- Design System & Artifact Stylesheets -->
   <link rel="stylesheet" href="css/style.css?v=3.0">
@@ -50,7 +50,7 @@
   <header class="app-header">
     <div class="brand-wrapper">
       <div class="brand-badge-icon">
-        <svg viewBox="0 0 24 24">
+        <svg viewBox="0 0 24 24" role="img" aria-label="Soulseekr record emblem">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
         </svg>
       </div>
@@ -132,7 +132,7 @@
         <span class="control-number">01</span>
         <div>
           <h3>Choose an edition</h3>
-          <p>Seven formats for the same listening history.</p>
+          <p>Eight formats for the same listening history.</p>
         </div>
       </div>
       <!-- Artifact formats -->
@@ -193,6 +193,18 @@
           </svg>
           Titanium DAP
         </button>
+        <button class="seg-btn" data-style="gameboy" data-description="A retro handheld console that turns your listening data into a dot-matrix cartridge." role="tab" aria-selected="false" aria-controls="card-display-container" tabindex="-1">
+          <!-- Game Boy icon -->
+          <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="4" y="2" width="16" height="20" rx="3"/>
+            <rect x="7" y="5" width="10" height="7" rx="1"/>
+            <line x1="10" y1="16" x2="10" y2="18"/>
+            <line x1="9" y1="17" x2="11" y2="17"/>
+            <circle cx="15" cy="16" r="1" fill="currentColor"/>
+            <circle cx="15" cy="18" r="0.7" fill="currentColor"/>
+          </svg>
+          Retro Handheld
+        </button>
         <button class="seg-btn" data-style="vippass" data-description="A festival credential that arranges your tracks as a listening timetable." role="tab" aria-selected="false" aria-controls="card-display-container" tabindex="-1">
           <!-- ID badge / pass icon -->
           <svg class="seg-icon-svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -204,7 +216,7 @@
           VIP Pass
         </button>
       </div>
-      <p class="selector-scroll-hint">Swipe or use the arrow keys to see all seven editions.</p>
+      <p class="selector-scroll-hint">Swipe or use the arrow keys to see all eight editions.</p>
 
       <div class="control-heading control-heading-time">
         <span class="control-number">02</span>
@@ -302,14 +314,14 @@
   </main>
 
   <!-- Floating audio preview -->
-  <aside id="now-playing-bar" class="dynamic-audio-dock" aria-live="polite">
+  <aside id="now-playing-bar" class="dynamic-audio-dock">
     <div class="dock-disc-art">
       <img id="dock-thumb" alt="Album artwork" hidden />
     </div>
     <div class="mini-eq">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </div>
-    <div class="dock-meta">
+    <div class="dock-meta" aria-live="polite">
       <span id="np-track-name" class="dock-title">Track Name</span>
       <span id="np-artist-name" class="dock-artist">Artist Name</span>
     </div>
@@ -427,7 +439,7 @@
       <h2 class="auth-gateway-title">Make the sample yours.</h2>
       <p class="auth-gateway-index">Your listening history stays in this browser.</p>
       <p class="auth-gateway-desc">
-        Connect Spotify to rebuild all seven editions with your recent top tracks and open Year in Music and Taste Dossier.
+        Connect Spotify to rebuild all eight editions with your recent top tracks and open Year in Music and Taste Dossier.
       </p>
 
       <!-- Clean Privacy & Trust Strip -->

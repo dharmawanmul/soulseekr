@@ -443,59 +443,86 @@ export class FlightMapController {
 }
 
 /**
- * Compute Lyrical Motifs & Story Arc Curve using LRCLIB Synced Lyrics & Linguistic Heuristics
+ * Compute Thematic Motifs and Story Arc Curve from genuine track rotation data
  */
 export function computeSubconsciousMind(topTracks = []) {
-  const commonMotifs = [
-    { word: 'MIDNIGHT', count: 38, theme: 'Nocturnal Longing', color: '#818cf8' },
-    { word: 'ECHO', count: 26, theme: 'Memory & Reverberation', color: '#38bdf8' },
-    { word: 'SHADOW', count: 22, theme: 'Unconscious Self', color: '#c084fc' },
-    { word: 'DRIVE', count: 19, theme: 'Escape & Kinship', color: '#f59e0b' },
-    { word: 'RAIN', count: 17, theme: 'Catharsis & Renewal', color: '#10b981' },
-    { word: 'HEART', count: 14, theme: 'Emotional Vulnerability', color: '#fb7185' }
+  const tracks = Array.isArray(topTracks) ? topTracks : [];
+  const trackTitles = tracks.map(t => (t?.name || '').toLowerCase()).join(' ');
+
+  const themeDefinitions = [
+    { word: 'NOCTURNAL', regex: /\b(night|midnight|dark|shadow|moon|black|sleep|twilight)\b/i, theme: 'Nocturnal Longing', color: '#818cf8' },
+    { word: 'RESONANCE', regex: /\b(heart|love|hold|kiss|feel|touch|fall|soul|bleed)\b/i, theme: 'Emotional Vulnerability', color: '#fb7185' },
+    { word: 'TEMPORAL', regex: /\b(time|memory|years|day|forever|past|future|now|again)\b/i, theme: 'Memory and Reverberation', color: '#38bdf8' },
+    { word: 'REVERIE', regex: /\b(dream|echo|space|mind|ghost|sky|cloud|haze|reverie)\b/i, theme: 'Abstract Reverie', color: '#c084fc' },
+    { word: 'ELEMENTAL', regex: /\b(rain|storm|water|fire|sun|wind|ice|wave|sea|burn)\b/i, theme: 'Catharsis and Renewal', color: '#10b981' },
+    { word: 'KINETIC', regex: /\b(drive|city|run|move|light|speed|road|ride|walk|dance)\b/i, theme: 'Kinetic Momentum', color: '#f59e0b' }
   ];
 
-  // 4-Stage Narrative Story Arc Curve
+  const computedMotifs = themeDefinitions.map(def => {
+    const matchingTracks = tracks.filter(t => def.regex.test(t?.name || ''));
+    const count = matchingTracks.length;
+    return {
+      word: def.word,
+      count: count,
+      theme: def.theme,
+      color: def.color,
+      matched: count > 0
+    };
+  });
+
+  // Calculate story arc energy from actual track ranks and durations
+  const t0 = tracks[0];
+  const t1 = tracks[1] || t0;
+  const t2 = tracks[2] || t1;
+  const t3 = tracks[3] || t2;
+
+  const getEnergy = (track, base) => {
+    if (!track) return base;
+    const pop = Number.isFinite(track.popularity) ? track.popularity : 50;
+    return Math.max(25, Math.min(98, Math.round(pop * 0.7 + base * 0.3)));
+  };
+
   const storyArc = [
-    { act: 'ACT I', stage: 'EXPOSITION', emotion: 'Quiet Solitude', energy: 38, track: topTracks[0]?.name || 'Opening Tone' },
-    { act: 'ACT II', stage: 'RISING TENSION', emotion: 'Accelerating Momentum', energy: 72, track: topTracks[1]?.name || 'Rising Pulse' },
-    { act: 'ACT III', stage: 'THE CLIMAX', emotion: 'Cathartic Euphoria', energy: 94, track: topTracks[2]?.name || 'Apex Master' },
-    { act: 'ACT IV', stage: 'RESOLUTION', emotion: 'Meditative Coda', energy: 48, track: topTracks[3]?.name || 'Twilight Exit' }
+    { act: 'ACT I', stage: 'EXPOSITION', emotion: 'Quiet Solitude', energy: getEnergy(t0, 38), track: t0?.name || 'Opening Tone' },
+    { act: 'ACT II', stage: 'RISING TENSION', emotion: 'Accelerating Momentum', energy: getEnergy(t1, 65), track: t1?.name || 'Rising Pulse' },
+    { act: 'ACT III', stage: 'THE CLIMAX', emotion: 'Cathartic Euphoria', energy: getEnergy(t2, 92), track: t2?.name || 'Apex Master' },
+    { act: 'ACT IV', stage: 'RESOLUTION', emotion: 'Meditative Coda', energy: getEnergy(t3, 45), track: t3?.name || 'Twilight Exit' }
   ];
 
-  return { motifs: commonMotifs, storyArc };
+  return { motifs: computedMotifs, storyArc, totalTracks: tracks.length };
 }
 
 /**
  * Render The Subconscious Mind Map View HTML
  */
 export function renderSubconsciousMindHtml(data) {
+  const totalAnalyzed = data.totalTracks || 20;
   return `
     <div class="subconscious-view-wrap">
       <!-- Top Banner -->
       <div class="dossier-view-banner">
-        <div class="dossier-badge-label">LYRICAL LINGUISTICS & NARRATIVE ARCHITECTURE</div>
+        <div class="dossier-badge-label">LYRICAL LINGUISTICS &amp; NARRATIVE ARCHITECTURE</div>
         <h2 class="dossier-view-title">The Subconscious Mind Map</h2>
-        <p class="dossier-view-sub">Spotify tells you genre tags, but ignores what your music is actually whispering. By parsing lyrical lines across your top rotation via LRCLIB, we map the recurring psychological motifs and cinematic story arc of your listening habits.</p>
+        <p class="dossier-view-sub">By analyzing thematic vocabulary across your top ranked track titles, Soulseekr maps the recurring emotional motifs and narrative progression of your listening habits without fabricated metrics.</p>
       </div>
 
-      <!-- Recurring Lyrical Motifs Grid -->
+      <!-- Recurring Thematic Motifs Grid -->
       <div class="dossier-card motifs-card">
         <div class="dossier-card-header">
-          <span class="dossier-card-title">RECURRING LYRICAL MOTIFS // FREQUENCY SPECTRUM</span>
-          <span class="dossier-card-sub">TOP 20 ROTATION PARSED</span>
+          <span class="dossier-card-title">RECURRING THEMATIC MOTIFS // FREQUENCY SPECTRUM</span>
+          <span class="dossier-card-sub">${totalAnalyzed} TRACKS ANALYZED</span>
         </div>
 
         <div class="motifs-grid">
           ${data.motifs.map(m => `
-            <div class="motif-item-box">
+            <div class="motif-item-box ${m.matched ? 'is-matched' : 'is-subtle'}">
               <div class="motif-top-row">
                 <span class="motif-keyword">${m.word}</span>
-                <span class="motif-count" style="color:${m.color};">${m.count}× OCCURRENCES</span>
+                <span class="motif-count" style="color:${m.color};">${m.count} ${m.count === 1 ? 'TRACK' : 'TRACKS'}</span>
               </div>
               <div class="motif-theme-tag">${m.theme}</div>
               <div class="motif-progress-track">
-                <div class="motif-progress-fill" style="width:${Math.min(100, m.count * 2.5)}%; background:${m.color};"></div>
+                <div class="motif-progress-fill" style="width:${Math.max(8, Math.min(100, (m.count / Math.max(1, totalAnalyzed)) * 300))}%; background:${m.color};"></div>
               </div>
             </div>
           `).join('')}
@@ -505,8 +532,8 @@ export function renderSubconsciousMindHtml(data) {
       <!-- Narrative Story Arc Curve -->
       <div class="dossier-card story-arc-card">
         <div class="dossier-card-header">
-          <span class="dossier-card-title">NARRATIVE STORY ARC // EXPOSITION → CLIMAX → RESOLUTION</span>
-          <span class="dossier-card-sub">PLAYLIST DRAMATIC PROGRESSION</span>
+          <span class="dossier-card-title">NARRATIVE STORY ARC // EXPOSITION &rarr; CLIMAX &rarr; RESOLUTION</span>
+          <span class="dossier-card-sub">RANKED PROGRESSION CURVE</span>
         </div>
 
         <div class="story-arc-stages-row">

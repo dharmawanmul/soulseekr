@@ -10,7 +10,7 @@
 
 class SoundEngine {
   constructor() {
-    this.audioElement = new Audio();
+    this.audioElement = typeof Audio !== 'undefined' ? new Audio() : null;
     this.audioContext = null;
     this.isPlaying = false;
     this.isPaused = false;
@@ -28,11 +28,11 @@ class SoundEngine {
     this.previewStartedAt = 0;
     this.isStopping = false;
 
-    this.audioElement.addEventListener('ended', () => {
+    this.audioElement?.addEventListener?.('ended', () => {
       this.stop();
     });
 
-    this.audioElement.addEventListener('pause', () => {
+    this.audioElement?.addEventListener?.('pause', () => {
       if (!this.isStopping && !this.synthInterval && !this.isLoading && this.currentTrackId) {
         if (this.isPaused && !this.isPlaying) return;
         this.isPlaying = false;
@@ -42,7 +42,7 @@ class SoundEngine {
       }
     });
 
-    this.audioElement.addEventListener('error', (e) => {
+    this.audioElement?.addEventListener?.('error', (e) => {
       console.warn('Audio playback error, falling back to synth:', e);
       if (this.currentTrackId && !this.synthInterval) {
         this.playSynthesizedLoop('Synth Fallback');
@@ -136,7 +136,8 @@ class SoundEngine {
       const query = `${artistName} ${cleanTrack}`.trim();
       const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`;
       
-      const res = await fetch(url);
+      const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(5000) : undefined;
+      const res = await fetch(url, { signal });
       if (!res.ok) return null;
       
       const data = await res.json();
@@ -185,7 +186,13 @@ class SoundEngine {
     let previewUrl = track.preview_url;
 
     if (!previewUrl) {
-      const artist = (track.artists && track.artists[0]) ? track.artists[0].name : '';
+      let artist = '';
+      if (Array.isArray(track.artists) && track.artists.length > 0) {
+        const first = track.artists[0];
+        artist = (typeof first === 'object' && first ? first.name : first) || '';
+      } else if (track.artistName) {
+        artist = track.artistName;
+      }
       previewUrl = await this.resolveRealAudioPreview(track.name, artist);
       if (requestId !== this.playRequestId) return;
       if (previewUrl) {

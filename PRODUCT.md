@@ -12,11 +12,11 @@ Privacy-conscious Spotify listeners who want to turn their listening history int
 
 ## Product Purpose
 
-Soulseekr transforms Spotify listening history into seven collectible, exportable visual artifacts and a transparent private taste dossier. Success means a listener can connect or use the clearly labelled sample archive, choose a listening window and format, preview the result, and save or explore it without losing track of where the data came from.
+Soulseekr transforms Spotify listening history into eight collectible, exportable visual artifacts and a transparent private taste dossier. Success means a listener can connect or use the clearly labelled sample archive, choose a listening window and format, preview the result, and save or explore it without losing track of where the data came from.
 
 ## Positioning
 
-Soulseekr treats listening history as physical-media design material. The same real ranking data can become a sleeve, poster, prism, cassette, receipt, player, or pass, while the dossier separates direct Spotify fields, local calculations, and creative interpretations.
+Soulseekr treats listening history as physical-media design material. The same real ranking data can become a sleeve, poster, prism, cassette, receipt, player, handheld console, or pass, while the dossier separates direct Spotify fields, local calculations, and creative interpretations.
 
 ## Operating Context
 
@@ -24,7 +24,7 @@ The product is a single-page listening studio. Visitors can connect Spotify thro
 
 ## Capabilities and Constraints
 
-- Preserve all seven artifact formats, sample mode, Spotify PKCE connection, time-window controls, audio previews, image exports, Year in Music, and Taste Dossier.
+- Preserve all eight artifact formats, sample mode, Spotify PKCE connection, time-window controls, audio previews, image exports, Year in Music, and Taste Dossier.
 - Preserve keyboard behavior, dialog focus handling, reduced-motion behavior, and responsive support.
 - Keep the application static and client-side with no build step or backend.
 - Spotify affinity rankings are not stream counts. Do not invent total minutes, unavailable genre data, or unsupported measurements.

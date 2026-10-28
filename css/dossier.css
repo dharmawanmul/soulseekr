@@ -1085,7 +1085,7 @@
 .dna-main-title {
   font-size: 1.55rem;
   font-weight: 700;
-  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-family: var(--font-display, 'Bodoni Moda', Georgia, serif);
   color: #ffffff;
   letter-spacing: -0.02em;
   line-height: 1.15;
@@ -1146,7 +1146,7 @@
 .dna-metric-val {
   font-size: 1.85rem;
   font-weight: 700;
-  font-family: var(--font-display, 'Outfit', sans-serif);
+  font-family: var(--font-display, 'Bodoni Moda', Georgia, serif);
   line-height: 1.15;
 }
 
