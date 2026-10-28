@@ -252,6 +252,7 @@ function initElements() {
   elements.timeRangePills = document.querySelectorAll('.time-btn');
   elements.btnExportStory = document.getElementById('btn-export-story');
   elements.btnExportSquare = document.getElementById('btn-export-square');
+  elements.btnExportPoster = document.getElementById('btn-export-poster');
   elements.btnCopyClip = document.getElementById('btn-copy-clip');
   elements.btnOpenWrapped = document.getElementById('btn-open-wrapped');
   elements.btnOpenDossier = document.getElementById('btn-open-dossier');
@@ -836,6 +837,50 @@ soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, cur
   updateCardPlaybackUI();
 });
 
+// Live Web Audio API frame listener: drives authentic real-time visualizers
+soundEngine.onAudioFrame((frame) => {
+  // 1. Update Now Playing dock micro-equalizer bars
+  const dockEq = elements.nowPlayingBar?.querySelector('.mini-eq');
+  if (dockEq) {
+    if (frame.isResting) {
+      dockEq.classList.remove('is-live');
+    } else {
+      dockEq.classList.add('is-live');
+      const bars = dockEq.querySelectorAll('.bar');
+      if (bars.length >= 3) {
+        bars[0].style.height = `${Math.max(15, Math.min(100, Math.round(frame.bass * 100)))}%`;
+        bars[1].style.height = `${Math.max(20, Math.min(100, Math.round(frame.mid * 100)))}%`;
+        bars[2].style.height = `${Math.max(15, Math.min(100, Math.round(frame.treble * 100)))}%`;
+      }
+    }
+  }
+
+  // 2. Update Titanium DAP Card stereo VU meters and measured specs
+  const vuL = document.querySelector('.card-dap .dap-vu-l');
+  const vuR = document.querySelector('.card-dap .dap-vu-r');
+  if (vuL && vuR) {
+    if (frame.isResting) {
+      vuL.classList.remove('is-live');
+      vuR.classList.remove('is-live');
+    } else {
+      vuL.classList.add('is-live');
+      vuR.classList.add('is-live');
+      const leftLevel = Math.max(8, Math.min(98, Math.round(frame.bass * 100)));
+      const rightLevel = Math.max(8, Math.min(98, Math.round((frame.mid * 0.7 + frame.treble * 0.3) * 100)));
+      vuL.style.width = `${leftLevel}%`;
+      vuR.style.width = `${rightLevel}%`;
+    }
+  }
+
+  if (frame.bpm) {
+    const specsEl = document.querySelector('.card-dap .dap-audio-specs');
+    if (specsEl && specsEl.dataset.measuredBpm !== String(frame.bpm)) {
+      specsEl.dataset.measuredBpm = String(frame.bpm);
+      specsEl.innerHTML = `<span>MEASURED STUDIO ACOUSTICS</span><span>•</span><span style="color:#10b981;">${frame.bpm} BPM</span>`;
+    }
+  }
+});
+
 /**
  * Motion-Primitives: Interactive 3D Card Tilt & Specular Glare
  */
@@ -1070,6 +1115,11 @@ function setupEventListeners() {
   elements.btnExportSquare?.addEventListener('click', () => {
     const filename = `soulseekr-${state.cardStyle}-square.png`;
     runImageExport(elements.btnExportSquare, 'square', filename, 'Square image downloaded');
+  });
+
+  elements.btnExportPoster?.addEventListener('click', () => {
+    const filename = `soulseekr-${state.cardStyle}-poster.png`;
+    runImageExport(elements.btnExportPoster, 'poster', filename, 'Gallery print poster downloaded');
   });
 
   elements.btnCopyClip?.addEventListener('click', runClipboardExport);

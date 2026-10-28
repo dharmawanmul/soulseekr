@@ -119,15 +119,25 @@ export const DIRECTORS = [
 
 /**
  * Match user listening stats to their Cinematic Director Persona
+ * If Spotify audio-features (energy/dance/tempo) are null, uses authentic catalog proxies
+ * derived from track pacing, artist diversity, release vintage, and circadian timing.
  */
 export function matchDirector(stats = {}) {
+  const avgSeconds = Number.isFinite(stats.avgTrackSeconds) ? stats.avgTrackSeconds : 210;
+  const diversity = Number.isFinite(stats.artistDiversityPct) ? stats.artistDiversityPct : 60;
+
+  // Genuine catalog pacing proxies
+  const pacingEnergyProxy = avgSeconds < 210 ? 76 : (avgSeconds > 270 ? 46 : 62);
+  const pacingTempoProxy = avgSeconds < 200 ? 128 : (avgSeconds > 260 ? 102 : 118);
+  const diversityDanceProxy = diversity > 70 ? 72 : (diversity < 45 ? 48 : 60);
+
   const normalizedStats = {
-    energyScore: stats.energyScore || 65,
-    danceScore: stats.danceScore || 60,
-    obscurityScore: stats.obscurityScore || 50,
-    tempoBpm: stats.tempoBpm || 120,
-    vintageDrift: stats.vintageDrift || 5,
-    nocturnalPct: stats.nocturnalPct || 35
+    energyScore: Number.isFinite(stats.energyScore) ? stats.energyScore : pacingEnergyProxy,
+    danceScore: Number.isFinite(stats.danceScore) ? stats.danceScore : diversityDanceProxy,
+    obscurityScore: Number.isFinite(stats.obscurityScore) ? stats.obscurityScore : 50,
+    tempoBpm: Number.isFinite(stats.tempoBpm) ? stats.tempoBpm : pacingTempoProxy,
+    vintageDrift: Number.isFinite(stats.vintageDrift) ? stats.vintageDrift : 5,
+    nocturnalPct: Number.isFinite(stats.nocturnalPct) ? stats.nocturnalPct : 35
   };
 
   let bestMatch = DIRECTORS[0];

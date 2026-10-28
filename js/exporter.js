@@ -4,6 +4,31 @@
  * Square Posts (1:1), or copying straight to clipboard!
  */
 
+let html2canvasPromise = null;
+
+/**
+ * Lazy-load html2canvas on demand when the user triggers an export or copy action
+ */
+export async function ensureHtml2CanvasLoaded() {
+  if (typeof window.html2canvas !== 'undefined') {
+    return window.html2canvas;
+  }
+  if (!html2canvasPromise) {
+    html2canvasPromise = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      script.crossOrigin = 'anonymous';
+      script.onload = () => resolve(window.html2canvas);
+      script.onerror = () => {
+        html2canvasPromise = null;
+        reject(new Error('Export engine failed to load. Please check your internet connection.'));
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return html2canvasPromise;
+}
+
 export async function exportCardAsImage(format = 'card', target = null) {
   const cardElement = typeof target === 'string'
     ? document.getElementById(target)
@@ -13,10 +38,7 @@ export async function exportCardAsImage(format = 'card', target = null) {
     throw new Error('Card element not found.');
   }
 
-  if (typeof window.html2canvas === 'undefined') {
-    throw new Error('Export engine is loading. Please wait 2 seconds and try again.');
-  }
-
+  await ensureHtml2CanvasLoaded();
   await document.fonts?.ready;
 
   const scale = 2.5;
@@ -103,6 +125,49 @@ export async function exportCardAsImage(format = 'card', target = null) {
 
     ctx.drawImage(canvas, targetX, targetY, targetW, targetH);
     return sqCanvas.toDataURL('image/png');
+  } else if (format === 'poster') {
+    // Render onto 3:4 portrait canvas (1200 x 1600) suitable for gallery prints and physical posters
+    const posterCanvas = document.createElement('canvas');
+    posterCanvas.width = 1200;
+    posterCanvas.height = 1600;
+    const ctx = posterCanvas.getContext('2d');
+
+    // Rich warm museum dark backdrop
+    const grad = ctx.createLinearGradient(0, 0, 1200, 1600);
+    grad.addColorStop(0, '#171510');
+    grad.addColorStop(0.6, '#11100d');
+    grad.addColorStop(1, '#0c0b09');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 1200, 1600);
+
+    // Fine editorial border hairline
+    ctx.strokeStyle = 'rgba(242, 234, 217, 0.12)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(48, 48, 1200 - 96, 1600 - 96);
+
+    // Fit with aspect ratio preservation
+    const maxPosterW = 1000;
+    const maxPosterH = 1320;
+    const scalePoster = Math.min(maxPosterW / canvas.width, maxPosterH / canvas.height);
+    const targetW = canvas.width * scalePoster;
+    const targetH = canvas.height * scalePoster;
+    const targetX = (1200 - targetW) / 2;
+    const targetY = (1500 - targetH) / 2;
+
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
+    ctx.shadowBlur = 40;
+    ctx.shadowOffsetY = 18;
+
+    ctx.drawImage(canvas, targetX, targetY, targetW, targetH);
+
+    // Bottom colophon
+    ctx.shadowColor = 'transparent';
+    ctx.font = '500 18px "IBM Plex Mono", monospace';
+    ctx.fillStyle = 'rgba(242, 234, 217, 0.55)';
+    ctx.textAlign = 'center';
+    ctx.fillText('SOULSEEKR / ARCHIVE EDITION / 3:4 GALLERY PRINT', 600, 1540);
+
+    return posterCanvas.toDataURL('image/png');
   }
 
   return canvas.toDataURL('image/png');
@@ -128,10 +193,8 @@ export async function copyCardToClipboard(target = null) {
     ? document.getElementById(target)
     : (target || document.getElementById('exportable-card'));
   if (!cardElement) throw new Error('Card not found');
-  if (typeof window.html2canvas === 'undefined') {
-    throw new Error('Export engine is loading. Please wait 2 seconds and try again.');
-  }
 
+  await ensureHtml2CanvasLoaded();
   await document.fonts?.ready;
 
   const canvas = await window.html2canvas(cardElement, {

@@ -399,10 +399,18 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
   const topGenres = extractTopGenres(topArtists);
   const dominantGenre = topGenres.length ? topGenres[0].name : null;
 
-  // Obscurity rating: lower artist average popularity = higher underground rating
-  const popularityValues = topArtists
+  // Obscurity rating: lower average popularity = higher underground rating
+  let popularityValues = topArtists
     .map(artist => Number(artist?.popularity))
     .filter(Number.isFinite);
+
+  // Fall back to ranked tracks popularity when Spotify returns empty top artists for short-term window
+  if (!popularityValues.length && topTracks.length) {
+    popularityValues = topTracks
+      .map(track => Number(track?.popularity))
+      .filter(Number.isFinite);
+  }
+
   const avgPopularity = popularityValues.length
     ? Math.round(popularityValues.reduce((sum, value) => sum + value, 0) / popularityValues.length)
     : null;

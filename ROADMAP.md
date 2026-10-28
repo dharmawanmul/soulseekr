@@ -136,7 +136,8 @@ Soulseekr is a static, client-side listening studio that transforms Spotify list
 | **P1** | Replace fabricated lyric counts in Subconscious Mind Map with real data | 1 hour | 🟢 **Completed** |
 | **P2** | Restore Retro Handheld (Game Boy) as 8th first-class edition across UI and docs | 1 hour | 🟢 **Completed** |
 | **P2** | Remove dead code (`estimateListeningMinutes`) | 15 min | 🟢 **Completed** |
-| **P1** | Lazy-load Three.js and html2canvas | 1-2 hours | ⬜ Not started |
+| **P1** | Lazy-load Three.js and html2canvas | 1-2 hours | 🟢 **Completed** |
+| **P1** | Add dedicated export format aspect presets (9:16, 1:1, 3:4) | 1 hour | 🟢 **Completed** |
 | **P1** | Move PKCE verifier to `sessionStorage`; add OAuth `state` param | 1 hour | ⬜ Not started |
 | **P2** | Rename `vibe_` storage keys to `soulseekr_` | 30 min | ⬜ Not started |
 | **P3** | Split `dossier.js` and `audio-dna.js` into per-view modules | 3-4 hours | ⬜ Not started |
@@ -146,6 +147,30 @@ Soulseekr is a static, client-side listening studio that transforms Spotify list
 ---
 
 ## Change Log
+
+### 2026-10-28: Session 5 (Client-Side Web Audio API Acoustic Engine)
+
+**Completed:**
+- Web Audio API Real Acoustics: Connected `HTMLAudioElement` to in-browser `AudioContext` and `AnalyserNode` in `SoundEngine` with `crossOrigin = "anonymous"`.
+- Live Frequency Visualizers: Added real-time FFT frequency extraction driving the `.mini-eq` equalizers on the Now-Playing bar and Titanium DAP stereo VU peak level meters in place of CSS loop animations.
+- Real Beat & BPM Peak Detection: Implemented sub-bass onset energy tracking to calculate genuine measured track tempo (BPM) and RMS energy directly from the audio waveform.
+- Dynamic Card & Wrapped Acoustic Updates: Live measured BPM and RMS energy are cached per track and displayed on the Titanium DAP card specs and Year in Music Slide 3 bento grid.
+
+### 2026-10-28: Session 4 (Performance Lazy-Loading & Multi-Aspect Export Presets)
+
+**Completed:**
+- Asset Lazy-Loading: Removed synchronous `three.min.js` (~600 KB) and `html2canvas.min.js` (~200 KB) from the document `<head>`. Three.js is now loaded on-demand via `ensureThreeLoaded()` when the Year in Music modal opens, and html2canvas is loaded on-demand via `ensureHtml2CanvasLoaded()` when export or clipboard actions are triggered.
+- Dedicated Aspect Ratio Presets: Added a 4th dedicated export format button for 3:4 Gallery Print Posters (`btn-export-poster`) alongside 9:16 Story and 1:1 Square. Implemented responsive grid layout (`repeat(4, 1fr)` desktop, `repeat(2, 1fr)` tablet, `1fr` mobile).
+- Aspect-Contained Poster Rendering: Implemented gallery print preset in `exporter.js` with museum-board framing, border rules, and bottom colophon typography.
+
+### 2026-10-28: Session 3 (Authenticity Engine & Elimination of Fabricated Data)
+
+**Completed:**
+- Year in Music (Slide 3): Eliminated all "Not available" blanks by replacing deprecated Spotify audio features with authentic catalog dimensions (Artist Diversity Ratio, Catalog Era Median Year) and providing track-level popularity fallback for Obscurity Score when top artists is sparse.
+- Musical Passport: Replaced hardcoded Tokyo origin with dynamic origin airport resolution from `user.country` (or timezone); removed hardcoded `+ 14,200` miles and computed authentic great-circle mileage; computed `intlRatio` dynamically from destination countries vs origin country.
+- Cinema & Synesthesia: Replaced static numeric fallbacks (65, 60, 120) with genuine catalog pacing proxies derived from average track duration, artist diversity, release vintage, obscurity, and circadian timing.
+- Weather Timeline: Removed simulated BPM sine wave and fake BPM labels from the canvas renderer; replaced with genuine Open-Meteo relative humidity telemetry alongside temperature and precipitation probability.
+- Audio DNA: Unlocked the 24-Hour Polar Ring and 7-Day Matrix with genuine Spotify `played_at` timestamps from `recentlyPlayed`, removing hardcoded "3 AM Confessional" placeholders.
 
 ### 2026-10-28: Session 2 (Completed P0 & Critical P1/P2 Items)
 

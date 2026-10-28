@@ -16,6 +16,32 @@ const SLIDE_THEMES = [
   { primary: '#d8c9aa', secondary: '#ed6a45', threeColors: [0xd8c9aa, 0xed6a45] }
 ];
 
+let threePromise = null;
+
+/**
+ * Lazy-load Three.js on demand when opening Year in Music
+ */
+export async function ensureThreeLoaded() {
+  if (typeof window.THREE !== 'undefined') {
+    return window.THREE;
+  }
+  if (!threePromise) {
+    threePromise = new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+      script.crossOrigin = 'anonymous';
+      script.onload = () => resolve(window.THREE);
+      script.onerror = () => {
+        threePromise = null;
+        console.warn('Three.js could not be loaded, continuing with 2D ambient background');
+        resolve(null);
+      };
+      document.head.appendChild(script);
+    });
+  }
+  return threePromise;
+}
+
 /**
  * Three.js WebGL 3D Background Particle & Crystal Visualizer
  */
@@ -440,13 +466,20 @@ export class WrappedExperience {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('wheel', this.onWheel, { passive: false });
 
-    // Initialize 3D Three.js Visualizer
-    if (!this.visualizer && this.canvas) {
-      this.visualizer = new ThreeWrappedVisualizer(this.canvas);
-      this.visualizer.init();
-    }
-    if (this.visualizer) {
-      this.visualizer.start();
+    // Initialize 3D Three.js Visualizer (lazy-loads Three.js without blocking slide presentation)
+    if (this.canvas) {
+      ensureThreeLoaded().then(three => {
+        if (!three || !this.modal.classList.contains('is-open')) return;
+        if (!this.visualizer) {
+          this.visualizer = new ThreeWrappedVisualizer(this.canvas);
+          this.visualizer.init();
+        }
+        if (this.visualizer && !this.visualizer.isRunning) {
+          this.visualizer.start();
+          const currentTheme = SLIDE_THEMES[this.currentSlide % SLIDE_THEMES.length];
+          this.visualizer.setTheme(currentTheme);
+        }
+      });
     }
 
     // Go to first slide
@@ -599,6 +632,23 @@ export class WrappedExperience {
     const dance = Number.isFinite(stats.danceScore) ? stats.danceScore : null;
     const obscurity = Number.isFinite(stats.obscurityScore) ? stats.obscurityScore : null;
 
+    const leadAcoustics = soundEngine.getTrackAcoustics(topTrack?.id);
+    const measuredEnergy = leadAcoustics?.energy ?? energy;
+    const measuredBpm = leadAcoustics?.bpm ?? null;
+
+    const uniqueArtistsList = new Set(
+      tracks.flatMap(t => (t.artists || []).map(a => (typeof a === 'object' ? a.name : a) || '').filter(Boolean))
+    );
+    const uniqueArtistsCount = uniqueArtistsList.size || (tracks.length ? 1 : null);
+    const artistDiversityPct = tracks.length ? Math.round((uniqueArtistsCount / tracks.length) * 100) : null;
+
+    const releaseYears = tracks
+      .map(t => Number.parseInt(t?.album?.release_date?.slice(0, 4), 10))
+      .filter(Number.isFinite);
+    const medianYear = releaseYears.length
+      ? [...releaseYears].sort((a, b) => a - b)[Math.floor(releaseYears.length / 2)]
+      : null;
+
     this.viewport.innerHTML = `
       <!-- Slide 0: Prologue / Cosmic Identity -->
       <div class="wrapped-slide" data-slide="0">
@@ -729,20 +779,42 @@ export class WrappedExperience {
             <span class="metric-bento-val">${averageTrackLength}</span>
             <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${averageTrackSeconds === null ? 0 : Math.min(100, averageTrackSeconds / 4)}%"></div></div>
           </div>
+          ${measuredEnergy !== null ? `
           <div class="metric-bento-card">
-            <span class="metric-bento-label">Energy interpretation</span>
-            <span class="metric-bento-val">${energy === null ? 'Not available' : `${energy}%`}</span>
-            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${energy ?? 0}%"></div></div>
+            <span class="metric-bento-label">${leadAcoustics?.energy ? 'Acoustic energy (measured)' : 'Energy interpretation'}</span>
+            <span class="metric-bento-val">${measuredEnergy}%</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${measuredEnergy}%"></div></div>
           </div>
+          ` : `
+          <div class="metric-bento-card">
+            <span class="metric-bento-label">Artist diversity</span>
+            <span class="metric-bento-val">${uniqueArtistsCount ? `${uniqueArtistsCount} artists` : '100%'}</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${artistDiversityPct ?? 100}%"></div></div>
+          </div>
+          `}
+          ${measuredBpm !== null ? `
+          <div class="metric-bento-card">
+            <span class="metric-bento-label">Acoustic tempo (measured)</span>
+            <span class="metric-bento-val">${measuredBpm} BPM</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${Math.min(100, Math.round((measuredBpm / 180) * 100))}%"></div></div>
+          </div>
+          ` : (dance !== null ? `
           <div class="metric-bento-card">
             <span class="metric-bento-label">Movement interpretation</span>
-            <span class="metric-bento-val">${dance === null ? 'Not available' : `${dance}%`}</span>
-            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${dance ?? 0}%"></div></div>
+            <span class="metric-bento-val">${dance}%</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${dance}%"></div></div>
           </div>
+          ` : `
+          <div class="metric-bento-card">
+            <span class="metric-bento-label">Catalog era</span>
+            <span class="metric-bento-val">${medianYear ? `${medianYear}` : 'Contemporary'}</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${medianYear ? Math.max(15, Math.min(100, (medianYear - 1960) * 1.5)) : 80}%"></div></div>
+          </div>
+          `)}
           <div class="metric-bento-card">
             <span class="metric-bento-label">Obscurity score</span>
-            <span class="metric-bento-val">${obscurity === null ? 'Not available' : `${obscurity}%`}</span>
-            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${obscurity ?? 0}%"></div></div>
+            <span class="metric-bento-val">${obscurity === null ? 'Curated' : `${obscurity}%`}</span>
+            <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${obscurity ?? 50}%"></div></div>
           </div>
         </div>
       </div>

@@ -98,15 +98,40 @@ export function calculateDistanceMiles(lat1, lon1, lat2, lon2) {
   return Math.round(R * c);
 }
 
+// ISO country code to domestic origin airport mapping
+export const COUNTRY_HUBS = {
+  'ID': MUSIC_HUBS['jakarta'],
+  'US': MUSIC_HUBS['new york'],
+  'GB': MUSIC_HUBS['london'],
+  'JP': MUSIC_HUBS['tokyo'],
+  'KR': MUSIC_HUBS['seoul'],
+  'AU': MUSIC_HUBS['melbourne'],
+  'DE': MUSIC_HUBS['berlin'],
+  'FR': MUSIC_HUBS['paris'],
+  'CA': MUSIC_HUBS['toronto'],
+  'BR': MUSIC_HUBS['rio de janeiro'],
+  'NG': MUSIC_HUBS['lagos'],
+  'IE': MUSIC_HUBS['dublin'],
+  'SE': MUSIC_HUBS['stockholm'],
+  'IS': MUSIC_HUBS['reykjavik'],
+  'JM': MUSIC_HUBS['kingston']
+};
+
 /**
  * Resolve Artist Origins and calculate passport metrics
  */
 export function resolvePassportMetrics(user = {}, topArtists = [], topTracks = []) {
-  const userHome = { city: 'Tokyo', code: 'HND', lat: 35.6762, lon: 139.6503, country: 'Japan', flag: '🇯🇵' };
+  const userCountry = (user.country || '').toUpperCase();
+  const userHome = COUNTRY_HUBS[userCountry] || MUSIC_HUBS['london'];
   const cityCounts = {};
   const destinationHubs = [];
 
-  for (const art of topArtists) {
+  // Use top artists when available, otherwise fall back to artists from ranked tracks
+  const artistPool = (topArtists && topArtists.length)
+    ? topArtists
+    : topTracks.flatMap(t => (t.artists || []).map(a => (typeof a === 'object' ? a : { name: a }))).filter(Boolean);
+
+  for (const art of artistPool) {
     const key = (art.name || '').toLowerCase().trim();
     const hubId = ARTIST_HOMETOWNS[key] || (art.genres?.some(g => g.includes('j-pop') || g.includes('japanese')) ? 'tokyo' : 
                    art.genres?.some(g => g.includes('k-pop') || g.includes('korean')) ? 'seoul' :
@@ -130,7 +155,7 @@ export function resolvePassportMetrics(user = {}, topArtists = [], topTracks = [
   }
 
   // Top destination city
-  let topCity = 'London';
+  let topCity = userHome.city === 'London' ? 'New York' : 'London';
   let topCityCount = 0;
   for (const [c, count] of Object.entries(cityCounts)) {
     if (count > topCityCount) {
@@ -141,9 +166,13 @@ export function resolvePassportMetrics(user = {}, topArtists = [], topTracks = [
 
   const topHub = Object.values(MUSIC_HUBS).find(h => h.city === topCity) || MUSIC_HUBS['london'];
 
-  // Sum total miles traveled by ear
-  const totalMiles = destinationHubs.reduce((sum, h) => sum + h.distanceMiles, 0) + 14200;
+  // Sum genuine great-circle miles traveled by ear across distinct destination hubs
+  const totalMiles = destinationHubs.reduce((sum, h) => sum + h.distanceMiles, 0);
   const earthCircumferenceRatio = (totalMiles / 24901).toFixed(1);
+
+  // Compute genuine international ratio based on destinations outside the user's home country
+  const intlHubsCount = destinationHubs.filter(h => h.country !== userHome.country).length;
+  const intlRatio = destinationHubs.length ? Math.round((intlHubsCount / destinationHubs.length) * 100) : 0;
 
   return {
     userHome,
@@ -152,7 +181,7 @@ export function resolvePassportMetrics(user = {}, topArtists = [], topTracks = [
     destinationHubs,
     totalMiles: totalMiles.toLocaleString(),
     earthRatio: earthCircumferenceRatio,
-    intlRatio: 84
+    intlRatio
   };
 }
 

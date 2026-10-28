@@ -765,10 +765,11 @@ export class AudioDnaEngine {
     const artists = this.getArtistsList();
     const ranges = ['long_term', 'medium_term', 'short_term'];
     const populatedRanges = ranges.filter(range => this.getArtistsList(range).length > 0);
+    const recent = this.data?.recentlyPlayed || [];
     const options = [
       { id: 'eravspop', label: 'Era vs Popularity', title: 'Release year vs Spotify track popularity', available: tracks.some(track => Number.isFinite(track.releaseYear) && Number.isFinite(track.popularity)) },
       { id: 'drift', label: 'Taste Drift', title: 'Artist rank movement across available periods', available: populatedRanges.length >= 2 },
-      { id: 'clock', label: 'Recent Play Clock', title: 'Requires a timestamp-based renderer', available: false },
+      { id: 'clock', label: 'Recent Play Clock', title: 'Circadian distribution of returned recent Spotify plays', available: Array.isArray(recent) && recent.length > 0 },
       { id: 'constellation', label: 'Genre Constellation', title: 'Connections between returned Spotify artist genres', available: artists.some(artist => artist?.genres?.length) },
       { id: 'archaeology', label: 'Release Era Profile', title: 'Release-decade distribution of ranked tracks', available: tracks.some(track => Number.isFinite(track.releaseYear)) },
       { id: 'compass', label: 'Emotional Compass', title: 'Requires Spotify valence and energy fields', available: tracks.some(track => Number.isFinite(track.valence) && Number.isFinite(track.energy)) }
@@ -1801,6 +1802,25 @@ export class AudioDnaEngine {
     const maxR = Math.min(cx, cy) - 35;
     const minR = 45;
 
+    // Calculate authentic hourly distribution from returned recent plays
+    const recent = this.data?.recentlyPlayed || [];
+    const hourCounts = new Array(24).fill(0);
+    const hourTracks = new Array(24).fill(null);
+    let maxHourCount = 0;
+    let peakHourIndex = 0;
+
+    for (const item of recent) {
+      if (item.played_at) {
+        const hr = new Date(item.played_at).getHours();
+        hourCounts[hr] += 1;
+        if (!hourTracks[hr]) hourTracks[hr] = item.track;
+        if (hourCounts[hr] > maxHourCount) {
+          maxHourCount = hourCounts[hr];
+          peakHourIndex = hr;
+        }
+      }
+    }
+
     ctx.save();
 
     // Center Hub
@@ -1815,10 +1835,10 @@ export class AudioDnaEngine {
     ctx.textAlign = 'center';
     ctx.fillStyle = '#ffffff';
     ctx.font = '700 13px "Outfit", sans-serif';
-    ctx.fillText('03:00 AM', cx, cy - 6);
+    ctx.fillText(`${peakHourIndex < 10 ? '0' : ''}${peakHourIndex}:00`, cx, cy - 6);
     ctx.font = '9px "Space Mono", monospace';
     ctx.fillStyle = '#a78bfa';
-    ctx.fillText(this.getHorizonLabel().toUpperCase(), cx, cy + 8);
+    ctx.fillText(maxHourCount > 0 ? 'PEAK PLAY' : 'RECENT PLAYS', cx, cy + 8);
 
     // 24 Radial Hour Segments
     const mouseAngle = Math.atan2(this.mouse.y - cy, this.mouse.x - cx);
@@ -1831,28 +1851,12 @@ export class AudioDnaEngine {
       const angle = (hour / 24) * Math.PI * 2 - Math.PI / 2;
       const nextAngle = ((hour + 1) / 24) * Math.PI * 2 - Math.PI / 2;
 
-      // Realistic circadian weight distribution (Peak at 2-3 AM and 10-11 AM)
-      let weight = 0.25;
-      let vibe = 'Ambient Flow';
-      let color = '#38bdf8';
-      let tempo = 110;
-
-      if (hour >= 1 && hour <= 4) {
-        weight = 0.88; // 3 AM Confessional
-        vibe = 'Melancholic Indie Folk & Ambient';
-        color = '#8b5cf6';
-        tempo = 78;
-      } else if (hour >= 9 && hour <= 12) {
-        weight = 0.82; // 10 AM Catalyst
-        vibe = 'High-Tempo Focus & Post-Punk';
-        color = '#10b981';
-        tempo = 136;
-      } else if (hour >= 18 && hour <= 23) {
-        weight = 0.65; // Night Unwind
-        vibe = 'Neo-Psychedelia & French Touch';
-        color = '#ec4899';
-        tempo = 118;
-      }
+      const count = hourCounts[hour];
+      const weight = maxHourCount > 0 ? (count / maxHourCount) : 0.08;
+      const track = hourTracks[hour];
+      const vibe = track ? `${track.name} • ${track.artists?.[0]?.name || ''}` : (count > 0 ? `${count} plays` : 'No recent plays');
+      const color = count > 0 ? (hour >= 22 || hour <= 5 ? '#8b5cf6' : '#38bdf8') : '#3f3f46';
+      const tempo = count;
 
       const r = minR + weight * (maxR - minR);
       const isHovered = hoveredHour === hour;
@@ -1941,35 +1945,37 @@ export class AudioDnaEngine {
 
     let hoveredCell = null;
 
+    // Aggregate authentic 7-day x 24-hour play counts from returned recent plays
+    const recent = this.data?.recentlyPlayed || [];
+    const matrixCounts = Array.from({ length: 7 }, () => new Array(24).fill(0));
+    const matrixTracks = Array.from({ length: 7 }, () => new Array(24).fill(null));
+    let maxMatrixCount = 0;
+
+    for (const item of recent) {
+      if (item.played_at) {
+        const date = new Date(item.played_at);
+        const jsDay = date.getDay();
+        const dIdx = jsDay === 0 ? 6 : jsDay - 1; // Mon=0, Sun=6
+        const hr = date.getHours();
+        matrixCounts[dIdx][hr] += 1;
+        if (!matrixTracks[dIdx][hr]) matrixTracks[dIdx][hr] = item.track;
+        if (matrixCounts[dIdx][hr] > maxMatrixCount) {
+          maxMatrixCount = matrixCounts[dIdx][hr];
+        }
+      }
+    }
+
     // Render cells
     for (let d = 0; d < 7; d++) {
       for (let hr = 0; hr < 24; hr++) {
         const x = pad.left + hr * cellW;
         const y = pad.top + d * cellH;
 
-        // Peak 1: Friday 2 AM ("3 AM Confessional")
-        // Peak 2: Tuesday 10 AM (Focus music)
-        let intensity = 0.1;
-        let color = '#38bdf8';
-        let vibe = 'Normal Rotation';
-
-        if (d === 4 && (hr === 2 || hr === 3)) { // Friday 2 AM
-          intensity = 0.95;
-          color = '#8b5cf6';
-          vibe = '3 AM Confessional • Melancholic Folk & Ambient';
-        } else if (d === 1 && (hr === 10 || hr === 11)) { // Tuesday 10 AM
-          intensity = 0.9;
-          color = '#10b981';
-          vibe = '10 AM Tuesday • High-Tempo Focus & Post-Punk';
-        } else if (d >= 4 && hr >= 21) {
-          intensity = 0.7;
-          color = '#ec4899';
-          vibe = 'Weekend Groove & Synthpop';
-        } else if (hr >= 14 && hr <= 17) {
-          intensity = 0.45;
-          color = '#38bdf8';
-          vibe = 'Afternoon Dream Pop';
-        }
+        const cellCount = matrixCounts[d][hr];
+        const intensity = maxMatrixCount > 0 ? (cellCount / maxMatrixCount) : 0;
+        const track = matrixTracks[d][hr];
+        const vibe = track ? `${track.name} (${track.artists?.[0]?.name || ''})` : (cellCount > 0 ? `${cellCount} plays recorded` : 'No plays recorded');
+        const color = cellCount > 0 ? (intensity > 0.5 ? '#8b5cf6' : '#38bdf8') : 'rgba(255, 255, 255, 0.05)';
 
         const isHovered = (
           this.mouse.x >= x && this.mouse.x < x + cellW &&

@@ -8,6 +8,8 @@
  * 5. Tokyo Archival Thermal Receipt (Record Bar Itemized Slip)
  */
 
+import { soundEngine } from './audio-player.js';
+
 export function formatDuration(ms) {
   const totalSeconds = Math.floor(ms / 1000);
   const minutes = Math.floor(totalSeconds / 60);
@@ -467,7 +469,10 @@ export function renderDapCard(data, timeRange, playbackState) {
   const hasObscurityScore = Number.isFinite(stats.obscurityScore);
   const obscurityScore = hasObscurityScore ? Math.max(0, Math.min(100, stats.obscurityScore)) : 0;
   const obscurityLabel = hasObscurityScore ? `${Math.round(obscurityScore)}%` : 'N/A';
-  const tempoLabel = Number.isFinite(stats.tempoBpm) ? `${Math.round(stats.tempoBpm)} BPM` : null;
+
+  const leadAcoustics = soundEngine.getTrackAcoustics(topSong?.id);
+  const effectiveTempo = leadAcoustics?.bpm || (Number.isFinite(stats.tempoBpm) ? Math.round(stats.tempoBpm) : null);
+  const tempoLabel = effectiveTempo ? `${effectiveTempo} BPM${leadAcoustics?.bpm ? ' (MEASURED)' : ''}` : null;
 
   return `
     <div class="card-inner card-dap" id="exportable-card">
@@ -509,8 +514,8 @@ export function renderDapCard(data, timeRange, playbackState) {
               <span class="dap-track-rank">TOP FREQUENCY • ${rangeLabel.toUpperCase()}</span>
               <h3 class="dap-track-title">${escapeHtml(topSong?.name || '')}</h3>
               <p class="dap-track-artist">${escapeHtml(topSong ? getTrackArtistNames(topSong) : '')}</p>
-              <div class="dap-audio-specs">
-                <span>SPOTIFY CATALOG METADATA</span>
+              <div class="dap-audio-specs" ${leadAcoustics?.bpm ? `data-measured-bpm="${leadAcoustics.bpm}"` : ''}>
+                <span>${leadAcoustics?.bpm ? 'MEASURED STUDIO ACOUSTICS' : 'SPOTIFY CATALOG METADATA'}</span>
                 ${tempoLabel ? `<span>•</span><span>${tempoLabel}</span>` : ''}
               </div>
             </div>

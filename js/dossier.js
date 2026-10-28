@@ -296,10 +296,14 @@ export class SonicDossierEngine {
       weight: maxWeight ? w / maxWeight : 0
     }));
 
-    // 4. Obscurity & Snob Index
+    // 4. Obscurity & Snob Index (falls back to ranked tracks if topArtists is sparse)
     const popValues = artists.map(a => Number(a?.popularity)).filter(Number.isFinite);
-    const avgPopularity = popValues.length
-      ? Math.round(popValues.reduce((a, b) => a + b, 0) / popValues.length)
+    const effectivePopValues = popValues.length
+      ? popValues
+      : tracks.map(t => Number(t?.popularity)).filter(Number.isFinite);
+
+    const avgPopularity = effectivePopValues.length
+      ? Math.round(effectivePopValues.reduce((a, b) => a + b, 0) / effectivePopValues.length)
       : null;
 
     const obscurityScore = avgPopularity === null ? null : Math.max(0, Math.min(100, 100 - avgPopularity));
@@ -308,6 +312,16 @@ export class SonicDossierEngine {
     else if (obscurityScore >= 70) snobTier = "Crate Digger Elite";
     else if (obscurityScore >= 50) snobTier = "Discriminating Listener";
     else if (obscurityScore !== null) snobTier = "Mainstream Connoisseur";
+
+    // 5. Track Pacing & Catalog Diversity Proxies
+    const trackDurations = tracks.map(t => Number(t.duration_ms) || 0).filter(d => d > 0);
+    const avgTrackSeconds = trackDurations.length
+      ? Math.round((trackDurations.reduce((sum, d) => sum + d, 0) / trackDurations.length) / 1000)
+      : 210;
+    const uniqueArtistsCount = new Set(
+      tracks.flatMap(t => (t.artists || []).map(a => (typeof a === 'object' ? a.name : a) || '')).filter(Boolean)
+    ).size;
+    const artistDiversityPct = tracks.length ? Math.round((uniqueArtistsCount / tracks.length) * 100) : 50;
 
     // Most obscure crate discovery
     const sortedByPop = artists.filter(a => Number.isFinite(Number(a?.popularity))).sort((a, b) => a.popularity - b.popularity);
@@ -356,6 +370,8 @@ export class SonicDossierEngine {
       nocturnalPct,
       hourlyDistribution,
       obscurityScore,
+      avgTrackSeconds,
+      artistDiversityPct,
       snobTier,
       rarestGem: rarestGem?.name || null,
       rarestGemPop: Number.isFinite(Number(rarestGem?.popularity)) ? rarestGem.popularity : null,

@@ -11,7 +11,22 @@
 class SoundEngine {
   constructor() {
     this.audioElement = typeof Audio !== 'undefined' ? new Audio() : null;
+    if (this.audioElement) {
+      this.audioElement.crossOrigin = 'anonymous';
+    }
     this.audioContext = null;
+    this.sourceNode = null;
+    this.analyserNode = null;
+    this.frequencyData = null;
+    this.timeDomainData = null;
+    this.analysisAnimId = null;
+    this.onAudioFrameCallbacks = [];
+    this.trackAcoustics = new Map(); // trackId -> { bpm, energy, measuredAt }
+    this.beatHistory = [];
+    this.lastBeatTime = 0;
+    this.runningEnergyBaseline = 0;
+    this.measuredBpm = null;
+
     this.isPlaying = false;
     this.isPaused = false;
     this.isLoading = false;
@@ -37,6 +52,7 @@ class SoundEngine {
         if (this.isPaused && !this.isPlaying) return;
         this.isPlaying = false;
         this.isPaused = true;
+        this.stopAnalysisLoop();
         this.pausePreviewCountdown();
         this.notifyState();
       }
@@ -106,13 +122,167 @@ class SoundEngine {
   }
 
   initAudioContext() {
-    if (!this.audioContext) {
+    if (!this.audioContext && typeof window !== 'undefined') {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      this.audioContext = new AudioCtx();
+      if (AudioCtx) {
+        this.audioContext = new AudioCtx();
+      }
     }
-    if (this.audioContext.state === 'suspended') {
+    if (this.audioContext?.state === 'suspended') {
       this.audioContext.resume();
     }
+  }
+
+  /**
+   * Initialize Web Audio API nodes for real-time acoustic analysis
+   */
+  initAudioAnalysis() {
+    if (!this.audioElement || typeof window === 'undefined') return;
+    this.initAudioContext();
+    if (this.analyserNode || !this.audioContext) return;
+
+    try {
+      this.sourceNode = this.audioContext.createMediaElementSource(this.audioElement);
+      this.analyserNode = this.audioContext.createAnalyser();
+      this.analyserNode.fftSize = 128;
+      this.analyserNode.smoothingTimeConstant = 0.75;
+      this.frequencyData = new Uint8Array(this.analyserNode.frequencyBinCount);
+      this.timeDomainData = new Uint8Array(this.analyserNode.fftSize);
+
+      this.sourceNode.connect(this.analyserNode);
+      this.analyserNode.connect(this.audioContext.destination);
+    } catch (err) {
+      console.warn('Web Audio analysis connection skipped:', err);
+    }
+  }
+
+  startAnalysisLoop() {
+    if (this.analysisAnimId) return;
+
+    const tick = () => {
+      if (!this.isPlaying) {
+        this.analysisAnimId = null;
+        return;
+      }
+      this.analyzeCurrentFrame();
+      this.analysisAnimId = requestAnimationFrame(tick);
+    };
+
+    this.analysisAnimId = requestAnimationFrame(tick);
+  }
+
+  stopAnalysisLoop() {
+    if (this.analysisAnimId) {
+      cancelAnimationFrame(this.analysisAnimId);
+      this.analysisAnimId = null;
+    }
+    this.emitAudioFrame({
+      bass: 0,
+      mid: 0,
+      treble: 0,
+      overall: 0,
+      bpm: this.measuredBpm,
+      isResting: true
+    });
+  }
+
+  analyzeCurrentFrame() {
+    if (!this.analyserNode || !this.frequencyData) {
+      const now = performance.now();
+      const mockBass = 0.35 + Math.sin(now * 0.005) * 0.25;
+      const mockMid = 0.45 + Math.sin(now * 0.007) * 0.3;
+      const mockTreble = 0.3 + Math.sin(now * 0.009) * 0.2;
+      this.emitAudioFrame({ bass: mockBass, mid: mockMid, treble: mockTreble, overall: 0.4, bpm: this.measuredBpm });
+      return;
+    }
+
+    this.analyserNode.getByteFrequencyData(this.frequencyData);
+    this.analyserNode.getByteTimeDomainData(this.timeDomainData);
+
+    const binCount = this.frequencyData.length;
+    let bassSum = 0;
+    for (let i = 0; i < 7; i++) bassSum += this.frequencyData[i];
+    const bass = bassSum / (7 * 255);
+
+    let midSum = 0;
+    for (let i = 7; i < 25; i++) midSum += this.frequencyData[i];
+    const mid = midSum / (18 * 255);
+
+    let trebleSum = 0;
+    for (let i = 25; i < binCount; i++) trebleSum += this.frequencyData[i];
+    const treble = trebleSum / ((binCount - 25) * 255);
+
+    // Compute genuine RMS amplitude from time-domain waveform
+    let sumSquares = 0;
+    for (let i = 0; i < this.timeDomainData.length; i++) {
+      const normalized = (this.timeDomainData[i] - 128) / 128;
+      sumSquares += normalized * normalized;
+    }
+    const rms = Math.sqrt(sumSquares / this.timeDomainData.length);
+
+    // Beat onset detection on sub-bass pulses
+    const now = performance.now();
+    this.runningEnergyBaseline = this.runningEnergyBaseline * 0.95 + bass * 0.05;
+    const threshold = Math.max(0.35, this.runningEnergyBaseline * 1.35);
+
+    if (bass > threshold && (now - this.lastBeatTime) > 240) {
+      if (this.lastBeatTime > 0) {
+        const interval = now - this.lastBeatTime;
+        if (interval >= 280 && interval <= 1100) {
+          this.beatHistory.push(interval);
+          if (this.beatHistory.length > 12) this.beatHistory.shift();
+
+          if (this.beatHistory.length >= 5) {
+            const sorted = [...this.beatHistory].sort((a, b) => a - b);
+            const medianInterval = sorted[Math.floor(sorted.length / 2)];
+            let calculatedBpm = Math.round(60000 / medianInterval);
+            if (calculatedBpm < 70) calculatedBpm *= 2;
+            if (calculatedBpm > 175) calculatedBpm = Math.round(calculatedBpm / 2);
+
+            this.measuredBpm = calculatedBpm;
+
+            if (this.currentTrackId) {
+              this.trackAcoustics.set(this.currentTrackId, {
+                bpm: calculatedBpm,
+                energy: Math.min(100, Math.round(rms * 160)),
+                measuredAt: Date.now()
+              });
+            }
+          }
+        }
+      }
+      this.lastBeatTime = now;
+    }
+
+    this.emitAudioFrame({
+      bass,
+      mid,
+      treble,
+      overall: rms,
+      bpm: this.measuredBpm,
+      energy: Math.min(100, Math.round(rms * 160))
+    });
+  }
+
+  onAudioFrame(callback) {
+    this.onAudioFrameCallbacks.push(callback);
+    return () => {
+      this.onAudioFrameCallbacks = this.onAudioFrameCallbacks.filter(cb => cb !== callback);
+    };
+  }
+
+  emitAudioFrame(frame) {
+    for (let i = 0; i < this.onAudioFrameCallbacks.length; i++) {
+      try {
+        this.onAudioFrameCallbacks[i](frame);
+      } catch (err) {
+        // Safe callback execution
+      }
+    }
+  }
+
+  getTrackAcoustics(trackId) {
+    return this.trackAcoustics.get(trackId) || null;
   }
 
   /**
@@ -204,6 +374,7 @@ class SoundEngine {
 
     if (previewUrl) {
       try {
+        this.initAudioAnalysis();
         this.audioElement.src = previewUrl;
         this.audioElement.addEventListener('loadedmetadata', () => {
           if (requestId === this.playRequestId) this.setPreviewStartPosition();
@@ -218,6 +389,7 @@ class SoundEngine {
         this.isPlaying = true;
         this.isPaused = false;
         this.schedulePreviewStop();
+        this.startAnalysisLoop();
         this.notifyState();
       } catch (err) {
         if (requestId !== this.playRequestId) return;
@@ -235,6 +407,7 @@ class SoundEngine {
     if (!this.currentTrackId || !this.isPlaying) return;
 
     this.pausePreviewCountdown();
+    this.stopAnalysisLoop();
     this.isPlaying = false;
     this.isPaused = true;
 
@@ -260,10 +433,13 @@ class SoundEngine {
         this.isPlaying = true;
         this.isPaused = false;
         this.startSynthInterval(this.synthSeedName, true);
+        this.startAnalysisLoop();
       } else {
+        this.initAudioAnalysis();
         await this.audioElement.play();
         this.isPlaying = true;
         this.isPaused = false;
+        this.startAnalysisLoop();
       }
       this.schedulePreviewStop();
       this.notifyState();
@@ -271,6 +447,7 @@ class SoundEngine {
       console.warn('Could not resume audio preview:', err);
       this.isPlaying = false;
       this.isPaused = true;
+      this.stopAnalysisLoop();
       this.notifyState();
     }
   }
@@ -285,6 +462,7 @@ class SoundEngine {
     this.isLoading = false;
     this.synthSeedName = seedName;
     this.schedulePreviewStop();
+    this.startAnalysisLoop();
     this.notifyState();
 
     this.startSynthInterval(seedName);
@@ -330,6 +508,9 @@ class SoundEngine {
         osc.connect(filter);
         filter.connect(gain);
         gain.connect(this.audioContext.destination);
+        if (this.analyserNode) {
+          try { gain.connect(this.analyserNode); } catch (e) {}
+        }
 
         osc.start(now);
         osc.stop(now + 1.9);
@@ -347,6 +528,9 @@ class SoundEngine {
 
         kickOsc.connect(kickGain);
         kickGain.connect(this.audioContext.destination);
+        if (this.analyserNode) {
+          try { kickGain.connect(this.analyserNode); } catch (e) {}
+        }
 
         kickOsc.start(now);
         kickOsc.stop(now + 0.35);
@@ -360,10 +544,16 @@ class SoundEngine {
   stop(shouldNotify = true) {
     this.playRequestId += 1;
     this.resetPreviewCountdown();
+    this.stopAnalysisLoop();
+    this.beatHistory = [];
+    this.lastBeatTime = 0;
+    this.runningEnergyBaseline = 0;
     this.isStopping = true;
-    this.audioElement.pause();
-    this.audioElement.currentTime = 0;
-    this.audioElement.removeAttribute('src');
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.currentTime = 0;
+      this.audioElement.removeAttribute('src');
+    }
     this.isStopping = false;
 
     if (this.synthInterval) {

@@ -25,12 +25,6 @@
   <link rel="stylesheet" href="css/dossier.css?v=3.0">
   <link rel="stylesheet" href="css/design.css?v=4.0">
   <link rel="stylesheet" href="css/studio-v5.css?v=5.0">
-
-  <!-- Three.js WebGL Engine for 3D Wrapped Visualizer -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-
-  <!-- html2canvas for High-DPI Export -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" defer></script>
 </head>
 <body>
   <!--
@@ -282,14 +276,23 @@
           <rect x="5" y="2" width="14" height="20" rx="3" ry="3"/>
           <line x1="12" y1="18" x2="12.01" y2="18"/>
         </svg>
-        Download Story (9:16)
+        Story (9:16)
       </button>
 
       <button id="btn-export-square" class="btn btn-export" title="Download square post for feed">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
         </svg>
-        Download Square (1:1)
+        Square (1:1)
+      </button>
+
+      <button id="btn-export-poster" class="btn btn-export" title="Download high-resolution gallery print poster">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <rect x="4" y="2" width="16" height="20" rx="1" ry="1"/>
+          <line x1="8" y1="7" x2="16" y2="7"/>
+          <line x1="8" y1="11" x2="16" y2="11"/>
+        </svg>
+        Print (3:4)
       </button>
 
       <button id="btn-copy-clip" class="btn btn-export" title="Copy high-res snapshot to clipboard">

@@ -30,7 +30,7 @@ export async function fetchLiveWeatherData() {
 
 async function queryOpenMeteo(lat, lon, city) {
   try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,precipitation_probability,weather_code&timezone=auto`;
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code&timezone=auto`;
     const res = await fetch(url);
     if (!res.ok) throw new Error('Weather API error');
     const data = await res.json();
@@ -61,7 +61,8 @@ function parseWeatherData(data, city) {
   const hours = hourly.slice(0, 24).map((temp, i) => ({
     hour: `${i < 10 ? '0' : ''}${i}:00`,
     temp: Math.round(temp),
-    precip: data.hourly.precipitation_probability ? data.hourly.precipitation_probability[i] || 0 : 0
+    humidity: data.hourly?.relative_humidity_2m ? Math.round(data.hourly.relative_humidity_2m[i] || 0) : 0,
+    precip: data.hourly?.precipitation_probability ? data.hourly.precipitation_probability[i] || 0 : 0
   }));
 
   return {
@@ -335,14 +336,12 @@ export class WeatherTimelineController {
     this.ctx.lineWidth = 2.5;
     this.ctx.stroke();
 
-    // 3. Draw Acoustic Tempo Curve (Emerald)
+    // 3. Draw Relative Humidity Curve (Emerald Dashed)
     this.ctx.beginPath();
     for (let i = 0; i < count; i++) {
       const x = pad.left + (i / (count - 1)) * plotW;
-      // Synthesize tempo curve with midday peak and nocturnal dip
-      const simulatedBpm = 85 + Math.sin((i - 6) / 18 * Math.PI) * 45 - (hours[i].precip > 20 ? 16 : 0);
-      const normBpm = (simulatedBpm - 70) / (145 - 70);
-      const y = pad.top + plotH - Math.max(0, Math.min(1, normBpm)) * plotH;
+      const hNorm = Math.max(0, Math.min(1, (hours[i].humidity || 0) / 100));
+      const y = pad.top + plotH - hNorm * plotH;
       if (i === 0) this.ctx.moveTo(x, y);
       else this.ctx.lineTo(x, y);
     }
@@ -368,10 +367,10 @@ export class WeatherTimelineController {
     this.ctx.fillText(`${maxT}°C`, pad.left - 8, pad.top + 10);
     this.ctx.fillText(`${minT}°C`, pad.left - 8, pad.top + plotH);
 
-    // Right Y-Axis: BPM
+    // Right Y-Axis: Humidity %
     this.ctx.textAlign = 'left';
     this.ctx.fillStyle = '#10b981';
-    this.ctx.fillText('145 BPM', pad.left + plotW + 8, pad.top + 10);
-    this.ctx.fillText('70 BPM', pad.left + plotW + 8, pad.top + plotH);
+    this.ctx.fillText('100%', pad.left + plotW + 8, pad.top + 10);
+    this.ctx.fillText('0%', pad.left + plotW + 8, pad.top + plotH);
   }
 }
