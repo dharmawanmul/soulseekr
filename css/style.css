@@ -55,7 +55,6 @@ body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
   position: relative;
   letter-spacing: -0.011em;
 }
@@ -776,13 +775,13 @@ body {
   font-family: inherit;
   font-size: 0.875rem;
   margin-bottom: 1.25rem;
-  outline: none;
   transition: border-color 140ms ease;
 }
 
-.modal-input-field:focus {
+.modal-input-field:focus-visible {
   border-color: #1db954;
-  box-shadow: 0 0 0 2px rgba(29, 185, 84, 0.18);
+  outline: 2px solid #fff7e8;
+  outline-offset: 3px;
 }
 
 .modal-btn-row {
@@ -1049,13 +1048,16 @@ body {
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 280ms cubic-bezier(0.23, 1, 0.32, 1), visibility 280ms;
+  transition:
+    opacity 280ms cubic-bezier(0.23, 1, 0.32, 1),
+    visibility 0s linear 280ms;
 }
 
 .auth-gateway-modal.is-open {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
+  transition-delay: 0s;
 }
 
 .auth-gateway-backdrop {

@@ -2,6 +2,8 @@
 
 Soulseekr turns Spotify listening history into collectible visual artifacts. It runs as a static client-side application, includes a clearly labelled sample archive, and can export its cards as story or square images.
 
+The studio opens directly in the sample archive so visitors can inspect and export a working artifact before connecting an account. Spotify connection is optional and replaces the sample with the listener's own ranked history for the current browser session.
+
 ## What is in the studio
 
 The main workspace renders seven formats from the same listening data:
@@ -21,6 +23,8 @@ Connected accounts also unlock the Year in Music story and the Taste Dossier. Ea
 ## Interaction and export
 
 - The artifact selector and listening window work with pointer or keyboard input.
+- Sample mode uses the four-week window. The six-month and approximate one-year controls remain visibly disabled until Spotify is connected.
+- Sample mode, the selected edition, and the selected connected window are restored within the current browser session.
 - Track rows play the preview supplied by Spotify. When Spotify has no preview URL, the audio player checks the public iTunes search endpoint for an available preview. Preview controls support pause/resume without resetting the position and keep a 30-second listening budget.
 - Audio DNA switches its track, artist, metric, release-era, and genre datasets with the selected Spotify time horizon. Windows Spotify did not return are disabled rather than filled with sample data.
 - The selected artifact can be downloaded in 9:16 or 1:1 format, or copied to the clipboard when the browser supports image clipboard access.

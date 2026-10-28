@@ -8,8 +8,7 @@ import {
   handleAuthCallback, 
   getValidAccessToken, 
   fetchCompleteUserWrapped, 
-  logoutSpotify,
-  SPOTIFY_CONFIG 
+  logoutSpotify
 } from './spotify-api.js';
 import { 
   renderVinylCard, 
@@ -25,6 +24,31 @@ import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 import { wrappedExperience } from './wrapped-experience.js';
 import { sonicDossier } from './dossier.js';
+
+const SESSION_KEYS = {
+  mode: 'soulseekr_mode',
+  cardStyle: 'soulseekr_card_style',
+  timeRange: 'soulseekr_time_range'
+};
+
+const VALID_CARD_STYLES = new Set(['vinyl', 'swiss', 'prism', 'cassette', 'receipt', 'dap', 'gameboy', 'vippass']);
+const VALID_TIME_RANGES = new Set(['short_term', 'medium_term', 'long_term']);
+
+function readSessionValue(key) {
+  try {
+    return sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function writeSessionValue(key, value) {
+  try {
+    sessionStorage.setItem(key, value);
+  } catch {
+    // The studio still works when private browsing blocks session storage.
+  }
+}
 
 // Curated default preview data allowing instant, responsive exploration across all 7 card archetypes
 export const DEFAULT_CURATED_DATA = {
@@ -196,12 +220,16 @@ export const DEFAULT_CURATED_DATA = {
 };
 
 // Application State
+const storedCardStyle = readSessionValue(SESSION_KEYS.cardStyle);
+const storedTimeRange = readSessionValue(SESSION_KEYS.timeRange);
+
 const state = {
-  cardStyle: 'vinyl', // 'vinyl' | 'swiss' | 'prism' | 'cassette' | 'receipt' | 'gameboy' | 'vippass'
-  timeRange: 'short_term', // 'short_term' | 'medium_term' | 'long_term'
+  mode: readSessionValue(SESSION_KEYS.mode) === 'spotify' ? 'spotify' : 'sample',
+  cardStyle: VALID_CARD_STYLES.has(storedCardStyle) ? storedCardStyle : 'vinyl',
+  timeRange: VALID_TIME_RANGES.has(storedTimeRange) ? storedTimeRange : 'short_term',
   spotifyToken: null,
   cachedRealData: {},
-  currentData: null,
+  currentData: DEFAULT_CURATED_DATA,
   playbackState: {
     isPlaying: false,
     isPaused: false,
@@ -245,6 +273,10 @@ function initElements() {
   elements.btnGatewayDemo = document.getElementById('btn-gateway-demo');
   elements.selectedEditionTitle = document.getElementById('selected-edition-title');
   elements.selectedEditionDescription = document.getElementById('selected-edition-description');
+  elements.timeframeHelp = document.getElementById('timeframe-help');
+  elements.stageStatus = document.getElementById('stage-status');
+  elements.exportStatus = document.getElementById('export-status');
+  elements.authGatewayStatus = document.getElementById('auth-gateway-status');
 }
 
 function updateEditionSummary(button) {
@@ -255,6 +287,121 @@ function updateEditionSummary(button) {
   if (elements.selectedEditionDescription) {
     elements.selectedEditionDescription.textContent = button.dataset.description || '';
   }
+}
+
+function persistWorkspace() {
+  writeSessionValue(SESSION_KEYS.mode, state.mode);
+  writeSessionValue(SESSION_KEYS.cardStyle, state.cardStyle);
+  writeSessionValue(SESSION_KEYS.timeRange, state.timeRange);
+}
+
+function clearInlineStatus(container) {
+  if (!container) return;
+  container.hidden = true;
+  container.replaceChildren();
+  delete container.dataset.tone;
+  container.setAttribute('role', 'status');
+}
+
+function showInlineStatus(container, { tone = 'info', title, message, actionLabel, onAction } = {}) {
+  if (!container || !title || !message) return;
+
+  const copy = document.createElement('div');
+  copy.className = 'studio-inline-status-copy';
+
+  const heading = document.createElement('strong');
+  heading.className = 'studio-inline-status-title';
+  heading.textContent = title;
+
+  const description = document.createElement('p');
+  description.textContent = message;
+
+  copy.append(heading, description);
+  container.replaceChildren(copy);
+
+  if (actionLabel && typeof onAction === 'function') {
+    const action = document.createElement('button');
+    action.className = 'studio-inline-action';
+    action.type = 'button';
+    action.textContent = actionLabel;
+    action.addEventListener('click', onAction, { once: true });
+    container.appendChild(action);
+  }
+
+  container.dataset.tone = tone;
+  container.setAttribute('role', tone === 'error' ? 'alert' : 'status');
+  container.hidden = false;
+}
+
+function syncTimeframeControls() {
+  const isConnected = Boolean(state.spotifyToken);
+  if (!isConnected && state.timeRange !== 'short_term') {
+    state.timeRange = 'short_term';
+  }
+
+  elements.timeRangePills?.forEach(pill => {
+    const range = pill.dataset.range;
+    const unavailable = !isConnected && range !== 'short_term';
+    const active = range === state.timeRange;
+
+    pill.disabled = unavailable;
+    pill.setAttribute('aria-disabled', String(unavailable));
+    pill.setAttribute('aria-checked', String(active));
+    pill.classList.toggle('active', active);
+    pill.tabIndex = active ? 0 : -1;
+
+    if (unavailable) {
+      const label = range === 'medium_term' ? '6-month' : 'approximate 1-year';
+      pill.title = `Connect Spotify to use the ${label} window`;
+    } else {
+      pill.removeAttribute('title');
+    }
+  });
+
+  if (elements.timeframeHelp) {
+    elements.timeframeHelp.textContent = isConnected
+      ? 'Choose 4 weeks, 6 months, or Spotify\'s approximate 1-year window.'
+      : 'The sample archive uses 4 weeks. Connect Spotify for longer windows.';
+  }
+}
+
+function syncEditionControls() {
+  const selected = [...(elements.cardStyleTabs || [])].find(button => button.dataset.style === state.cardStyle)
+    || elements.cardStyleTabs?.[0];
+  if (!selected) return;
+
+  elements.cardStyleTabs.forEach(button => {
+    const active = button === selected;
+    button.classList.toggle('active', active);
+    button.setAttribute('aria-selected', String(active));
+    button.tabIndex = active ? 0 : -1;
+  });
+  state.cardStyle = selected.dataset.style;
+  updateEditionSummary(selected);
+}
+
+function enterSampleArchive({ announce = false, preserveStageStatus = false } = {}) {
+  state.mode = 'sample';
+  state.spotifyToken = null;
+  state.timeRange = 'short_term';
+  state.currentData = DEFAULT_CURATED_DATA;
+  if (!preserveStageStatus) clearInlineStatus(elements.stageStatus);
+  if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
+  updateAuthBadge('SAMPLE ARCHIVE', 'unauth');
+  syncTimeframeControls();
+  persistWorkspace();
+  renderCurrentCard();
+  hideAuthGateway();
+  if (announce) {
+    showToast('Sample archive ready. Connect Spotify when you want to use your own history.', 'info', 4000);
+  }
+}
+
+function setButtonBusy(button, busy, label) {
+  if (!button) return;
+  button.disabled = busy;
+  button.setAttribute('aria-busy', String(busy));
+  if (label) button.dataset.busyLabel = label;
 }
 
 /**
@@ -312,20 +459,18 @@ export function showToast(message, type = 'info', duration = 2800) {
 async function loadData() {
   const token = state.spotifyToken || (await getValidAccessToken());
   if (!token) {
-    state.currentData = null;
-    updateAuthBadge('CONNECT SPOTIFY', 'unauth');
-    if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'none';
-    renderCurrentCard();
-    checkAndShowAuthGateway();
+    enterSampleArchive();
     return;
   }
 
-  // User is authenticated with genuine Spotify account
   state.spotifyToken = token;
-  sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+  state.mode = 'spotify';
   if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'none';
   hideAuthGateway();
   updateAuthBadge('SPOTIFY CONNECTED', 'active');
+  syncTimeframeControls();
+  persistWorkspace();
+  clearInlineStatus(elements.stageStatus);
 
   if (state.cachedRealData[state.timeRange]) {
     state.currentData = state.cachedRealData[state.timeRange];
@@ -349,37 +494,44 @@ async function loadData() {
     renderCurrentCard();
   } catch (err) {
     console.error('Fetch wrapped error:', err);
-    // Only demote session to unauth if token was genuinely expired/invalidated
     if (err.message && err.message.toLowerCase().includes('session expired')) {
-      state.spotifyToken = null;
-      updateAuthBadge('CONNECT SPOTIFY', 'unauth');
-      if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'none';
-      showToast('Spotify session expired. Please reconnect.', 'error', 4500);
+      enterSampleArchive({ preserveStageStatus: true });
+      showInlineStatus(elements.stageStatus, {
+        tone: 'error',
+        title: 'Your Spotify session ended',
+        message: 'The sample archive is open, so you can keep exploring. Reconnect to use your listening history again.',
+        actionLabel: 'Reconnect Spotify',
+        onAction: showAuthGateway
+      });
     } else {
-      // Non-auth error: keep authenticated state in UI
       updateAuthBadge('SPOTIFY CONNECTED', 'active');
-      showToast(`Spotify could not refresh this view: ${err.message}. Showing the last available archive.`, 'warning', 5000);
+      state.currentData = state.currentData?.provenance?.mode === 'spotify' ? state.currentData : null;
+      renderCurrentCard();
+      showInlineStatus(elements.stageStatus, {
+        tone: 'error',
+        title: 'Spotify could not refresh this window',
+        message: state.currentData
+          ? 'The last loaded artifact is still shown. Check your connection and try this window again.'
+          : 'No Spotify data was loaded. Check your connection and try again.',
+        actionLabel: 'Try again',
+        onAction: loadData
+      });
     }
-    state.currentData = state.currentData?.provenance?.mode === 'spotify' ? state.currentData : null;
-    renderCurrentCard();
-  }
-}
-
-export function checkAndShowAuthGateway() {
-  const isDismissed = sessionStorage.getItem('soulseekr_auth_gateway_dismissed');
-  const storedToken = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.token);
-  if (!isDismissed && !state.spotifyToken && !storedToken) {
-    showAuthGateway();
   }
 }
 
 export function showAuthGateway() {
   if (elements.authGatewayModal) {
     gatewayReturnFocus = document.activeElement;
+    clearInlineStatus(elements.authGatewayStatus);
     elements.authGatewayModal.classList.add('is-open');
     elements.authGatewayModal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-    requestAnimationFrame(() => elements.btnGatewayConnect?.focus());
+    setTimeout(() => {
+      if (elements.authGatewayModal?.classList.contains('is-open')) {
+        elements.btnGatewayConnect?.focus({ preventScroll: true });
+      }
+    }, 0);
   }
 }
 
@@ -398,8 +550,7 @@ function handleGatewayKeydown(event) {
 
   if (event.key === 'Escape') {
     event.preventDefault();
-    sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
-    hideAuthGateway();
+    enterSampleArchive();
     return;
   }
 
@@ -430,7 +581,7 @@ function updateAuthBadge(text, status) {
 
     // Unlock Wrapped and Dossier buttons for authenticated users
     elements.btnOpenWrapped?.classList.remove('is-locked');
-    elements.btnOpenWrapped?.setAttribute('title', 'Open your personal 3D Wrapped Experience');
+    elements.btnOpenWrapped?.setAttribute('title', 'Open your Year in Music');
     elements.btnOpenDossier?.classList.remove('is-locked');
     elements.btnOpenDossier?.setAttribute('title', 'Open your Sonic Taste Dossier & Audio DNA');
   } else {
@@ -448,12 +599,26 @@ function updateAuthBadge(text, status) {
 }
 
 async function startSpotifyAuth() {
+  clearInlineStatus(elements.authGatewayStatus);
+  setButtonBusy(elements.btnGatewayConnect, true);
   showToast('Redirecting to Spotify...', 'info', 2000);
   try {
     await initiateSpotifyLogin();
+    return true;
   } catch (err) {
     console.error('Spotify login error:', err);
-    showToast(err.message, 'error', 4500);
+    showInlineStatus(elements.authGatewayStatus, {
+      tone: 'error',
+      title: 'Spotify connection could not start',
+      message: navigator.onLine
+        ? 'Spotify did not accept the connection request. Check the configured redirect address and try again.'
+        : 'This browser is offline. Reconnect to the internet, then try Spotify again.',
+      actionLabel: 'Try Spotify again',
+      onAction: startSpotifyAuth
+    });
+    return false;
+  } finally {
+    setButtonBusy(elements.btnGatewayConnect, false);
   }
 }
 
@@ -465,13 +630,13 @@ function renderCurrentCard() {
   if (!data) {
     elements.cardContainer.innerHTML = `
       <div class="studio-state studio-state-connect" role="status">
-        <span class="studio-state-index">Your archive is private</span>
-        <h3>Connect Spotify to build this artifact.</h3>
-        <p>No sample listener or invented statistics are shown here.</p>
-        <button class="btn-primary" type="button" id="btn-empty-connect">Connect Spotify</button>
+        <span class="studio-state-index">Spotify data unavailable</span>
+        <h3>This listening window could not be prepared.</h3>
+        <p>Try the request again above, or return to the labelled sample archive.</p>
+        <button class="btn-primary" type="button" id="btn-empty-sample">Open sample archive</button>
       </div>
     `;
-    document.getElementById('btn-empty-connect')?.addEventListener('click', startSpotifyAuth);
+    document.getElementById('btn-empty-sample')?.addEventListener('click', () => enterSampleArchive({ announce: true }));
     return;
   }
   if (!Array.isArray(data.topTracks) || data.topTracks.length === 0) {
@@ -645,6 +810,55 @@ function triggerLockedButtonFeedback(button, message) {
   showAuthGateway();
 }
 
+async function runImageExport(button, format, filename, successTitle) {
+  clearInlineStatus(elements.exportStatus);
+  setButtonBusy(button, true);
+  try {
+    const dataUrl = await exportCardAsImage(format);
+    downloadDataUrl(dataUrl, filename);
+    showInlineStatus(elements.exportStatus, {
+      tone: 'success',
+      title: successTitle,
+      message: `Saved as ${filename}.`
+    });
+  } catch (err) {
+    console.error(`Export ${format} error:`, err);
+    showInlineStatus(elements.exportStatus, {
+      tone: 'error',
+      title: `${successTitle.replace(' downloaded', '')} could not be created`,
+      message: 'The artifact is still here. Wait for its artwork to finish loading, then try the export again.',
+      actionLabel: 'Try export again',
+      onAction: () => runImageExport(button, format, filename, successTitle)
+    });
+  } finally {
+    setButtonBusy(button, false);
+  }
+}
+
+async function runClipboardExport() {
+  clearInlineStatus(elements.exportStatus);
+  setButtonBusy(elements.btnCopyClip, true);
+  try {
+    await copyCardToClipboard();
+    showInlineStatus(elements.exportStatus, {
+      tone: 'success',
+      title: 'Artifact copied',
+      message: 'The selected edition is ready to paste into another app.'
+    });
+  } catch (err) {
+    console.error('Clipboard export error:', err);
+    showInlineStatus(elements.exportStatus, {
+      tone: 'error',
+      title: 'This browser could not copy the image',
+      message: 'Download the square image instead. It contains the same selected artifact.',
+      actionLabel: 'Download square image',
+      onAction: () => elements.btnExportSquare?.click()
+    });
+  } finally {
+    setButtonBusy(elements.btnCopyClip, false);
+  }
+}
+
 function setupEventListeners() {
   elements.btnOpenWrapped?.addEventListener('click', async () => {
     const token = state.spotifyToken || (await getValidAccessToken());
@@ -697,6 +911,8 @@ function setupEventListeners() {
       btn.tabIndex = 0;
       state.cardStyle = btn.getAttribute('data-style');
       updateEditionSummary(btn);
+      persistWorkspace();
+      clearInlineStatus(elements.exportStatus);
       renderCurrentCard();
     });
   });
@@ -720,11 +936,7 @@ function setupEventListeners() {
 
   elements.timeRangePills?.forEach(pill => {
     pill.addEventListener('click', () => {
-      if (!state.spotifyToken) {
-        showToast('Connect Spotify to explore different timeframes', 'info');
-        showAuthGateway();
-        return;
-      }
+      if (pill.disabled || pill.getAttribute('aria-disabled') === 'true') return;
       elements.timeRangePills.forEach(p => {
         p.classList.remove('active');
         p.setAttribute('aria-checked', 'false');
@@ -734,96 +946,61 @@ function setupEventListeners() {
       pill.setAttribute('aria-checked', 'true');
       pill.tabIndex = 0;
       state.timeRange = pill.getAttribute('data-range');
+      persistWorkspace();
+      clearInlineStatus(elements.stageStatus);
       loadData();
     });
   });
 
-  elements.timeRangePills?.forEach((pill, index) => {
+  elements.timeRangePills?.forEach(pill => {
     pill.addEventListener('keydown', event => {
-      if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+      const isForward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
+      const isBackward = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
+      if (!isForward && !isBackward && event.key !== 'Home' && event.key !== 'End') return;
       event.preventDefault();
-      const direction = event.key === 'ArrowRight' ? 1 : -1;
-      const next = elements.timeRangePills[(index + direction + elements.timeRangePills.length) % elements.timeRangePills.length];
+      const available = [...elements.timeRangePills].filter(option => !option.disabled);
+      const currentIndex = available.indexOf(pill);
+      const next = event.key === 'Home'
+        ? available[0]
+        : event.key === 'End'
+          ? available[available.length - 1]
+          : available[(currentIndex + (isForward ? 1 : -1) + available.length) % available.length];
+      if (!next) return;
       next.focus();
       next.click();
     });
   });
 
-  elements.btnExportStory?.addEventListener('click', async () => {
-    if (!state.currentData) {
-      showToast('Connect Spotify to generate your artifacts!', 'warning');
-      startSpotifyAuth();
-      return;
-    }
-    try {
-      showToast('Generating 9:16 Story card...', 'info', 2000);
-      const dataUrl = await exportCardAsImage('story');
-      downloadDataUrl(dataUrl, `soulseekr-${state.cardStyle}-story.png`);
-      showToast('Downloaded Story image!', 'success');
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+  elements.btnExportStory?.addEventListener('click', () => {
+    const filename = `soulseekr-${state.cardStyle}-story.png`;
+    runImageExport(elements.btnExportStory, 'story', filename, 'Story image downloaded');
   });
 
-  elements.btnExportSquare?.addEventListener('click', async () => {
-    if (!state.currentData) {
-      showToast('Connect Spotify to generate your artifacts!', 'warning');
-      startSpotifyAuth();
-      return;
-    }
-    try {
-      showToast('Generating Square card...', 'info', 2000);
-      const dataUrl = await exportCardAsImage('square');
-      downloadDataUrl(dataUrl, `soulseekr-${state.cardStyle}-square.png`);
-      showToast('Downloaded Square image!', 'success');
-    } catch (err) {
-      showToast(err.message, 'error');
-    }
+  elements.btnExportSquare?.addEventListener('click', () => {
+    const filename = `soulseekr-${state.cardStyle}-square.png`;
+    runImageExport(elements.btnExportSquare, 'square', filename, 'Square image downloaded');
   });
 
-  elements.btnCopyClip?.addEventListener('click', async () => {
-    if (!state.currentData) {
-      showToast('Connect Spotify to generate your artifacts!', 'warning');
-      startSpotifyAuth();
-      return;
-    }
-    try {
-      await copyCardToClipboard();
-      showToast('Copied card snapshot to clipboard!', 'success');
-    } catch (err) {
-      showToast('Clipboard copy: Please click Download Image instead.', 'error');
-    }
-  });
+  elements.btnCopyClip?.addEventListener('click', runClipboardExport);
 
-  elements.btnConnectSpotify?.addEventListener('click', startSpotifyAuth);
+  elements.btnConnectSpotify?.addEventListener('click', showAuthGateway);
 
-  elements.btnGatewayConnect?.addEventListener('click', () => {
-    hideAuthGateway();
-    startSpotifyAuth();
-  });
+  elements.btnGatewayConnect?.addEventListener('click', startSpotifyAuth);
 
   elements.btnGatewayDemo?.addEventListener('click', () => {
-    state.currentData = DEFAULT_CURATED_DATA;
-    if (elements.demoModeIndicator) elements.demoModeIndicator.style.display = 'inline-flex';
-    updateAuthBadge('SAMPLE ARCHIVE', 'unauth');
-    renderCurrentCard();
-    sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
-    hideAuthGateway();
-    showToast('Sample archive opened. Connect Spotify when you want to use your own listening history.', 'info', 4000);
+    enterSampleArchive({ announce: true });
   });
 
   elements.authGatewayBackdrop?.addEventListener('click', () => {
-    sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
-    hideAuthGateway();
+    enterSampleArchive();
   });
 
   elements.btnGatewayClose?.addEventListener('click', () => {
-    sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
-    hideAuthGateway();
+    enterSampleArchive();
   });
 
   elements.btnDemoStageConnect?.addEventListener('click', () => {
-    startSpotifyAuth();
+    showAuthGateway();
   });
 
   elements.authStatusBadge?.addEventListener('click', () => {
@@ -836,12 +1013,9 @@ function setupEventListeners() {
 
   elements.btnLogout?.addEventListener('click', () => {
     logoutSpotify();
-    state.spotifyToken = null;
-    sessionStorage.removeItem('soulseekr_auth_gateway_dismissed');
-    state.currentData = null;
     state.cachedRealData = {};
-    showToast('Logged out of Spotify', 'info');
-    loadData();
+    enterSampleArchive();
+    showToast('Spotify disconnected. The sample archive is open.', 'info');
   });
 }
 
@@ -855,7 +1029,7 @@ async function initApp() {
   isAppInitialized = true;
 
   initElements();
-  updateEditionSummary(document.querySelector('.seg-btn.active'));
+  syncEditionControls();
   setupEventListeners();
   init3DCardTilt();
 
@@ -866,22 +1040,32 @@ async function initApp() {
       const token = await handleAuthCallback();
       if (token) {
         state.spotifyToken = token;
-        sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+        state.mode = 'spotify';
         hideAuthGateway();
         updateAuthBadge('SPOTIFY CONNECTED', 'active');
-        showToast('Connected to Spotify! Generating artifacts...', 'success');
+        persistWorkspace();
+        showToast('Spotify connected. Preparing your artifacts.', 'success');
       }
     } catch (err) {
       console.error('Auth error:', err);
-      showToast(err.message, 'error', 4500);
+      enterSampleArchive({ preserveStageStatus: true });
+      showInlineStatus(elements.stageStatus, {
+        tone: 'error',
+        title: 'Spotify could not finish connecting',
+        message: 'The sample archive is open. You can keep exploring and try the Spotify connection again.',
+        actionLabel: 'Try Spotify again',
+        onAction: showAuthGateway
+      });
+      return;
     }
   } else {
     const existingToken = await getValidAccessToken();
     if (existingToken) {
       state.spotifyToken = existingToken;
-      sessionStorage.setItem('soulseekr_auth_gateway_dismissed', 'true');
+      state.mode = 'spotify';
       hideAuthGateway();
       updateAuthBadge('SPOTIFY CONNECTED', 'active');
+      persistWorkspace();
     }
   }
 

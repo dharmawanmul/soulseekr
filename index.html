@@ -94,7 +94,7 @@
     <div class="session-actions">
       <button id="auth-status-badge" class="auth-badge badge-unauth" type="button" aria-label="Open Spotify connection options">NOT CONNECTED</button>
 
-      <button id="btn-connect-spotify" class="btn btn-spotify" title="Connect your Spotify account via PKCE">
+      <button id="btn-connect-spotify" class="btn btn-spotify" title="Use your Spotify listening history">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
         </svg>
@@ -115,7 +115,7 @@
         <p class="studio-index">Private archive / Seven collectible editions</p>
       </div>
       <div class="studio-intro-aside">
-        <p class="studio-intro-copy">Choose an edition, set the listening window, then export the artifact that feels most like your collection.</p>
+        <p class="studio-intro-copy">Choose an edition and export the labelled sample, or connect Spotify to use your own listening windows.</p>
         <ul class="studio-intro-notes" aria-label="Studio capabilities">
           <li>Story and square image export</li>
           <li>Keyboard-ready artifact controls</li>
@@ -209,18 +209,18 @@
       <div class="control-heading control-heading-time">
         <span class="control-number">02</span>
         <div>
-          <h3>Set the listening window</h3>
-          <p>Personal data unlocks every timeframe.</p>
+          <h3>Listening window</h3>
+          <p id="timeframe-help">The sample archive uses 4 weeks. Connect Spotify for longer windows.</p>
         </div>
       </div>
 
       <!-- Timeframe Segmented Filter -->
       <div class="timeframe-bar">
         <span class="timeframe-label" id="timeframe-label">Window</span>
-        <div class="time-segmented-group" role="radiogroup" aria-labelledby="timeframe-label">
+        <div class="time-segmented-group" role="radiogroup" aria-labelledby="timeframe-label" aria-describedby="timeframe-help">
           <button class="time-btn active" data-range="short_term" role="radio" aria-checked="true" tabindex="0">4 Weeks</button>
-          <button class="time-btn" data-range="medium_term" role="radio" aria-checked="false" tabindex="-1">6 Months</button>
-          <button class="time-btn" data-range="long_term" role="radio" aria-checked="false" tabindex="-1">All Time</button>
+          <button class="time-btn" data-range="medium_term" role="radio" aria-checked="false" aria-disabled="true" tabindex="-1" disabled title="Connect Spotify to use the 6-month window">6 Months</button>
+          <button class="time-btn" data-range="long_term" role="radio" aria-checked="false" aria-disabled="true" tabindex="-1" disabled title="Connect Spotify to use the approximate 1-year window">About 1 Year</button>
         </div>
       </div>
     </aside>
@@ -240,12 +240,14 @@
       <div id="demo-mode-indicator" class="demo-mode-indicator" style="display: none;">
         <span class="demo-badge-tag">Sample archive</span>
         <span class="demo-sep" aria-hidden="true">/</span>
-        <span class="demo-text">Showing clearly labelled sample listening data</span>
+        <span class="demo-text">Sample listening data. Connect Spotify to use yours.</span>
         <button id="btn-demo-stage-connect" class="demo-connect-link" type="button">
           <span>Connect Spotify</span>
         </button>
       </div>
     </div>
+
+    <div id="stage-status" class="studio-inline-status" role="status" aria-live="polite" hidden></div>
 
     <!-- 3D Interactive Card Stage with Specular Glare -->
     <section class="card-stage-wrapper" aria-labelledby="selected-edition-title">
@@ -286,6 +288,7 @@
         Copy Image
       </button>
       </div>
+      <div id="export-status" class="studio-inline-status export-inline-status" role="status" aria-live="polite" hidden></div>
     </section>
 
     </div>
@@ -293,7 +296,7 @@
 
     <footer class="studio-footer">
       <p>Spotify top items are affinity rankings, not exact play counts.</p>
-      <p>Every connected archive stays in this browser session.</p>
+      <p>Spotify data is processed in this browser and is not sent to a Soulseekr server.</p>
     </footer>
 
   </main>
@@ -303,7 +306,7 @@
     <div class="dock-disc-art">
       <img id="dock-thumb" alt="Album artwork" hidden />
     </div>
-    <div class="mini-eq" style="color: #10b981;">
+    <div class="mini-eq">
       <span class="bar"></span><span class="bar"></span><span class="bar"></span>
     </div>
     <div class="dock-meta">
@@ -327,7 +330,7 @@
   <div id="toast-container" aria-live="polite"></div>
 
   <!-- Fullscreen 3D Spotify Wrapped Experience Modal -->
-  <div id="wrapped-modal" class="wrapped-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Spotify Wrapped 3D Experience">
+  <div id="wrapped-modal" class="wrapped-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Year in Music">
     <canvas id="wrapped-three-canvas"></canvas>
 
     <!-- Floating Desktop Nav Chevrons -->
@@ -392,11 +395,11 @@
   <!-- Sonic Taste Dossier Modal Container (Rendered dynamically by js/dossier.js) -->
   <div id="dossier-modal" class="dossier-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Sonic Taste Dossier"></div>
 
-  <!-- First-Time Visitor Welcome & Spotify Auth Gateway Modal -->
-  <div id="auth-gateway-modal" class="auth-gateway-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Connect with Spotify">
+  <!-- Optional Spotify connection gateway -->
+  <div id="auth-gateway-modal" class="auth-gateway-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Use your Spotify listening history">
     <div class="auth-gateway-backdrop" id="auth-gateway-backdrop"></div>
     <div class="auth-gateway-card">
-      <button id="btn-gateway-close" class="auth-gateway-close" aria-label="Close dialog and explore demo mode" title="Explore in demo mode">
+      <button id="btn-gateway-close" class="auth-gateway-close" aria-label="Close Spotify connection options" title="Return to the sample archive">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"/>
           <line x1="6" y1="6" x2="18" y2="18"/>
@@ -421,29 +424,31 @@
       </div>
 
       <div class="auth-gateway-content">
-      <h2 class="auth-gateway-title">Make something worth keeping from the music you repeat.</h2>
-      <p class="auth-gateway-index">Connect your archive or begin with the labelled sample.</p>
+      <h2 class="auth-gateway-title">Make the sample yours.</h2>
+      <p class="auth-gateway-index">Your listening history stays in this browser.</p>
       <p class="auth-gateway-desc">
-        Spotify connection turns your listening history into seven exportable print objects, a Year in Music story, and a private taste dossier.
+        Connect Spotify to rebuild all seven editions with your recent top tracks and open Year in Music and Taste Dossier.
       </p>
 
       <!-- Clean Privacy & Trust Strip -->
       <div class="auth-security-badges" aria-label="Spotify connection details">
         <span class="auth-sec-item">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          Client-side PKCE
+          Browser-based sign-in
         </span>
         <span class="auth-sec-dot">•</span>
         <span class="auth-sec-item">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 14 14"/></svg>
-          Read-only access
+          Read-only Spotify access
         </span>
         <span class="auth-sec-dot">•</span>
         <span class="auth-sec-item">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>
-          No Spotify password stored
+          No Spotify password shared with Soulseekr
         </span>
       </div>
+
+      <div id="auth-gateway-status" class="auth-gateway-status" role="status" aria-live="polite" hidden></div>
 
       <!-- Action Area -->
       <div class="auth-gateway-actions">
@@ -451,12 +456,12 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.503 17.306c-.218.358-.68.472-1.038.254-2.846-1.74-6.428-2.134-10.648-1.168-.41.094-.823-.162-.917-.573-.095-.41.162-.823.573-.918 4.623-1.056 8.577-.614 11.776 1.367.358.218.472.68.254 1.038zm1.47-3.267c-.276.449-.864.593-1.313.317-3.259-2.003-8.228-2.583-12.083-1.413-.505.153-1.039-.136-1.192-.641-.153-.505.137-1.039.642-1.192 4.41-1.338 9.888-.686 13.626 1.616.449.276.593.864.32 1.313zm.126-3.41c-3.908-2.321-10.354-2.535-14.075-1.405-.599.182-1.233-.161-1.415-.76-.182-.599.161-1.233.76-1.415 4.277-1.298 11.393-1.047 15.864 1.607.538.319.715 1.015.396 1.553-.319.538-1.015.715-1.53.397z"/>
           </svg>
-          <span>Connect with Spotify</span>
+          <span>Use my Spotify history</span>
         </button>
 
         <button id="btn-gateway-demo" class="btn-gateway-secondary" type="button">
           <span class="demo-btn-lead">
-            <span>Open the sample archive</span>
+            <span>Keep exploring the sample</span>
           </span>
         </button>
       </div>

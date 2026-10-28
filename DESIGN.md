@@ -106,7 +106,7 @@ components:
 
 **Creative North Star: "The Listening Folio"**
 
-Soulseekr is a listening folio, not a dashboard: choose an edition and window, inspect the mounted artifact, then export it. The interface combines an independent record shop, a well-kept listening room, and an editorial design studio. It should feel warm, tactile, precise, private, and slightly obsessive.
+Soulseekr is a listening folio, not a dashboard: begin with a working sample artifact, choose an edition and available window, then export it or connect Spotify to make it personal. The interface combines an independent record shop, a well-kept listening room, and an editorial design studio. It should feel warm, tactile, precise, private, and slightly obsessive.
 
 The shell behaves like a catalog leaf around one dominant physical-media object. Dense tools live on an asymmetric paper control leaf while the selected artifact receives the dark, generous stage. Hairline rules, catalog numbering, compact metadata, and controlled asymmetry create identity without competing with album artwork or the seven artifact editions.
 
@@ -248,13 +248,14 @@ One-pixel rules create sections and states. Avoid soft floating cards, broad cap
 
 - The dock reads like a colophon: an explanatory block followed by Story, Square, and Clipboard actions.
 - Desktop actions share one ruled row; phone actions stack. The leading download is the paper-filled primary action.
-- Export copy names the actual result and aspect ratio. Feedback appears through toasts with text, not color alone.
+- Export copy names the actual result and aspect ratio. Success and recovery feedback stays beside the export actions with text, not color alone.
 
 ### Connection Gateway
 
+- The studio opens in the clearly labelled sample archive. The gateway appears only when a visitor chooses to connect Spotify, so authorization never blocks the first useful artifact.
 - The gateway is a split listening-object cover: warm-black record art on one side and a bone-paper decision surface on the other.
 - The cover uses one vertical orange band and localized grooves. Spotify Green appears only on the connection button; the sample archive remains a bordered ink-and-paper alternative.
-- Security copy stays factual and compact: client-side PKCE, read-only access, and no stored Spotify password. The dialog closes with its button, backdrop behavior, and Escape, and returns focus appropriately.
+- Security copy stays factual and compact: browser-based sign-in, read-only Spotify access, and no Spotify password shared with Soulseekr. The dialog closes with its button, backdrop behavior, and Escape, returns focus appropriately, and always leaves the sample archive working.
 - On phones, the cover compresses into a short masthead, the content stacks, and the dialog scrolls inside `100dvh` bounds.
 
 ### Audio Dock, Year in Music, and Taste Dossier

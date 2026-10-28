@@ -287,7 +287,7 @@ export class WrappedExperience {
     this.visualizer = null;
     this.currentSlideIndex = 0;
     this.totalSlides = 6;
-    this.slideDurationMs = 7500; // 7.5s per slide
+    this.slideDurationMs = 10000; // 10s per slide keeps dense story panels readable
     this.progressStartTime = null;
     this.progressAnimId = null;
     this.isPaused = false;
