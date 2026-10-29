@@ -242,6 +242,7 @@ const state = {
 
 // DOM References (Queried on DOM ready)
 const elements = {};
+let dataRequestId = 0;
 let gatewayReturnFocus = null;
 
 function initElements() {
@@ -384,6 +385,7 @@ function syncEditionControls() {
 }
 
 function enterSampleArchive({ announce = false, preserveStageStatus = false } = {}) {
+  dataRequestId += 1;
   state.mode = 'sample';
   state.spotifyToken = null;
   state.timeRange = 'short_term';
@@ -460,7 +462,23 @@ export function showToast(message, type = 'info', duration = 2800) {
  * Update UI Data based on mode & range
  */
 async function loadData() {
-  const token = state.spotifyToken || (await getValidAccessToken());
+  const requestId = ++dataRequestId;
+  const requestedRange = state.timeRange;
+  const isCurrent = () => requestId === dataRequestId && requestedRange === state.timeRange;
+  let token;
+  try {
+    token = state.spotifyToken || (await getValidAccessToken());
+  } catch (error) {
+    if (!isCurrent()) return;
+    renderCurrentCard();
+    showInlineStatus(elements.stageStatus, {
+      tone: 'error', title: error.code === 'SPOTIFY_RATE_LIMITED' ? 'Spotify asked us to wait' : 'Spotify could not reconnect',
+      message: error.code === 'SPOTIFY_RATE_LIMITED' ? error.message : 'Your saved connection is still available. Check your internet connection and try again.',
+      actionLabel: 'Try again', onAction: loadData
+    });
+    return;
+  }
+  if (!isCurrent()) return;
   if (!token) {
     enterSampleArchive();
     return;
@@ -475,8 +493,8 @@ async function loadData() {
   persistWorkspace();
   clearInlineStatus(elements.stageStatus);
 
-  if (state.cachedRealData[state.timeRange]) {
-    state.currentData = state.cachedRealData[state.timeRange];
+  if (state.cachedRealData[requestedRange]) {
+    state.currentData = state.cachedRealData[requestedRange];
     updateAuthBadge((state.currentData.user?.display_name || 'SPOTIFY CONNECTED').toUpperCase(), 'active');
     renderCurrentCard();
     return;
@@ -490,12 +508,14 @@ async function loadData() {
         <p>Reading your Spotify history for this listening window.</p>
       </div>
     `;
-    const wrapped = await fetchCompleteUserWrapped(token, state.timeRange);
-    state.cachedRealData[state.timeRange] = wrapped;
+    const wrapped = await fetchCompleteUserWrapped(token, requestedRange);
+    if (!isCurrent()) return;
+    state.cachedRealData[requestedRange] = wrapped;
     state.currentData = wrapped;
     updateAuthBadge((wrapped.user?.display_name || 'SPOTIFY CONNECTED').toUpperCase(), 'active');
     renderCurrentCard();
   } catch (err) {
+    if (!isCurrent()) return;
     console.error('Fetch wrapped error:', err);
     if (err.message && err.message.toLowerCase().includes('session expired')) {
       enterSampleArchive({ preserveStageStatus: true });
@@ -512,8 +532,8 @@ async function loadData() {
       renderCurrentCard();
       showInlineStatus(elements.stageStatus, {
         tone: 'error',
-        title: 'Spotify could not refresh this window',
-        message: state.currentData
+        title: err.code === 'SPOTIFY_RATE_LIMITED' ? 'Spotify asked us to wait' : 'Spotify could not refresh this window',
+        message: err.code === 'SPOTIFY_RATE_LIMITED' ? err.message : state.currentData
           ? 'The last loaded artifact is still shown. Check your connection and try this window again.'
           : 'No Spotify data was loaded. Check your connection and try again.',
         actionLabel: 'Try again',
@@ -793,7 +813,8 @@ function attachTrackListeners() {
 /**
  * Setup Sound Engine Notifications & Dynamic Island updates
  */
-soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, currentTrack }) => {
+soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, currentTrack, previewError }) => {
+  if (previewError) showToast(previewError, 'info', 5000);
   state.playbackState = { isPlaying, isPaused, isLoading, trackId: currentTrackId };
   const data = state.currentData;
 
@@ -872,12 +893,15 @@ soundEngine.onAudioFrame((frame) => {
     }
   }
 
-  if (frame.bpm) {
-    const specsEl = document.querySelector('.card-dap .dap-audio-specs');
+  const specsEl = document.querySelector('.card-dap .dap-audio-specs');
+  if (frame.bpm && soundEngine.currentTrackId === state.currentData?.topTracks?.[0]?.id) {
     if (specsEl && specsEl.dataset.measuredBpm !== String(frame.bpm)) {
       specsEl.dataset.measuredBpm = String(frame.bpm);
-      specsEl.innerHTML = `<span>MEASURED STUDIO ACOUSTICS</span><span>•</span><span style="color:#10b981;">${frame.bpm} BPM</span>`;
+      specsEl.innerHTML = `<span>ESTIMATED PREVIEW TEMPO</span><span>•</span><span>${frame.bpm} BPM</span>`;
     }
+  } else if (specsEl?.dataset.measuredBpm) {
+    delete specsEl.dataset.measuredBpm;
+    specsEl.textContent = 'SPOTIFY CATALOG METADATA';
   }
 });
 
@@ -1174,7 +1198,8 @@ async function initApp() {
   setupEventListeners();
   init3DCardTilt();
 
-  const hasAuthCode = new URLSearchParams(window.location.search).has('code');
+  const authParams = new URLSearchParams(window.location.search);
+  const hasAuthCode = authParams.has('code') || authParams.has('error');
   if (hasAuthCode) {
     try {
       showToast('Authenticating with Spotify...', 'info', 3000);
@@ -1198,15 +1223,6 @@ async function initApp() {
         onAction: showAuthGateway
       });
       return;
-    }
-  } else {
-    const existingToken = await getValidAccessToken();
-    if (existingToken) {
-      state.spotifyToken = existingToken;
-      state.mode = 'spotify';
-      hideAuthGateway();
-      updateAuthBadge('SPOTIFY CONNECTED', 'active');
-      persistWorkspace();
     }
   }
 

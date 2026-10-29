@@ -472,7 +472,7 @@ export function renderDapCard(data, timeRange, playbackState) {
 
   const leadAcoustics = soundEngine.getTrackAcoustics(topSong?.id);
   const effectiveTempo = leadAcoustics?.bpm || (Number.isFinite(stats.tempoBpm) ? Math.round(stats.tempoBpm) : null);
-  const tempoLabel = effectiveTempo ? `${effectiveTempo} BPM${leadAcoustics?.bpm ? ' (MEASURED)' : ''}` : null;
+  const tempoLabel = effectiveTempo ? `${effectiveTempo} BPM${leadAcoustics?.bpm ? ' (PREVIEW ESTIMATE)' : ''}` : null;
 
   return `
     <div class="card-inner card-dap" id="exportable-card">
@@ -515,7 +515,7 @@ export function renderDapCard(data, timeRange, playbackState) {
               <h3 class="dap-track-title">${escapeHtml(topSong?.name || '')}</h3>
               <p class="dap-track-artist">${escapeHtml(topSong ? getTrackArtistNames(topSong) : '')}</p>
               <div class="dap-audio-specs" ${leadAcoustics?.bpm ? `data-measured-bpm="${leadAcoustics.bpm}"` : ''}>
-                <span>${leadAcoustics?.bpm ? 'MEASURED STUDIO ACOUSTICS' : 'SPOTIFY CATALOG METADATA'}</span>
+                <span>${leadAcoustics?.bpm ? 'ESTIMATED PREVIEW TEMPO' : 'SPOTIFY CATALOG METADATA'}</span>
                 ${tempoLabel ? `<span>•</span><span>${tempoLabel}</span>` : ''}
               </div>
             </div>

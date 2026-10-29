@@ -26,12 +26,14 @@ Connected accounts also unlock the Year in Music story and the Taste Dossier. Ea
 - The artifact selector and listening window work with pointer or keyboard input.
 - Sample mode uses the four-week window. The six-month and approximate one-year controls remain visibly disabled until Spotify is connected.
 - Sample mode, the selected edition, and the selected connected window are restored within the current browser session.
-- Track rows play the preview supplied by Spotify. When Spotify has no preview URL, the audio player checks the public iTunes search endpoint for an available preview. Preview controls support pause/resume without resetting the position and keep a 30-second listening budget.
+- Track rows play the preview supplied by Spotify. When Spotify has no preview URL, artist and track titles are sent to Apple's public iTunes search endpoint. Results must match the artist, title, recording version, and available duration before playback; otherwise the studio reports that the preview is unavailable. Preview controls support pause/resume without resetting the position and keep a 30-second listening budget.
 - Audio DNA switches its track, artist, metric, release-era, and genre datasets with the selected Spotify time horizon. Windows Spotify did not return are disabled rather than filled with sample data.
 - The selected artifact can be downloaded in 9:16 or 1:1 format, or copied to the clipboard when the browser supports image clipboard access.
 - Wrapped and dossier dialogs close with Escape and return focus to the control that opened them.
 - Each Year in Music story uses a different unique ranked track when enough tracks are available.
+- Stories advance after 10 seconds. Pause/Resume works by keyboard or pointer, holding the story temporarily pauses it, and switching browser tabs pauses the timer. Scrolling never skips stories; the recap remains open for export.
 - Period Comparison contrasts Spotify's approximate four-week, six-month, and one-year affinity windows without substituting data from another window.
+- The selected artifact loads before comparison history. Opening Audio DNA fetches the other windows once, with visible loading, partial-result, and retry states. Spotify requests time out after 12 seconds; rate limits respect `Retry-After` without automatic retry loops.
 - Method & Sources distinguishes direct Spotify fields, local calculations, and creative Soulseekr interpretations.
 - Reduced-motion preferences disable decorative transitions and the card tilt.
 
@@ -39,15 +41,18 @@ Spotify top items are affinity rankings, not exact stream counts. Spotify does n
 
 Spotify artist genre tags are deprecated and can be empty. When that happens, Year in Music shows the ranked top artists instead of inventing genre classifications.
 
+Preview acoustics are local estimates, not Spotify audio features. Frequency bands use the device sample rate and a 2048-point FFT: bass 40–180 Hz, mids 181–4000 Hz, and treble 4001–16000 Hz. Tempo appears only after at least six onset intervals spanning three seconds with at most 12% relative timing deviation; missing or inconsistent beats leave tempo unavailable. Preview RMS level is the DC-corrected waveform amplitude expressed as a percentage of digital full scale, not a musical energy score. Preview excerpts and mastering can affect both readings.
+
 ## Local development
 
 Soulseekr has no build step.
 
 ```bash
+npm ci
 npm start
 ```
 
-The package script runs a static server. You can also use another static server:
+The package script runs the included Node static server at `http://127.0.0.1:5173/`. It binds to loopback and needs no server package. You can also use another static server:
 
 ```bash
 python -m http.server 5173
@@ -59,6 +64,8 @@ Open `http://127.0.0.1:5173/`. Opening `index.html` directly is not recommended 
 
 Authentication uses the OAuth 2.0 Authorization Code flow with PKCE. The browser generates the verifier and challenge, exchanges the returned code for tokens, and stores the current session in local storage. No Spotify client secret is used.
 
+Temporary authorization details and a random callback state are kept in session storage for the initiating tab and expire after 15 minutes. Refresh requests are shared while pending; temporary network or server failures retain credentials for retry, while rejected refresh credentials end the session. Disconnecting invalidates pending requests.
+
 To use your own Spotify application:
 
 1. Create an app in the [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
@@ -67,6 +74,20 @@ To use your own Spotify application:
 4. Request only the scopes listed in `SPOTIFY_CONFIG.scopes`.
 
 The redirect URI is derived from the current origin and path. GitHub Pages subdirectories are preserved.
+
+## Verification
+
+```bash
+npm run check
+npm test
+npm run test:browser
+```
+
+The unit suite checks authentication, preview matching, acoustic calculations, request timeouts, rate limits, and deferred comparison loading. The browser suite checks the eight artifact formats, real html2canvas exports and image sizes, rapid window changes, disconnecting during a request, comparison failures/retry, real Three.js initialization and WebGL fallback, Wrapped pause/navigation, mobile controls, and audio playback.
+
+Browser checks require an installed Google Chrome. Set `BROWSER_PATH` to a Chromium-compatible executable if Chrome is elsewhere. Alternatively install Chromium with `node node_modules/playwright-core/cli.js install chromium` and set `BROWSER_CHANNEL=chromium`. Spotify and Apple responses, artwork, and a short audio waveform are fixtures; export and Three.js libraries use the same versions as the app. Screenshots are written to ignored `test-results/`. A real Spotify account authorization and real-world tempo accuracy still require manual verification.
+
+The GitHub Pages workflow runs syntax, unit and browser checks before deployment. The application remains static with no production build step or server dependency.
 
 ## Project structure
 
@@ -79,7 +100,7 @@ The redirect URI is derived from the current origin and path. GitHub Pages subdi
 |   |-- style.css             Legacy base primitives and shell behavior
 |   |-- design.css            Current editorial design system and responsive layout
 |   |-- studio-v5.css         Listening-folio shell and connection gateway
-|   |-- cards.css             Seven physical artifact treatments
+|   |-- cards.css             Eight physical artifact treatments
 |   |-- wrapped.css           Year in Music story
 |   `-- dossier.css           Dossier and analysis views
 |-- js/
@@ -87,6 +108,8 @@ The redirect URI is derived from the current origin and path. GitHub Pages subdi
 |   |-- spotify-api.js        PKCE and Spotify Web API requests
 |   |-- card-renderer.js      Artifact templates
 |   |-- audio-player.js       Preview lookup and playback
+|   |-- audio-analysis.js     Frequency bands, RMS and preview tempo estimates
+|   |-- request.js            Request deadlines and Retry-After parsing
 |   |-- exporter.js           Canvas export and clipboard output
 |   |-- wrapped-experience.js Year in Music controller
 |   |-- dossier.js            Dossier controller
@@ -95,7 +118,10 @@ The redirect URI is derived from the current origin and path. GitHub Pages subdi
 |   |-- weather-chaser.js     Weather view and timeline
 |   `-- world-passport.js     Listening geography views
 |-- .github/workflows/        GitHub Pages deployment
-`-- package.json              Static-server scripts
+|-- scripts/                 Local static server and syntax checks
+|-- tests/                   Unit and browser regressions
+|-- package-lock.json        Locked development dependencies
+`-- package.json             Development and verification commands
 ```
 
 ## Design system

@@ -1,188 +1,59 @@
-# Soulseekr — Improvement Roadmap
+# Soulseekr Improvement Roadmap
 
-> **Last updated:** 2026-10-28
-> **Status:** In progress: P0 font and CSS token consolidation completed, critical P1 stability, accessibility, and Retro Handheld (Game Boy) edition integration completed.
+Last updated: 2026-10-29
 
----
+This is the current implementation status. Completed work is separated from remaining work; the earlier audit's descriptions of fixed defects have been retired.
 
-## Project Overview
+## Completed review items
 
-Soulseekr is a static, client-side listening studio that transforms Spotify listening history into eight collectible visual artifacts. It uses PKCE OAuth, has no build step, and is deployed to GitHub Pages. The design direction is strong: a warm editorial physical-media aesthetic backed by detailed `DESIGN.md` and `PRODUCT.md` documents.
+| Item | Result | Main files |
+| --- | --- | --- |
+| 1. Wrapped initialization | Correct slide method/index, WebGL initialization checks and graceful background failure. | `js/wrapped-experience.js` |
+| 2. Overlapping window requests | Captured ranges and request generations prevent late responses from replacing the selected window or restoring data after disconnect. | `js/app.js` |
+| 3. Authentication recovery | Per-tab PKCE transaction, callback state/expiry validation, shared refresh, bounded 401 retry and retained credentials during temporary failures. Canonical entry URL avoids duplicate initialization. | `js/spotify-api.js`, `index.html` |
+| 4. Wrapped controls | Ten-second dwell, accessible Pause/Resume, hold pause, hidden-tab pause, explicit navigation, scrollable panels and indefinite final recap. | `js/wrapped-experience.js`, `css/wrapped.css` |
+| 5. Preview matching | Artist/title/version/duration matching; unavailable feedback instead of substituted synthesized audio; Apple lookup disclosure. | `js/audio-player.js`, `index.html` |
+| 6. Acoustic estimates | Sample-rate-aware bands, consistent-onset tempo gate and explicit RMS full-scale reference. Neither reading is presented as Spotify energy or full-song ground truth. | `js/audio-analysis.js`, `js/audio-player.js`, card/story renderers |
+| 7. Deferred comparisons | Four selected-window requests first. Audio DNA loads comparison windows on demand, shares pending work, caches successful windows and retries missing ones. Request deadlines and rate-limit wait times are enforced. | `js/spotify-api.js`, `js/request.js`, `js/dossier.js` |
+| 8. Repeatable verification | Syntax, unit and browser commands, pinned development dependencies and lockfile, built-in Node development server, reconciled roadmap and checks before deployment. | `package.json`, `package-lock.json`, `scripts/`, `tests/`, `.github/workflows/deploy.yml` |
 
-**What's already well done:**
-- Meticulous design system documentation and product constraints
-- Privacy-first architecture: everything runs in-browser
-- Solid PKCE OAuth implementation with token refresh
-- Good accessibility foundations (ARIA roles, keyboard navigation, reduced-motion, skip links)
-- Clear separation of concerns across JS modules
-- Eight fully-realized, visually distinct artifact editions
+## Existing improvements retained
 
----
+- Immediate, labelled sample archive and optional Spotify connection gateway.
+- Eight artifact editions, including Retro Handheld.
+- Edition/window persistence within the browser session.
+- Keyboard navigation, visible focus, dialog dismissal and focus return.
+- Playback indicators update without rebuilding the artifact DOM.
+- Reduced-motion guard for card tilt.
+- Aligned editorial palette and the three documented font families.
+- Three.js and html2canvas load only when needed.
+- Aspect-contained card, story, square and gallery-poster exports.
+- Provenance distinguishes Spotify fields, local calculations and interpretations.
+- Location is requested only when the weather department is opened.
 
-## Issues & Improvements
+## Verification
 
-### 🏗️ 1. Architecture & Code Structure
+```sh
+npm ci
+npm run check
+npm test
+npm run test:browser
+```
 
-| Issue | Location | Severity |
-|-------|----------|----------|
-| **Conflicting CSS custom property declarations** | `css/style.css` vs `css/design.css` vs `css/studio-v5.css` | 🔴 High |
-| **Monolithic `app.js`** at ~1,080 lines mixing state, rendering, auth, UI, and events | `js/app.js` | 🟡 Medium |
-| **`card-renderer.js`** generates all HTML as template strings (~672 lines) | `js/card-renderer.js` | 🟡 Medium |
-| **Large module complexity** (`audio-dna.js` at 2,212 lines, `dossier.js` at 1,411 lines) | `js/audio-dna.js`, `js/dossier.js` | 🟡 Medium |
-| Retro Handheld (Game Boy) integration: now fully integrated as official 8th format | `index.html`, `js/card-renderer.js` | 🟢 Resolved |
-| Legacy `style.css` variables (`Inter`, `Outfit`, `Space Mono`, accent-purple) conflict with the current design system | `css/style.css:6-41` | 🔴 High |
+The browser suite requires installed Google Chrome, or a Chromium executable supplied through `BROWSER_PATH`. It starts and stops its own loopback server. External catalog responses and artwork are fixtures; actual application versions of html2canvas and Three.js are exercised. Screenshots go to ignored `test-results/`.
 
-**Details on the CSS conflict:** Three different files declare `:root` with competing values for `--background`, `--foreground`, `--font-sans`, `--font-display`, `--font-mono`, and shadow tokens. Load order in `index.html` determines which wins, but `style.css` (loaded first) sets a completely different palette (`#08080a`, Inter, `Space Mono`) than the current editorial system (`#11100d`/`#171510`, DM Sans, IBM Plex Mono). This is the single biggest source of visual bugs and specificity confusion.
+Coverage includes invalid/expired OAuth callbacks, offline refresh recovery, logout during refresh, repeated API rejection, preview mismatches, silent/irregular audio, sample-rate changes, deferred/cached/failed comparisons, timeouts, rate limits, all eight artifact renders/exports, aspect presets, rapid range changes, disconnect during loading, Wrapped initialization/fallback and pause controls, mobile controls, and audio playback.
 
-> **Recommended fix:** Merge `style.css` into `design.css` / `studio-v5.css` and remove the legacy file entirely, or at minimum strip out the conflicting `:root` block from `style.css`.
+## Remaining work
 
----
+| Priority | Work | Why it remains |
+| --- | --- | --- |
+| P1 before public release | Real-account Spotify authorization and representative account/device smoke tests. | Fixtures cannot validate dashboard redirects, account permissions, live catalog coverage or device audio policies. |
+| P2 | Calibrate preview tempo against a labelled, diverse audio dataset. | Consistent onsets support an estimate, not proof of musical tempo. Half/double tempo and percussion-poor excerpts remain limitations. |
+| P2 | Safari/Firefox, touch gestures, screen readers and 200% text across dossier views. | Repeatable browser checks currently target Chrome with desktop and mobile viewports. |
+| P2 | Weather retry recovery and location-provider disclosure near the request. | Denied/failed weather results remain cached for the dossier instance. |
+| P2 | Consolidate legacy CSS rules and split large dossier/Audio DNA modules. | Shared tokens are aligned; layered stylesheets and large modules still add maintenance effort. |
+| P2 | Third-party script integrity/self-hosting and storage-key migration. | Runtime CDN resources and legacy `vibe_` token names remain; changes need a compatibility pass. |
+| P3 | Social sharing metadata; install/offline support if product demand warrants it. | Product enhancements rather than prerequisites for the current workflow. |
 
-### ⚡ 2. Performance
-
-| Issue | Impact |
-|-------|--------|
-| **Google Fonts request loads 9 font families** in a single `<link>` — most are unused (Outfit, Syne, Space Grotesk, Space Mono, Courier Prime) | Adds ~200–400 KB of web fonts and blocks first paint |
-| **Three.js loaded synchronously** from CDN on every page load, even though it's only needed for the Year in Music 3D modal | Blocks parsing; r128 is also very outdated (current is r169) |
-| **html2canvas loaded on every visit** even when the user never exports | ~100 KB deferred but still fetched |
-| **No image optimization** — sample album art uses full Unsplash URLs with `w=300` but no `srcset`, `loading="lazy"`, or format hints | Wastes bandwidth on hi-DPI screens |
-| **`renderCurrentCard()` is called on every playback state change** (play, pause, loading), rebuilding the entire card DOM via `innerHTML` | Kills performance and resets scroll/focus |
-
-> **Recommendations:**
-> - Load Three.js and html2canvas dynamically (`import()` or inject `<script>` on demand) only when the user opens Wrapped or triggers an export.
-> - Strip unused font families from the Google Fonts URL — only Bodoni Moda, DM Sans, and IBM Plex Mono are documented.
-> - Instead of full card re-render on playback changes, update only the play/pause indicator elements.
-
----
-
-### 🔒 3. Security & Auth
-
-| Issue | Location |
-|-------|----------|
-| **Client ID hardcoded** in source | `js/spotify-api.js:10` |
-| **`localStorage` keys use the prefix `vibe_`** instead of `soulseekr_` — remnant of a prior project name | `js/spotify-api.js:17-23` |
-| **PKCE verifier stored in `localStorage`** survives browser restarts; should be in `sessionStorage` | `js/spotify-api.js:79` |
-| **No CSRF `state` parameter** in the OAuth flow — the PKCE spec recommends it | `js/spotify-api.js:89-98` |
-| Token refresh has no retry limit — could loop on network errors | `js/spotify-api.js:252-258` |
-
-> **Warning:** The recursive call in `spotifyFetch` (line 256) retries once on 401, but if `refreshAccessToken` succeeds and the fresh token also gets a 401, it will recurse indefinitely. Add a `retried` flag.
-
----
-
-### ♿ 4. Accessibility
-
-| Issue | Location |
-|-------|----------|
-| `aria-live="polite"` on the entire audio dock means every text change is announced — could be noisy | `index.html:305` |
-| Spotify SVG icons in the header and gateway have no `aria-label` or `role="img"` — decorative but nested inside interactive buttons that already have labels, which is fine, but the brand badge SVG at line 53 has no label | `index.html:53-55` |
-| Focus trap in the gateway modal doesn't account for recently shown/hidden elements | `js/app.js:558` |
-| The card tilt effect uses inline `style.transition = 'none'` which blocks reduced-motion users from overriding via CSS | `js/app.js:787` |
-| Track play triggers set `tabindex="0"` dynamically but get destroyed on every re-render, losing focus position | `js/app.js:689-717` |
-
-> **Tip:** Check `window.matchMedia('(prefers-reduced-motion: reduce)').matches` before applying tilt transforms. The `DESIGN.md` already mandates this but the JS doesn't enforce it.
-
----
-
-### 🎨 5. CSS Organization
-
-| Issue | Detail |
-|-------|--------|
-| **6 CSS files totaling ~218 KB** with significant overlap and ordering dependencies | `style.css` (33 KB), `design.css` (40 KB), `studio-v5.css` (17 KB), `cards.css` (41 KB), `wrapped.css` (27 KB), `dossier.css` (60 KB) |
-| `style.css` is labeled "Legacy base primitives" in the README but still sets the root palette | Should be pruned or explicitly deprecated |
-| No CSS custom property namespacing — e.g., `--background` is redeclared 3 times | Fragile; any new CSS file could break the cascade |
-| Media query breakpoints are not unified — each file uses its own pixel values | Maintenance risk when adjusting responsive behavior |
-
-**Recommendation:** Consolidate the design token `:root` into a single `tokens.css` file loaded first, then layer component styles on top.
-
----
-
-### 🧹 6. Code Quality & Maintenance
-
-| Issue | Location |
-|-------|----------|
-| `estimateListeningMinutes()` dead function (removed) | `js/spotify-api.js` |
-| Retro Handheld edition active and integrated in UI tab list and card renderer | `index.html`, `js/card-renderer.js` |
-| Cache-busting via `?v=3.0` / `?v=5.0` query strings is manual: easy to forget on updates | `index.html:22-27` |
-| `package.json` has no `serve` dependency: `npx serve .` works but downloads on every invocation without a lockfile | `package.json:8-9` |
-| `.gitignore` includes `node_modules/` | `.gitignore` |
-| Error boundary added to `renderCurrentCard` with recovery UI | `js/app.js` |
-
----
-
-### 📱 7. Progressive Enhancement & Compatibility
-
-| Issue | Recommendation |
-|-------|----------------|
-| No `<noscript>` fallback | Add a message explaining JS is required |
-| No `manifest.json` for PWA installability | The app would benefit from offline installability given its client-side nature |
-| OpenGraph tags are incomplete — no `og:image` | Generate a default share image |
-| CDN dependencies (Three.js, html2canvas) have no SRI hashes | Add `integrity` + `crossorigin` attributes |
-| Three.js r128 is significantly outdated | Consider upgrading or switching to a lighter WebGL approach |
-
----
-
-## Priority Roadmap
-
-| Priority | Action | Effort | Status |
-|----------|--------|--------|--------|
-| **P0** | Consolidate the three `:root` declarations into one canonical source | 2-3 hours | 🟢 **Completed** |
-| **P0** | Remove unused Google Fonts (5 families) and update CSS fallbacks | 15 min | 🟢 **Completed** |
-| **P1** | Add reduced-motion guard to the card tilt JS | 30 min | 🟢 **Completed** |
-| **P1** | Fix the `spotifyFetch` recursive retry to prevent infinite loops | 15 min | 🟢 **Completed** |
-| **P1** | Diff-update playback indicators instead of full `innerHTML` rebuild | 2-3 hours | 🟢 **Completed** |
-| **P1** | Add error boundary around `renderCurrentCard` to prevent stage crash | 30 min | 🟢 **Completed** |
-| **P1** | Fix square export canvas aspect-ratio cropping bug in `exporter.js` | 30 min | 🟢 **Completed** |
-| **P1** | Delay weather geolocation in Taste Dossier until Weather tab is opened | 30 min | 🟢 **Completed** |
-| **P1** | Replace fabricated lyric counts in Subconscious Mind Map with real data | 1 hour | 🟢 **Completed** |
-| **P2** | Restore Retro Handheld (Game Boy) as 8th first-class edition across UI and docs | 1 hour | 🟢 **Completed** |
-| **P2** | Remove dead code (`estimateListeningMinutes`) | 15 min | 🟢 **Completed** |
-| **P1** | Lazy-load Three.js and html2canvas | 1-2 hours | 🟢 **Completed** |
-| **P1** | Add dedicated export format aspect presets (9:16, 1:1, 3:4) | 1 hour | 🟢 **Completed** |
-| **P1** | Move PKCE verifier to `sessionStorage`; add OAuth `state` param | 1 hour | ⬜ Not started |
-| **P2** | Rename `vibe_` storage keys to `soulseekr_` | 30 min | ⬜ Not started |
-| **P3** | Split `dossier.js` and `audio-dna.js` into per-view modules | 3-4 hours | ⬜ Not started |
-| **P3** | Add PWA manifest + `<noscript>` + SRI hashes | 1-2 hours | ⬜ Not started |
-| **P3** | Add `og:image` meta tag | 30 min | ⬜ Not started |
-
----
-
-## Change Log
-
-### 2026-10-28: Session 5 (Client-Side Web Audio API Acoustic Engine)
-
-**Completed:**
-- Web Audio API Real Acoustics: Connected `HTMLAudioElement` to in-browser `AudioContext` and `AnalyserNode` in `SoundEngine` with `crossOrigin = "anonymous"`.
-- Live Frequency Visualizers: Added real-time FFT frequency extraction driving the `.mini-eq` equalizers on the Now-Playing bar and Titanium DAP stereo VU peak level meters in place of CSS loop animations.
-- Real Beat & BPM Peak Detection: Implemented sub-bass onset energy tracking to calculate genuine measured track tempo (BPM) and RMS energy directly from the audio waveform.
-- Dynamic Card & Wrapped Acoustic Updates: Live measured BPM and RMS energy are cached per track and displayed on the Titanium DAP card specs and Year in Music Slide 3 bento grid.
-
-### 2026-10-28: Session 4 (Performance Lazy-Loading & Multi-Aspect Export Presets)
-
-**Completed:**
-- Asset Lazy-Loading: Removed synchronous `three.min.js` (~600 KB) and `html2canvas.min.js` (~200 KB) from the document `<head>`. Three.js is now loaded on-demand via `ensureThreeLoaded()` when the Year in Music modal opens, and html2canvas is loaded on-demand via `ensureHtml2CanvasLoaded()` when export or clipboard actions are triggered.
-- Dedicated Aspect Ratio Presets: Added a 4th dedicated export format button for 3:4 Gallery Print Posters (`btn-export-poster`) alongside 9:16 Story and 1:1 Square. Implemented responsive grid layout (`repeat(4, 1fr)` desktop, `repeat(2, 1fr)` tablet, `1fr` mobile).
-- Aspect-Contained Poster Rendering: Implemented gallery print preset in `exporter.js` with museum-board framing, border rules, and bottom colophon typography.
-
-### 2026-10-28: Session 3 (Authenticity Engine & Elimination of Fabricated Data)
-
-**Completed:**
-- Year in Music (Slide 3): Eliminated all "Not available" blanks by replacing deprecated Spotify audio features with authentic catalog dimensions (Artist Diversity Ratio, Catalog Era Median Year) and providing track-level popularity fallback for Obscurity Score when top artists is sparse.
-- Musical Passport: Replaced hardcoded Tokyo origin with dynamic origin airport resolution from `user.country` (or timezone); removed hardcoded `+ 14,200` miles and computed authentic great-circle mileage; computed `intlRatio` dynamically from destination countries vs origin country.
-- Cinema & Synesthesia: Replaced static numeric fallbacks (65, 60, 120) with genuine catalog pacing proxies derived from average track duration, artist diversity, release vintage, obscurity, and circadian timing.
-- Weather Timeline: Removed simulated BPM sine wave and fake BPM labels from the canvas renderer; replaced with genuine Open-Meteo relative humidity telemetry alongside temperature and precipitation probability.
-- Audio DNA: Unlocked the 24-Hour Polar Ring and 7-Day Matrix with genuine Spotify `played_at` timestamps from `recentlyPlayed`, removing hardcoded "3 AM Confessional" placeholders.
-
-### 2026-10-28: Session 2 (Completed P0 & Critical P1/P2 Items)
-
-**Completed:**
-- Consolidated all `:root` design tokens across `css/style.css`, `css/design.css`, and `css/studio-v5.css` into the unified warm editorial design system (`#11100d`, `#f3ebdc`, `#ef6b43`).
-- Cleaned up all orphaned font references (`Space Grotesk`, `Syne`, `Courier Prime`, `Outfit`) across `cards.css`, `style.css`, and `dossier.css`.
-- Fully restored and aligned the Retro Handheld (Game Boy) card edition as an official 8th format across `index.html`, `PRODUCT.md`, `README.md`, and `DESIGN.md`.
-- Implemented `updateCardPlaybackUI()` in `js/app.js` to surgically update play/pause indicators and ARIA states without destroying DOM tree or losing keyboard focus on playback changes.
-- Added `prefers-reduced-motion` guard to 3D card tilt and glare listeners.
-- Added `try...catch` error boundary around `renderCurrentCard()` with friendly inline reset action.
-- Added retry count guard to `spotifyFetch` in `js/spotify-api.js` to prevent 401 infinite loop.
-- Added aspect-ratio containment scaling to `js/exporter.js` so wide formats (VIP Pass, Cassette, Retro Handheld) are not cropped in square and story exports.
-- Delayed browser geolocation prompt in `js/dossier.js` until the user explicitly opens the Atmosphere & Weather tab.
-- Replaced hardcoded lyric counts in `js/world-passport.js` with genuine title vocabulary analysis adhering to `PRODUCT.md` principles.
-- Removed dead code `estimateListeningMinutes()`.
+Automated checks do not imply real-account authorization, production deployment or certified acoustic accuracy.

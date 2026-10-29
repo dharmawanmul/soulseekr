@@ -302,6 +302,7 @@ export class WrappedExperience {
     this.soundtrackIndex = document.getElementById('wrapped-soundtrack-index');
     this.soundtrackTitle = document.getElementById('wrapped-soundtrack-title');
     this.btnMute = document.getElementById('btn-wrapped-mute');
+    this.btnPause = document.getElementById('btn-wrapped-pause');
     this.btnClose = document.getElementById('btn-wrapped-close');
 
     // Controls
@@ -317,6 +318,7 @@ export class WrappedExperience {
     this.progressStartTime = null;
     this.progressAnimId = null;
     this.isPaused = false;
+    this.pauseReasons = new Set();
     this.isMuted = false;
     this.data = null;
     this.timeRange = 'short_term';
@@ -325,12 +327,16 @@ export class WrappedExperience {
 
     this.onKeyDown = this.handleKeyDown.bind(this);
     this.onWheel = this.handleWheel.bind(this);
+    this.onVisibilityChange = () => this.setPauseReason('hidden', document.hidden);
     this.lastWheelTime = 0;
     this.unsubscribeSoundState = soundEngine.onStateChange(state => this.updatePlaybackUi(state));
     this.setupListeners();
   }
 
   setupListeners() {
+    this.btnPause?.addEventListener('click', () => {
+      this.setPauseReason('user', !this.pauseReasons.has('user'));
+    });
     // Tap zones
     this.tapLeft?.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -366,16 +372,17 @@ export class WrappedExperience {
       stage.addEventListener('pointerdown', (e) => {
         // don't pause if clicking on interactive buttons
         if (e.target.closest('button') || e.target.closest('.ladder-item') || e.target.closest('.top-track-hero')) return;
-        this.pauseProgress();
+        this.setPauseReason('hold', true);
       });
 
       stage.addEventListener('pointerup', () => {
-        this.resumeProgress();
+        this.setPauseReason('hold', false);
       });
 
       stage.addEventListener('pointerleave', () => {
-        this.resumeProgress();
+        this.setPauseReason('hold', false);
       });
+      stage.addEventListener('pointercancel', () => this.setPauseReason('hold', false));
     }
   }
 
@@ -415,16 +422,11 @@ export class WrappedExperience {
   }
 
   handleWheel(e) {
-    if (!this.modal.classList.contains('is-open')) return;
-    e.preventDefault();
-    const now = Date.now();
-    if (this.lastWheelTime && now - this.lastWheelTime < 450) return;
-    if (Math.abs(e.deltaY) < 15) return;
-    this.lastWheelTime = now;
-    if (e.deltaY > 0) {
-      this.nextSlide();
-    } else {
-      this.prevSlide();
+    const slide = this.viewport.querySelector('.wrapped-slide.is-active');
+    if (!slide || !e.target.closest('.wrapped-tap-zone')) return;
+    if (slide.scrollHeight > slide.clientHeight) {
+      e.preventDefault();
+      slide.scrollTop += e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? slide.clientHeight : 1);
     }
   }
 
@@ -433,6 +435,8 @@ export class WrappedExperience {
     this.returnFocus = document.activeElement;
     this.data = data;
     this.timeRange = timeRange;
+    this.pauseReasons.clear();
+    if (document.hidden) this.pauseReasons.add('hidden');
     this.slideTracks = this.selectDistinctSlideTracks(data.topTracks || []);
 
     // Populate Top Bar
@@ -449,8 +453,8 @@ export class WrappedExperience {
       }
     }
     if (this.userTag) {
-      const rangeText = timeRange === 'long_term' ? 'All Time' : timeRange === 'medium_term' ? '6 Months' : '4 Weeks';
-      this.userTag.textContent = `2026 Archive • ${rangeText}`;
+      const rangeText = timeRange === 'long_term' ? 'About 1 Year' : timeRange === 'medium_term' ? '6 Months' : '4 Weeks';
+      this.userTag.textContent = `${new Date().getFullYear()} Archive • ${rangeText}`;
     }
 
     // Render All Slides Content
@@ -464,22 +468,23 @@ export class WrappedExperience {
     this.modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
     window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('wheel', this.onWheel, { passive: false });
+    document.addEventListener('visibilitychange', this.onVisibilityChange);
+    this.modal.addEventListener('wheel', this.onWheel, { passive: false });
 
     // Initialize 3D Three.js Visualizer (lazy-loads Three.js without blocking slide presentation)
     if (this.canvas) {
       ensureThreeLoaded().then(three => {
         if (!three || !this.modal.classList.contains('is-open')) return;
         if (!this.visualizer) {
-          this.visualizer = new ThreeWrappedVisualizer(this.canvas);
-          this.visualizer.init();
+          const visualizer = new ThreeWrappedVisualizer(this.canvas);
+          if (!visualizer.init()) return;
+          this.visualizer = visualizer;
         }
         if (this.visualizer && !this.visualizer.isRunning) {
+          this.visualizer.setSlide(this.currentSlideIndex);
           this.visualizer.start();
-          const currentTheme = SLIDE_THEMES[this.currentSlide % SLIDE_THEMES.length];
-          this.visualizer.setTheme(currentTheme);
         }
-      });
+      }).catch(error => console.warn('Wrapped background unavailable:', error));
     }
 
     // Go to first slide
@@ -493,7 +498,9 @@ export class WrappedExperience {
     this.modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     window.removeEventListener('keydown', this.onKeyDown);
-    window.removeEventListener('wheel', this.onWheel);
+    document.removeEventListener('visibilitychange', this.onVisibilityChange);
+    this.modal.removeEventListener('wheel', this.onWheel);
+    this.pauseReasons.clear();
     this.stopProgress();
 
     if (this.visualizer) {
@@ -633,7 +640,7 @@ export class WrappedExperience {
     const obscurity = Number.isFinite(stats.obscurityScore) ? stats.obscurityScore : null;
 
     const leadAcoustics = soundEngine.getTrackAcoustics(topTrack?.id);
-    const measuredEnergy = leadAcoustics?.energy ?? energy;
+    const measuredEnergy = leadAcoustics?.levelPercent ?? energy;
     const measuredBpm = leadAcoustics?.bpm ?? null;
 
     const uniqueArtistsList = new Set(
@@ -781,7 +788,7 @@ export class WrappedExperience {
           </div>
           ${measuredEnergy !== null ? `
           <div class="metric-bento-card">
-            <span class="metric-bento-label">${leadAcoustics?.energy ? 'Acoustic energy (measured)' : 'Energy interpretation'}</span>
+            <span class="metric-bento-label">${leadAcoustics?.levelPercent !== undefined ? 'Preview RMS level (% full scale)' : 'Energy interpretation'}</span>
             <span class="metric-bento-val">${measuredEnergy}%</span>
             <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${measuredEnergy}%"></div></div>
           </div>
@@ -794,7 +801,7 @@ export class WrappedExperience {
           `}
           ${measuredBpm !== null ? `
           <div class="metric-bento-card">
-            <span class="metric-bento-label">Acoustic tempo (measured)</span>
+            <span class="metric-bento-label" title="Estimated from consistent bass onsets in the audio preview; may differ from full-song tempo.">Estimated preview tempo</span>
             <span class="metric-bento-val">${measuredBpm} BPM</span>
             <div class="metric-bento-bar"><div class="metric-bento-fill" style="width: ${Math.min(100, Math.round((measuredBpm / 180) * 100))}%"></div></div>
           </div>
@@ -1025,7 +1032,11 @@ export class WrappedExperience {
     });
   }
 
-  updatePlaybackUi({ isPlaying, isPaused, isLoading, currentTrackId }) {
+  updatePlaybackUi({ isPlaying, isPaused, isLoading, currentTrackId, previewError }) {
+    if (previewError && this.modal.classList.contains('is-open')) {
+      if (this.soundtrackTitle) this.soundtrackTitle.textContent = 'Preview unavailable';
+      this.soundtrackCue?.classList.add('is-unavailable');
+    }
     if (!this.viewport) return;
 
     const hero = this.viewport.querySelector('#wrapped-hero-track-btn');
@@ -1139,6 +1150,7 @@ export class WrappedExperience {
     this.stopProgress();
     this.progressStartTime = performance.now();
     this.isPaused = false;
+    this.updatePauseControl();
 
     // On final recap slide, don't auto-advance so user can read / export at leisure
     if (this.currentSlideIndex === this.totalSlides - 1) {
@@ -1167,7 +1179,32 @@ export class WrappedExperience {
       }
     };
 
+    if (this.pauseReasons.size) {
+      this.isPaused = true;
+      return;
+    }
     this.progressAnimId = requestAnimationFrame(animateProgress);
+  }
+
+  updatePauseControl() {
+    const paused = this.pauseReasons.has('user');
+    const label = paused ? 'Resume story' : 'Pause story';
+    if (!this.btnPause) return;
+    this.btnPause.setAttribute('aria-pressed', String(paused));
+    this.btnPause.setAttribute('aria-label', label);
+    this.btnPause.title = label;
+    this.btnPause.innerHTML = paused
+      ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>'
+      : '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 5v14M16 5v14"/></svg>';
+  }
+
+  setPauseReason(reason, paused) {
+    if (this.pauseReasons.has(reason) === paused) return;
+    if (paused) this.pauseReasons.add(reason);
+    else this.pauseReasons.delete(reason);
+    this.updatePauseControl();
+    if (this.pauseReasons.size) this.pauseProgress();
+    else this.resumeProgress();
   }
 
   pauseProgress() {
@@ -1179,7 +1216,7 @@ export class WrappedExperience {
   }
 
   resumeProgress() {
-    if (!this.isPaused || this.currentSlideIndex === this.totalSlides - 1) return;
+    if (!this.isPaused || this.pauseReasons.size || this.currentSlideIndex === this.totalSlides - 1) return;
     this.isPaused = false;
 
     const segs = this.progressTrack?.querySelectorAll('.wrapped-seg');

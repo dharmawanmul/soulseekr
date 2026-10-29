@@ -613,6 +613,7 @@ export class AudioDnaEngine {
   }
 
   init(containerEl, data = null, initialHorizon = 'short_term') {
+    this.destroy();
     this.container = containerEl;
     this.data = data;
     this.initialHorizon = initialHorizon;

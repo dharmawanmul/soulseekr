@@ -3,6 +3,8 @@
  * 100% Client-Side Authentication (Safe for GitHub Pages static hosting - NO Client Secret needed)
  */
 
+import { requestJson, retryAfterMs } from './request.js';
+
 export const SPOTIFY_CONFIG = {
   authEndpoint: 'https://accounts.spotify.com/authorize',
   tokenEndpoint: 'https://accounts.spotify.com/api/token',
@@ -22,6 +24,29 @@ export const SPOTIFY_CONFIG = {
     expiresAt: 'vibe_token_expires_at'
   }
 };
+
+const LOGIN_TRANSACTION_KEY = 'soulseekr_spotify_login';
+let authGeneration = 0;
+let refreshPromise = null;
+let rateLimitUntil = 0;
+const comparisonRequests = new WeakMap();
+
+function rateLimitError() {
+  const error = new Error(`Spotify asked us to wait. Try again in ${Math.max(1, Math.ceil((rateLimitUntil - Date.now()) / 1000))} seconds.`);
+  error.code = 'SPOTIFY_RATE_LIMITED';
+  error.retryAt = rateLimitUntil;
+  return error;
+}
+
+async function spotifyRequest(url, options) {
+  if (Date.now() < rateLimitUntil) throw rateLimitError();
+  const result = await requestJson(url, options);
+  if (result.response.status === 429) {
+    rateLimitUntil = Math.max(rateLimitUntil, Date.now() + retryAfterMs(result.response.headers.get('Retry-After')));
+    throw rateLimitError();
+  }
+  return result;
+}
 
 /**
  * Generate cryptographically secure random string for PKCE code verifier
@@ -67,7 +92,7 @@ export function getStandardRedirectUri() {
  * Initiate Spotify OAuth flow with PKCE
  */
 export async function initiateSpotifyLogin(customClientId = null) {
-  const clientId = SPOTIFY_CONFIG.defaultClientId || customClientId || localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
+  const clientId = customClientId || SPOTIFY_CONFIG.defaultClientId || localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
   if (!clientId) {
     throw new Error('Please configure a Spotify Client ID.');
   }
@@ -76,7 +101,7 @@ export async function initiateSpotifyLogin(customClientId = null) {
   localStorage.setItem(SPOTIFY_CONFIG.storageKeys.clientId, clientId);
 
   const verifier = generateCodeVerifier();
-  localStorage.setItem(SPOTIFY_CONFIG.storageKeys.verifier, verifier);
+  const state = generateCodeVerifier();
 
   const hashed = await sha256(verifier);
   const challenge = base64UrlEncode(hashed);
@@ -84,7 +109,9 @@ export async function initiateSpotifyLogin(customClientId = null) {
   // Save the EXACT redirect URI used during authorization to guarantee token exchange match
   const redirectUri = getStandardRedirectUri();
   console.log('[Spotify OAuth] Redirect URI sent to Spotify:', redirectUri);
-  localStorage.setItem(SPOTIFY_CONFIG.storageKeys.redirectUri, redirectUri);
+  sessionStorage.setItem(LOGIN_TRANSACTION_KEY, JSON.stringify({
+    verifier, state, redirectUri, clientId, createdAt: Date.now()
+  }));
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -92,6 +119,7 @@ export async function initiateSpotifyLogin(customClientId = null) {
     redirect_uri: redirectUri,
     code_challenge_method: 'S256',
     code_challenge: challenge,
+    state,
     scope: SPOTIFY_CONFIG.scopes.join(' ')
   });
 
@@ -102,9 +130,24 @@ export async function initiateSpotifyLogin(customClientId = null) {
  * Exchange Authorization Code for Access Token
  */
 export async function handleAuthCallback() {
+  const generation = authGeneration;
   const urlParams = new URLSearchParams(window.location.search);
   const code = urlParams.get('code');
   const error = urlParams.get('error');
+
+  if (!code && !error) return null;
+  let transaction;
+  try {
+    transaction = JSON.parse(sessionStorage.getItem(LOGIN_TRANSACTION_KEY));
+  } catch {
+    transaction = null;
+  }
+  sessionStorage.removeItem(LOGIN_TRANSACTION_KEY);
+  window.history.replaceState({}, document.title, window.location.pathname);
+  if (!transaction || !urlParams.get('state') || urlParams.get('state') !== transaction.state
+      || Date.now() - transaction.createdAt > 15 * 60 * 1000) {
+    throw new Error('This Spotify connection request expired or does not match this tab. Please connect again.');
+  }
 
   if (error) {
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -113,10 +156,8 @@ export async function handleAuthCallback() {
 
   if (!code) return null;
 
-  const verifier = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.verifier);
-  const clientId = SPOTIFY_CONFIG.defaultClientId || localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId);
+  const { verifier, clientId, redirectUri } = transaction;
   // Retrieve the exact redirect URI stored before redirect
-  const redirectUri = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.redirectUri) || getStandardRedirectUri();
 
   if (!verifier || !clientId) {
     window.history.replaceState({}, document.title, window.location.pathname);
@@ -138,12 +179,13 @@ export async function handleAuthCallback() {
   };
 
   try {
-    const res = await fetch(SPOTIFY_CONFIG.tokenEndpoint, payload);
-    const data = await res.json();
+    const { response: res, data } = await spotifyRequest(SPOTIFY_CONFIG.tokenEndpoint, payload);
 
     if (!res.ok) {
       throw new Error(data.error_description || data.error || 'Failed to exchange authorization code');
     }
+
+    if (generation !== authGeneration) throw new Error('Spotify connection cancelled.');
 
     // Save tokens and compute expiration timestamp
     localStorage.setItem(SPOTIFY_CONFIG.storageKeys.token, data.access_token);
@@ -168,6 +210,18 @@ export async function handleAuthCallback() {
  * Refresh expired access token using refresh_token
  */
 export async function refreshAccessToken() {
+  if (refreshPromise) return refreshPromise;
+  const pending = performTokenRefresh();
+  refreshPromise = pending;
+  try {
+    return await pending;
+  } finally {
+    if (refreshPromise === pending) refreshPromise = null;
+  }
+}
+
+async function performTokenRefresh() {
+  const generation = authGeneration;
   const refreshToken = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.refreshToken);
   const clientId = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.clientId) || SPOTIFY_CONFIG.defaultClientId;
 
@@ -189,12 +243,16 @@ export async function refreshAccessToken() {
   };
 
   try {
-    const res = await fetch(SPOTIFY_CONFIG.tokenEndpoint, payload);
-    const data = await res.json();
+    const { response: res, data } = await spotifyRequest(SPOTIFY_CONFIG.tokenEndpoint, payload);
+
+    if (generation !== authGeneration) return null;
 
     if (!res.ok) {
-      logoutSpotify();
-      return null;
+      if (data.error === 'invalid_grant' || data.error === 'invalid_client') {
+        logoutSpotify();
+        return null;
+      }
+      throw new Error('Spotify is temporarily unavailable. Please try again.');
     }
 
     localStorage.setItem(SPOTIFY_CONFIG.storageKeys.token, data.access_token);
@@ -206,9 +264,12 @@ export async function refreshAccessToken() {
 
     return data.access_token;
   } catch (err) {
+    if (generation !== authGeneration) return null;
     console.warn('Silent token refresh failed:', err);
-    logoutSpotify();
-    return null;
+    if (err.code === 'SPOTIFY_RATE_LIMITED' || err.code === 'REQUEST_TIMEOUT') throw err;
+    const failure = new Error(err.message || 'Spotify could not reconnect.', { cause: err });
+    failure.code = 'SPOTIFY_REFRESH_UNAVAILABLE';
+    throw failure;
   }
 }
 
@@ -232,6 +293,9 @@ export async function getValidAccessToken() {
  * Log out and clear stored tokens
  */
 export function logoutSpotify() {
+  authGeneration += 1;
+  refreshPromise = null;
+  sessionStorage.removeItem(LOGIN_TRANSACTION_KEY);
   localStorage.removeItem(SPOTIFY_CONFIG.storageKeys.token);
   localStorage.removeItem(SPOTIFY_CONFIG.storageKeys.refreshToken);
   localStorage.removeItem(SPOTIFY_CONFIG.storageKeys.expiresAt);
@@ -243,16 +307,24 @@ export function logoutSpotify() {
  * Generic Spotify API caller
  */
 async function spotifyFetch(endpoint, token, isRetry = false) {
-  const res = await fetch(`${SPOTIFY_CONFIG.apiEndpoint}${endpoint}`, {
+  const generation = authGeneration;
+  const { response: res, data } = await spotifyRequest(`${SPOTIFY_CONFIG.apiEndpoint}${endpoint}`, {
     headers: {
       Authorization: `Bearer ${token}`
     }
   });
 
+  if (generation !== authGeneration) throw new Error('Spotify request cancelled.');
+
   if (res.status === 401) {
     if (!isRetry) {
       // Try one refresh
-      const refreshedToken = await refreshAccessToken();
+      const savedToken = localStorage.getItem(SPOTIFY_CONFIG.storageKeys.token);
+      const savedExpiry = Number(localStorage.getItem(SPOTIFY_CONFIG.storageKeys.expiresAt));
+      const refreshedToken = savedToken && savedToken !== token && savedExpiry > Date.now()
+        ? savedToken : await refreshAccessToken();
+      if (!refreshedToken) throw new Error('Spotify session expired. Please reconnect.');
+      if (generation !== authGeneration) throw new Error('Spotify request cancelled.');
       if (refreshedToken) {
         return spotifyFetch(endpoint, refreshedToken, true);
       }
@@ -262,11 +334,10 @@ async function spotifyFetch(endpoint, token, isRetry = false) {
   }
 
   if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `Spotify API Error: ${res.status}`);
+    throw new Error(data.error?.message || `Spotify API Error: ${res.status}`);
   }
 
-  return res.json();
+  return data;
 }
 
 /**
@@ -316,6 +387,7 @@ async function captureSource(promise, fallback) {
   try {
     return { data: await promise, status: 'available', error: '' };
   } catch (error) {
+    if (['SPOTIFY_REFRESH_UNAVAILABLE', 'SPOTIFY_RATE_LIMITED', 'REQUEST_TIMEOUT'].includes(error?.code)) throw error;
     return {
       data: fallback,
       status: 'unavailable',
@@ -333,10 +405,11 @@ export async function fetchTopItemsAcrossTimeRanges(
   selectedRange,
   selectedTracks = [],
   selectedArtists = [],
-  selectedStatus = { tracks: 'available', artists: 'available' }
+  selectedStatus = { tracks: 'available', artists: 'available' },
+  existingRanges = {}
 ) {
   const entries = await Promise.all(Object.keys(SPOTIFY_TIME_RANGES).map(async range => {
-    if (range === selectedRange) {
+    if (range === selectedRange && selectedStatus.tracks === 'available' && selectedStatus.artists === 'available') {
       return [range, {
         tracks: selectedTracks,
         artists: selectedArtists,
@@ -344,10 +417,16 @@ export async function fetchTopItemsAcrossTimeRanges(
       }];
     }
 
+    const existing = existingRanges[range];
+    if (existing?.status?.tracks === 'available' && existing?.status?.artists === 'available') return [range, existing];
+
     const [tracksResult, artistsResult] = await Promise.all([
       captureSource(fetchTopTracks(token, range, 50), { items: [] }),
       captureSource(fetchTopArtists(token, range, 50), { items: [] })
     ]);
+    if ([tracksResult, artistsResult].some(source => /session expired/i.test(source.error))) {
+      throw new Error('Spotify session expired. Please reconnect.');
+    }
 
     return [range, {
       tracks: tracksResult.data?.items || [],
@@ -360,6 +439,37 @@ export async function fetchTopItemsAcrossTimeRanges(
   }));
 
   return Object.fromEntries(entries);
+}
+
+export async function loadComparisonRanges(data, selectedRange) {
+  if (data.provenance?.mode !== 'spotify' || data.comparisonLoadState === 'ready') return data.comparisonRanges;
+  if (comparisonRequests.has(data)) return comparisonRequests.get(data);
+  const generation = authGeneration;
+  data.comparisonLoadState = 'loading';
+  data.comparisonLoadError = '';
+  const pending = (async () => {
+    try {
+      const token = await getValidAccessToken();
+      if (!token) throw new Error('Spotify session expired. Please reconnect.');
+      const selected = data.comparisonRanges[selectedRange];
+      const ranges = await fetchTopItemsAcrossTimeRanges(token, selectedRange, data.topTracks, data.topArtists,
+        selected?.status, data.comparisonRanges);
+      if (generation !== authGeneration) throw new Error('Spotify connection changed. Please reopen the dossier.');
+      data.comparisonRanges = ranges;
+      data.comparisonLoadState = Object.values(ranges).every(range => range.status.tracks === 'available' && range.status.artists === 'available') ? 'ready' : 'partial';
+      return ranges;
+    } catch (error) {
+      data.comparisonLoadState = 'error';
+      data.comparisonLoadError = error.code === 'SPOTIFY_RATE_LIMITED' ? error.message
+        : /session expired/i.test(error.message) ? 'Your Spotify session ended. Close this view and reconnect Spotify.'
+          : 'Comparison windows could not load. Check your connection and try again.';
+      throw error;
+    } finally {
+      comparisonRequests.delete(data);
+    }
+  })();
+  comparisonRequests.set(data, pending);
+  return pending;
 }
 
 /**
@@ -379,18 +489,18 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
   if (expiredSource) {
     throw new Error('Spotify session expired. Please reconnect.');
   }
+  if (tracksSource.status !== 'available') {
+    throw new Error('Spotify could not retrieve ranked tracks for this window. Please try again.');
+  }
 
   const user = userSource.data;
   const topTracks = tracksSource.data?.items || [];
   const topArtists = artistsSource.data?.items || [];
   const recentlyPlayed = recentlyPlayedSource.data?.items || [];
-  const comparisonRanges = await fetchTopItemsAcrossTimeRanges(
-    token,
-    timeRange,
-    topTracks,
-    topArtists,
-    { tracks: tracksSource.status, artists: artistsSource.status }
-  );
+  const comparisonRanges = {
+    [timeRange]: { tracks: topTracks, artists: topArtists,
+      status: { tracks: tracksSource.status, artists: artistsSource.status } }
+  };
 
   // Calculate top albums from top tracks
   const topAlbums = extractTopAlbums(topTracks);
@@ -444,6 +554,7 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
     topGenres,
     recentlyPlayed,
     comparisonRanges,
+    comparisonLoadState: 'idle',
     provenance: {
       mode: 'spotify',
       retrievedAt,
@@ -501,7 +612,7 @@ export async function fetchCompleteUserWrapped(token, timeRange = 'short_term') 
         },
         {
           label: 'Audio features',
-          method: 'Energy, danceability, valence, and tempo are left unavailable because the connected endpoints do not return them.',
+          method: 'Spotify audio features are unavailable through these endpoints. During preview playback, local RMS amplitude is expressed as a percentage of full-scale amplitude. Tempo is an estimate from consistent 40–180 Hz onsets over at least six intervals and three seconds, not a full-song measurement or a Spotify energy score.',
           kind: 'direct'
         }
       ]

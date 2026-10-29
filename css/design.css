@@ -1801,6 +1801,23 @@ a:focus-visible,
   font-size: 0.75rem;
 }
 
+.comparison-load-status {
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.comparison-load-status .dossier-btn-export {
+  justify-self: start;
+  width: auto;
+  max-width: 100%;
+  height: auto;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0.65rem 0.85rem;
+  white-space: normal;
+  text-align: center;
+}
+
 .provenance-footer-note {
   display: flex;
   align-items: center;

@@ -10,7 +10,7 @@ import { audioDna } from './audio-dna.js';
 import { matchDirector, renderCriterionPosterHtml, renderSynesthesiaHtml, SynesthesiaBarcodeController } from './cinema-synesthesia.js';
 import { fetchLiveWeatherData, computeBarometricSplit, renderWeatherChaserHtml, WeatherTimelineController } from './weather-chaser.js';
 import { resolvePassportMetrics, renderBoardingPassHtml, FlightMapController, computeSubconsciousMind, renderSubconsciousMindHtml } from './world-passport.js';
-import { SPOTIFY_TIME_RANGES } from './spotify-api.js';
+import { SPOTIFY_TIME_RANGES, loadComparisonRanges } from './spotify-api.js';
 
 const COMPARISON_LIMIT = 20;
 
@@ -206,7 +206,7 @@ export class SonicDossierEngine {
     }
     if (e.key !== 'Tab') return;
 
-    const focusable = [...this.modal.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')]
+    const focusable = [...this.modal.querySelectorAll('button, select, [href], [tabindex]:not([tabindex="-1"])')]
       .filter(element => !element.disabled);
     if (!focusable.length) return;
     const first = focusable[0];
@@ -393,6 +393,10 @@ export class SonicDossierEngine {
   // =========================================================================
   render() {
     if (!this.modal) return;
+    if (this.activeDept === 'audiodna' && this.data.provenance?.mode === 'spotify'
+        && (!this.data.comparisonLoadState || this.data.comparisonLoadState === 'idle')) {
+      this.loadComparisons();
+    }
     const a = this.analytics;
     const profileImage = a.user.images?.[0]?.url || '';
     const profileName = a.user.display_name || a.user.id || '';
@@ -459,12 +463,43 @@ export class SonicDossierEngine {
 
         <!-- Main Tab Content Body (Exportable Container) -->
         <main class="dossier-main" id="dossier-exportable-stage">
+          ${this.renderComparisonStatus()}
           ${this.renderActiveDepartmentContent()}
         </main>
       </div>
     `;
 
     this.attachEventListeners();
+  }
+
+  loadComparisons() {
+    const data = this.data;
+    loadComparisonRanges(data, this.timeRange).catch(() => {
+      // The snapshot carries the recovery message shown by renderComparisonStatus.
+    }).finally(() => {
+      if (!this.isOpen || this.data !== data || this.activeDept !== 'audiodna') return;
+      const active = document.activeElement;
+      const selector = active?.id ? `#${CSS.escape(active.id)}`
+        : active?.dataset.dept ? `[data-dept="${active.dataset.dept}"]`
+          : active?.dataset.sub ? `[data-sub="${active.dataset.sub}"]` : '';
+      this.render();
+      if (selector) this.modal.querySelector(selector)?.focus({ preventScroll: true });
+    });
+  }
+
+  renderComparisonStatus() {
+    if (this.activeDept !== 'audiodna') return '';
+    const status = this.data.comparisonLoadState;
+    if (!['loading', 'error', 'partial'].includes(status)) return '';
+    const title = status === 'loading' ? 'Loading comparison windows'
+      : status === 'partial' ? 'Some comparison windows are unavailable' : 'Comparison windows could not load';
+    const message = status === 'loading' ? 'Reading the other Spotify windows for Audio DNA and period comparisons.'
+      : status === 'partial' ? 'Available windows remain usable. Retry to request the missing windows; no sample history is substituted.'
+        : this.data.comparisonLoadError;
+    return `<div class="dossier-card provenance-empty-state comparison-load-status" role="status" aria-live="polite">
+      <strong>${escapeHtml(title)}</strong><span>${escapeHtml(message)}</span>
+      ${status === 'loading' ? '' : '<button id="btn-retry-comparisons" class="dossier-btn-export" type="button">Retry comparison windows</button>'}
+    </div>`;
   }
 
   renderSubNavPillStrip() {
@@ -563,6 +598,7 @@ export class SonicDossierEngine {
 
     // 2. Audio DNA & Persona
     if (this.activeDept === 'audiodna') {
+      if (['loading', 'error'].includes(this.data.comparisonLoadState)) return '';
       const sub = this.activeSub.audiodna;
       if (sub === 'explorer') {
         return '<div id="dna-mount-point" class="dna-container-mount"></div>';
@@ -1207,6 +1243,11 @@ export class SonicDossierEngine {
   attachEventListeners() {
     if (!this.modal) return;
     this.cleanupControllers();
+    this.modal.querySelector('#btn-retry-comparisons')?.addEventListener('click', () => {
+      this.loadComparisons();
+      this.render();
+      this.modal.querySelector('.dossier-dept-btn.active')?.focus({ preventScroll: true });
+    });
 
     // Close buttons
     const btnClose = this.modal.querySelector('#btn-dossier-close');

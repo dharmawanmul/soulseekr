@@ -1,12 +1,36 @@
 /**
- * Audio Player Engine with Real 30-Second Studio Audio Preview Matcher
- * & Web Audio API Generative Fallback
- *
- * 1. Checks for native Spotify preview_url
- * 2. If null (as Spotify now does for most tracks), queries the public Apple Music / iTunes
- *    search API to stream the REAL 30s studio master audio preview of that exact track!
- * 3. Falls back to generative Web Audio synth loops if offline.
+ * Plays Spotify previews or verified Apple catalog matches, capped at 30 seconds.
  */
+
+import { bandLevel, rmsLevel, PreviewTempoEstimator } from './audio-analysis.js';
+
+function normalizeCatalogText(value) {
+  return String(value || '').normalize('NFKD').replace(/\p{M}/gu, '')
+    .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
+}
+
+function recordingTitle(value) {
+  return normalizeCatalogText(String(value || '')
+    .replace(/\s*[-(\[]\s*(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?\s*[)\]]?\s*$/i, ''));
+}
+
+export function findMatchingPreview(results, trackName, artistName, durationMs) {
+  const title = recordingTitle(trackName);
+  const artist = normalizeCatalogText(artistName);
+  if (!title || !artist) return null;
+  return (Array.isArray(results) ? results : []).find(candidate => {
+    if (!candidate) return false;
+    if (recordingTitle(candidate.trackName) !== title
+        || normalizeCatalogText(candidate.artistName) !== artist) return false;
+    if (Number.isFinite(durationMs) && Number.isFinite(candidate.trackTimeMillis)
+        && Math.abs(durationMs - candidate.trackTimeMillis) > 10000) return false;
+    try {
+      return new URL(candidate.previewUrl).protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }) || null;
+}
 
 class SoundEngine {
   constructor() {
@@ -21,11 +45,9 @@ class SoundEngine {
     this.timeDomainData = null;
     this.analysisAnimId = null;
     this.onAudioFrameCallbacks = [];
-    this.trackAcoustics = new Map(); // trackId -> { bpm, energy, measuredAt }
-    this.beatHistory = [];
-    this.lastBeatTime = 0;
-    this.runningEnergyBaseline = 0;
+    this.trackAcoustics = new Map();
     this.measuredBpm = null;
+    this.tempoEstimator = new PreviewTempoEstimator();
 
     this.isPlaying = false;
     this.isPaused = false;
@@ -59,9 +81,9 @@ class SoundEngine {
     });
 
     this.audioElement?.addEventListener?.('error', (e) => {
-      console.warn('Audio playback error, falling back to synth:', e);
+      console.warn('Audio playback error:', e);
       if (this.currentTrackId && !this.synthInterval) {
-        this.playSynthesizedLoop('Synth Fallback');
+        this.reportPreviewUnavailable();
       }
     });
   }
@@ -79,7 +101,8 @@ class SoundEngine {
       isPaused: this.isPaused,
       isLoading: this.isLoading,
       currentTrackId: this.currentTrackId,
-      currentTrack: this.currentTrack
+      currentTrack: this.currentTrack,
+      previewError: this.previewError || ''
     }));
   }
 
@@ -144,10 +167,10 @@ class SoundEngine {
     try {
       this.sourceNode = this.audioContext.createMediaElementSource(this.audioElement);
       this.analyserNode = this.audioContext.createAnalyser();
-      this.analyserNode.fftSize = 128;
+      this.analyserNode.fftSize = 2048;
       this.analyserNode.smoothingTimeConstant = 0.75;
       this.frequencyData = new Uint8Array(this.analyserNode.frequencyBinCount);
-      this.timeDomainData = new Uint8Array(this.analyserNode.fftSize);
+      this.timeDomainData = new Float32Array(this.analyserNode.fftSize);
 
       this.sourceNode.connect(this.analyserNode);
       this.analyserNode.connect(this.audioContext.destination);
@@ -188,70 +211,28 @@ class SoundEngine {
 
   analyzeCurrentFrame() {
     if (!this.analyserNode || !this.frequencyData) {
-      const now = performance.now();
-      const mockBass = 0.35 + Math.sin(now * 0.005) * 0.25;
-      const mockMid = 0.45 + Math.sin(now * 0.007) * 0.3;
-      const mockTreble = 0.3 + Math.sin(now * 0.009) * 0.2;
-      this.emitAudioFrame({ bass: mockBass, mid: mockMid, treble: mockTreble, overall: 0.4, bpm: this.measuredBpm });
+      this.emitAudioFrame({ bass: 0, mid: 0, treble: 0, overall: 0, bpm: null, isResting: true });
       return;
     }
 
     this.analyserNode.getByteFrequencyData(this.frequencyData);
-    this.analyserNode.getByteTimeDomainData(this.timeDomainData);
+    this.analyserNode.getFloatTimeDomainData(this.timeDomainData);
 
-    const binCount = this.frequencyData.length;
-    let bassSum = 0;
-    for (let i = 0; i < 7; i++) bassSum += this.frequencyData[i];
-    const bass = bassSum / (7 * 255);
-
-    let midSum = 0;
-    for (let i = 7; i < 25; i++) midSum += this.frequencyData[i];
-    const mid = midSum / (18 * 255);
-
-    let trebleSum = 0;
-    for (let i = 25; i < binCount; i++) trebleSum += this.frequencyData[i];
-    const treble = trebleSum / ((binCount - 25) * 255);
-
-    // Compute genuine RMS amplitude from time-domain waveform
-    let sumSquares = 0;
-    for (let i = 0; i < this.timeDomainData.length; i++) {
-      const normalized = (this.timeDomainData[i] - 128) / 128;
-      sumSquares += normalized * normalized;
-    }
-    const rms = Math.sqrt(sumSquares / this.timeDomainData.length);
-
-    // Beat onset detection on sub-bass pulses
-    const now = performance.now();
-    this.runningEnergyBaseline = this.runningEnergyBaseline * 0.95 + bass * 0.05;
-    const threshold = Math.max(0.35, this.runningEnergyBaseline * 1.35);
-
-    if (bass > threshold && (now - this.lastBeatTime) > 240) {
-      if (this.lastBeatTime > 0) {
-        const interval = now - this.lastBeatTime;
-        if (interval >= 280 && interval <= 1100) {
-          this.beatHistory.push(interval);
-          if (this.beatHistory.length > 12) this.beatHistory.shift();
-
-          if (this.beatHistory.length >= 5) {
-            const sorted = [...this.beatHistory].sort((a, b) => a - b);
-            const medianInterval = sorted[Math.floor(sorted.length / 2)];
-            let calculatedBpm = Math.round(60000 / medianInterval);
-            if (calculatedBpm < 70) calculatedBpm *= 2;
-            if (calculatedBpm > 175) calculatedBpm = Math.round(calculatedBpm / 2);
-
-            this.measuredBpm = calculatedBpm;
-
-            if (this.currentTrackId) {
-              this.trackAcoustics.set(this.currentTrackId, {
-                bpm: calculatedBpm,
-                energy: Math.min(100, Math.round(rms * 160)),
-                measuredAt: Date.now()
-              });
-            }
-          }
-        }
-      }
-      this.lastBeatTime = now;
+    const sampleRate = this.audioContext.sampleRate;
+    const fftSize = this.analyserNode.fftSize;
+    const bass = bandLevel(this.frequencyData, sampleRate, fftSize, 40, 180);
+    const mid = bandLevel(this.frequencyData, sampleRate, fftSize, 181, 4000);
+    const treble = bandLevel(this.frequencyData, sampleRate, fftSize, 4001, 16000);
+    const rms = rmsLevel(this.timeDomainData);
+    this.measuredBpm = this.tempoEstimator.update(bass, performance.now());
+    const levelPercent = Math.round(rms * 100);
+    if (this.currentTrackId) {
+      this.trackAcoustics.set(this.currentTrackId, {
+        bpm: this.measuredBpm,
+        levelPercent,
+        measuredAt: Date.now(),
+        method: 'preview-onset-estimate-and-rms-full-scale'
+      });
     }
 
     this.emitAudioFrame({
@@ -260,7 +241,7 @@ class SoundEngine {
       treble,
       overall: rms,
       bpm: this.measuredBpm,
-      energy: Math.min(100, Math.round(rms * 160))
+      levelPercent
     });
   }
 
@@ -288,8 +269,8 @@ class SoundEngine {
   /**
    * Search public iTunes/Apple Music catalog for the real 30s studio preview
    */
-  async resolveRealAudioPreview(trackName, artistName) {
-    const cacheKey = `${artistName} - ${trackName}`.toLowerCase().trim();
+  async resolveRealAudioPreview(trackName, artistName, durationMs) {
+    const cacheKey = JSON.stringify([artistName, trackName, durationMs]);
     if (this.previewCache.has(cacheKey)) {
       return this.previewCache.get(cacheKey);
     }
@@ -304,15 +285,16 @@ class SoundEngine {
         .trim();
 
       const query = `${artistName} ${cleanTrack}`.trim();
-      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`;
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`;
       
-      const signal = typeof AbortSignal?.timeout === 'function' ? AbortSignal.timeout(5000) : undefined;
+      const signal = typeof globalThis.AbortSignal?.timeout === 'function' ? AbortSignal.timeout(5000) : undefined;
       const res = await fetch(url, { signal });
       if (!res.ok) return null;
       
       const data = await res.json();
-      if (data.results && data.results.length > 0 && data.results[0].previewUrl) {
-        const previewUrl = data.results[0].previewUrl;
+      const match = findMatchingPreview(data.results || [], trackName, artistName, durationMs);
+      if (match) {
+        const previewUrl = match.previewUrl;
         this.previewCache.set(cacheKey, previewUrl);
         return previewUrl;
       }
@@ -363,7 +345,7 @@ class SoundEngine {
       } else if (track.artistName) {
         artist = track.artistName;
       }
-      previewUrl = await this.resolveRealAudioPreview(track.name, artist);
+      previewUrl = await this.resolveRealAudioPreview(track.name, artist, track.duration_ms);
       if (requestId !== this.playRequestId) return;
       if (previewUrl) {
         track.preview_url = previewUrl;
@@ -394,13 +376,19 @@ class SoundEngine {
       } catch (err) {
         if (requestId !== this.playRequestId) return;
         if (!this.synthInterval) {
-          console.warn('HTML5 Audio play failed, starting generative synth:', err);
-          this.playSynthesizedLoop(track.name);
+          console.warn('HTML5 Audio play failed:', err);
+          this.reportPreviewUnavailable();
         }
       }
     } else {
-      this.playSynthesizedLoop(track.name);
+      this.reportPreviewUnavailable();
     }
+  }
+
+  reportPreviewUnavailable() {
+    this.stop(false);
+    this.previewError = 'Preview unavailable. No verified audio preview could be played for this track.';
+    this.notifyState();
   }
 
   pause() {
@@ -542,12 +530,12 @@ class SoundEngine {
   }
 
   stop(shouldNotify = true) {
+    this.previewError = '';
     this.playRequestId += 1;
     this.resetPreviewCountdown();
+    this.measuredBpm = null;
+    this.tempoEstimator.reset();
     this.stopAnalysisLoop();
-    this.beatHistory = [];
-    this.lastBeatTime = 0;
-    this.runningEnergyBaseline = 0;
     this.isStopping = true;
     if (this.audioElement) {
       this.audioElement.pause();

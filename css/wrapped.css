@@ -395,6 +395,8 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -413,6 +415,10 @@
   pointer-events: auto;
   transform: scale(1) translateY(0);
   filter: blur(0);
+}
+
+.wrapped-slide > * {
+  flex-shrink: 0;
 }
 
 /* --------------------------------------------------------------------------

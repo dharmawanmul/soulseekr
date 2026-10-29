@@ -1,4 +1,4 @@
-name: Deploy SoundWrapped to GitHub Pages
+name: Verify and deploy Soulseekr to GitHub Pages
 
 on:
   push:
@@ -15,7 +15,33 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  checks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install locked development dependencies
+        run: npm ci
+      - name: Check syntax
+        run: npm run check
+      - name: Run unit regressions
+        run: npm test
+      - name: Install test browser
+        run: node node_modules/playwright-core/cli.js install --with-deps chromium
+      - name: Run browser regressions
+        run: npm run test:browser
+        env:
+          BROWSER_CHANNEL: chromium
+
   deploy:
+    needs: checks
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
