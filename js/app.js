@@ -858,7 +858,7 @@ soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, cur
       }
 
       if (isPlaying) {
-        showToast(`Playing preview: ${track.name}`, 'info', 2000);
+        showToast(track.source === 'generated' ? 'Playing local instrumental' : `Playing preview: ${track.name}`, 'info', 2000);
       }
     }
   } else if (!isPlaying && !isPaused && !isLoading) {

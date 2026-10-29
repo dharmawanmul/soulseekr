@@ -3,6 +3,8 @@
  */
 
 import { bandLevel, rmsLevel, PreviewTempoEstimator } from './audio-analysis.js';
+import { INSTRUMENTAL_TRACK } from './story-soundtrack.js';
+import { requestJson } from './request.js';
 
 function normalizeCatalogText(value) {
   return String(value || '').normalize('NFKD').replace(/\p{M}/gu, '')
@@ -12,6 +14,17 @@ function normalizeCatalogText(value) {
 function recordingTitle(value) {
   return normalizeCatalogText(String(value || '')
     .replace(/\s*[-(\[]\s*(?:\d{4}\s+)?remaster(?:ed)?(?:\s+\d{4})?\s*[)\]]?\s*$/i, ''));
+}
+
+async function startPlayback(start, timeoutMs) {
+  let timeout;
+  try {
+    await Promise.race([start(), new Promise((_resolve, reject) => {
+      timeout = setTimeout(() => reject(new Error('Audio playback timed out')), timeoutMs);
+    })]);
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export function findMatchingPreview(results, trackName, artistName, durationMs) {
@@ -55,9 +68,11 @@ export class SoundEngine {
     this.currentTrackId = null;
     this.currentTrack = null;
     this.synthInterval = null;
+    this.synthVoices = new Set();
     this.synthSeedName = '';
     this.onStateChangeCallbacks = [];
     this.previewCache = new Map(); // cache query -> previewUrl
+    this.previewRequests = new Map();
     this.playRequestId = 0;
     this.previewTimer = null;
     this.previewDurationMs = 30000;
@@ -81,9 +96,10 @@ export class SoundEngine {
     });
 
     this.audioElement?.addEventListener?.('error', (e) => {
+      if (this.isStopping || !this.audioElement.error) return;
       console.warn('Audio playback error:', e);
       if (this.currentTrackId && !this.synthInterval) {
-        this.reportPreviewUnavailable();
+        this.reportPreviewUnavailable({ silent: this.silentPlaybackFailure });
       }
     });
   }
@@ -102,7 +118,8 @@ export class SoundEngine {
       isLoading: this.isLoading,
       currentTrackId: this.currentTrackId,
       currentTrack: this.currentTrack,
-      previewError: this.previewError || ''
+      previewError: this.previewError || '',
+      previewFailure: this.lastPlaybackFailure || null
     }));
   }
 
@@ -152,7 +169,7 @@ export class SoundEngine {
       }
     }
     if (this.audioContext?.state === 'suspended') {
-      this.audioContext.resume();
+      return this.audioContext.resume().catch(() => {});
     }
   }
 
@@ -274,7 +291,17 @@ export class SoundEngine {
     if (this.previewCache.has(cacheKey)) {
       return this.previewCache.get(cacheKey);
     }
+    if (this.previewRequests.has(cacheKey)) return this.previewRequests.get(cacheKey);
+    const pending = this.fetchRealAudioPreview(trackName, artistName, durationMs, cacheKey);
+    this.previewRequests.set(cacheKey, pending);
+    try {
+      return await pending;
+    } finally {
+      this.previewRequests.delete(cacheKey);
+    }
+  }
 
+  async fetchRealAudioPreview(trackName, artistName, durationMs, cacheKey) {
     try {
       // Clean track name of remaster / deluxe suffixes for optimal search matching
       const cleanTrack = trackName
@@ -287,11 +314,8 @@ export class SoundEngine {
       const query = `${artistName} ${cleanTrack}`.trim();
       const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=15`;
       
-      const signal = typeof globalThis.AbortSignal?.timeout === 'function' ? AbortSignal.timeout(5000) : undefined;
-      const res = await fetch(url, { signal });
+      const { response: res, data } = await requestJson(url, {}, 2500);
       if (!res.ok) return null;
-      
-      const data = await res.json();
       const match = findMatchingPreview(data.results || [], trackName, artistName, durationMs);
       if (match) {
         const previewUrl = match.previewUrl;
@@ -308,8 +332,8 @@ export class SoundEngine {
   /**
    * Play track: Resolves real audio and streams
    */
-  async playTrack(track, { restart = false } = {}) {
-    if (!track?.id) return;
+  async playTrack(track, { restart = false, silentFailure = false, playTimeoutMs = 12000 } = {}) {
+    if (!track?.id) return { status: 'unavailable' };
 
     if (!restart && this.currentTrackId === track.id) {
       if (this.isPlaying) {
@@ -329,6 +353,7 @@ export class SoundEngine {
     this.stop(false);
     this.resetPreviewCountdown();
     const requestId = ++this.playRequestId;
+    this.silentPlaybackFailure = silentFailure;
     this.currentTrackId = track.id;
     this.currentTrack = track;
     this.isPaused = false;
@@ -346,7 +371,7 @@ export class SoundEngine {
         artist = track.artistName;
       }
       previewUrl = await this.resolveRealAudioPreview(track.name, artist, track.duration_ms);
-      if (requestId !== this.playRequestId) return;
+      if (requestId !== this.playRequestId) return { status: 'cancelled' };
       if (previewUrl) {
         track.preview_url = previewUrl;
       }
@@ -359,14 +384,15 @@ export class SoundEngine {
         this.audioElement.addEventListener('loadedmetadata', () => {
           if (requestId === this.playRequestId) this.setPreviewStartPosition();
         }, { once: true });
-        await this.audioElement.play();
+        await startPlayback(() => this.audioElement.play(), playTimeoutMs);
         if (requestId !== this.playRequestId) {
           if (!this.currentTrackId) {
             this.isStopping = true;
             this.audioElement.pause();
             this.isStopping = false;
           }
-          return;
+          return this.lastPlaybackFailure?.requestId === requestId
+            ? this.lastPlaybackFailure : { status: 'cancelled' };
         }
         this.isLoading = false;
         this.isPlaying = true;
@@ -374,22 +400,47 @@ export class SoundEngine {
         this.schedulePreviewStop();
         this.startAnalysisLoop();
         this.notifyState();
+        return { status: 'playing', track };
       } catch (err) {
-        if (requestId !== this.playRequestId) return;
+        if (requestId !== this.playRequestId) return this.lastPlaybackFailure?.requestId === requestId
+          ? this.lastPlaybackFailure : { status: 'cancelled' };
         if (!this.synthInterval) {
           console.warn('HTML5 Audio play failed:', err);
-          this.reportPreviewUnavailable();
+          return this.reportPreviewUnavailable({ silent: silentFailure, blocked: err.name === 'NotAllowedError' });
         }
       }
     } else {
-      this.reportPreviewUnavailable();
+      return this.reportPreviewUnavailable({ silent: silentFailure });
     }
   }
 
-  reportPreviewUnavailable() {
+  reportPreviewUnavailable({ silent = false, blocked = false } = {}) {
+    const failure = { status: blocked ? 'blocked' : 'unavailable',
+      trackId: this.currentTrackId, requestId: this.playRequestId };
     this.stop(false);
-    this.previewError = 'Preview unavailable. No verified audio preview could be played for this track.';
+    this.lastPlaybackFailure = failure;
+    this.previewError = silent ? '' : blocked ? 'Your browser paused audio. Tap Play to enable the preview.'
+      : 'Preview unavailable. No verified audio preview could be played for this track.';
     this.notifyState();
+    return failure;
+  }
+
+  async playInstrumental() {
+    this.stop(false);
+    const requestId = ++this.playRequestId;
+    try {
+      await startPlayback(() => this.initAudioContext(), 2000);
+      if (requestId !== this.playRequestId) return { status: 'cancelled' };
+      if (!this.audioContext || this.audioContext.state !== 'running') return { status: 'blocked' };
+      this.currentTrack = { ...INSTRUMENTAL_TRACK };
+      this.currentTrackId = INSTRUMENTAL_TRACK.id;
+      this.playSynthesizedLoop('Soulseekr story');
+      return { status: 'playing', track: this.currentTrack, fallback: true };
+    } catch (error) {
+      if (requestId === this.playRequestId) this.stop();
+      console.warn('Instrumental audio could not start:', error);
+      return { status: 'blocked' };
+    }
   }
 
   pause() {
@@ -404,6 +455,7 @@ export class SoundEngine {
     if (this.synthInterval) {
       clearInterval(this.synthInterval);
       this.synthInterval = null;
+      this.stopSynthVoices();
     } else {
       this.isStopping = true;
       this.audioElement.pause();
@@ -498,6 +550,8 @@ export class SoundEngine {
 
       chord.forEach((freq, i) => {
         const osc = this.audioContext.createOscillator();
+        this.synthVoices.add(osc);
+        osc.onended = () => this.synthVoices.delete(osc);
         const gain = this.audioContext.createGain();
         const filter = this.audioContext.createBiquadFilter();
 
@@ -513,10 +567,7 @@ export class SoundEngine {
 
         osc.connect(filter);
         filter.connect(gain);
-        gain.connect(this.audioContext.destination);
-        if (this.analyserNode) {
-          try { gain.connect(this.analyserNode); } catch (e) {}
-        }
+        gain.connect(this.analyserNode || this.audioContext.destination);
 
         osc.start(now);
         osc.stop(now + 1.9);
@@ -524,6 +575,8 @@ export class SoundEngine {
 
       if (chordIdx % 2 === 1) {
         const kickOsc = this.audioContext.createOscillator();
+        this.synthVoices.add(kickOsc);
+        kickOsc.onended = () => this.synthVoices.delete(kickOsc);
         const kickGain = this.audioContext.createGain();
 
         kickOsc.frequency.setValueAtTime(120, now);
@@ -533,10 +586,7 @@ export class SoundEngine {
         kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
 
         kickOsc.connect(kickGain);
-        kickGain.connect(this.audioContext.destination);
-        if (this.analyserNode) {
-          try { kickGain.connect(this.analyserNode); } catch (e) {}
-        }
+        kickGain.connect(this.analyserNode || this.audioContext.destination);
 
         kickOsc.start(now);
         kickOsc.stop(now + 0.35);
@@ -547,7 +597,16 @@ export class SoundEngine {
     this.synthInterval = setInterval(playChordStep, 1800);
   }
 
+  stopSynthVoices() {
+    for (const voice of this.synthVoices) {
+      try { voice.stop(); voice.disconnect(); } catch { /* Voice may already have ended. */ }
+    }
+    this.synthVoices.clear();
+  }
+
   stop(shouldNotify = true) {
+    this.lastPlaybackFailure = null;
+    this.silentPlaybackFailure = false;
     this.previewError = '';
     this.playRequestId += 1;
     this.resetPreviewCountdown();
@@ -566,6 +625,7 @@ export class SoundEngine {
       clearInterval(this.synthInterval);
       this.synthInterval = null;
     }
+    this.stopSynthVoices();
 
     this.isPlaying = false;
     this.isPaused = false;

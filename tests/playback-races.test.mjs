@@ -92,3 +92,22 @@ test('clicking a buffering track cancels it without a late restart', async () =>
   assert.equal(engine.isPlaying, false);
   assert.equal(audio.paused, true);
 });
+
+test('a stale media error with no current MediaError cannot stop a playing track', async () => {
+  const { audio, engine } = fixture();
+  const pending = engine.playTrack(track('a'));
+  audio.pending[0].finish(); await pending;
+  audio.dispatchEvent(new Event('error'));
+  assert.equal(engine.currentTrackId, 'a');
+  assert.equal(engine.isPlaying, true);
+  engine.stop();
+});
+
+test('a stalled media start returns an unavailable result within its deadline', async t => {
+  const { engine } = fixture();
+  t.mock.method(console, 'warn', () => {});
+  const result = await engine.playTrack(track('a'), { silentFailure: true, playTimeoutMs: 20 });
+  assert.equal(result.status, 'unavailable');
+  assert.equal(engine.currentTrackId, null);
+  assert.equal(engine.previewError, '');
+});

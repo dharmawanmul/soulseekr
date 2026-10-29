@@ -220,10 +220,12 @@ try {
   await page.setViewportSize({ width: 1440, height: 1000 });
   comparisonsFail = false;
   const beforeRetry = requests.length;
+  await page.evaluate(async () => { window.dossier = (await import('/js/dossier.js')).sonicDossier; });
   await page.locator('#btn-retry-comparisons').click();
-  await page.waitForFunction(async () => (await import('/js/dossier.js')).sonicDossier.data.comparisonLoadState === 'ready');
+  await page.waitForFunction(() => dossier.data.comparisonLoadState === 'ready');
   assert.equal(requests.length - beforeRetry, 4);
   await page.locator('[data-sub="comparison"]').click();
+  await page.waitForSelector('[data-comparison-side]');
   assert.equal(await page.locator('[data-comparison-side]').count(), 2);
   await page.waitForSelector('.comparison-track-list');
   assert.equal(await page.locator('.comparison-track-list').count(), 2);
@@ -310,6 +312,83 @@ try {
   assert.equal(await page.evaluate(() => wrapped.visualizer), null);
   await page.keyboard.press('Escape');
   console.log('PASS real Three.js background, WebGL fallback, pause, hidden tab, keyboard and mobile controls');
+
+  await page.evaluate(async () => {
+    const w = (await import('/js/wrapped-experience.js')).wrappedExperience;
+    window.storyEngine = (await import('/js/audio-player.js')).soundEngine;
+    const data = structuredClone((await import('/js/app.js')).DEFAULT_CURATED_DATA);
+    const good = { ...data.topTracks[0], id: 'working-story-preview', preview_url: 'https://audio.example.test/preview.wav' };
+    const missing = { id: 'missing-story-preview', name: 'Unavailable story fixture', artists: [{ name: 'Missing artist' }] };
+    w.isMuted = true;
+    w.open(data);
+    w.slideTracks[1] = missing;
+    w.soundtrackPool = [missing, good];
+    w.isMuted = false;
+    w.goToSlide(1);
+  });
+  await page.waitForFunction(() => {
+    return storyEngine.currentTrackId === 'working-story-preview' && storyEngine.isPlaying && !wrapped.storyAudioPending;
+  });
+  assert.equal(await page.evaluate(() => wrapped.slideDurationMs), 15000);
+  assert.match(await page.locator('#wrapped-soundtrack-index').innerText(), /alternate/i);
+  assert.doesNotMatch(await page.locator('#wrapped-soundtrack-title').innerText(), /unavailable/i);
+  await page.evaluate(() => {
+    wrapped.slideTracks[5] = { id: 'missing-recap-preview', name: 'Missing recap fixture', artists: [{ name: 'Missing artist' }] };
+    wrapped.goToSlide(5);
+  });
+  await page.waitForFunction(() => {
+    return storyEngine.currentTrackId === 'working-story-preview' && storyEngine.isPlaying && !wrapped.storyAudioPending;
+  });
+  await page.keyboard.press('Escape');
+
+  await page.evaluate(async () => {
+    const data = structuredClone((await import('/js/app.js')).DEFAULT_CURATED_DATA);
+    data.topTracks = [
+      { ...data.topTracks[0], id: 'no-preview-a', name: 'Absent preview A', preview_url: null, artists: [{ name: 'Absent artist' }] },
+      { ...data.topTracks[1], id: 'no-preview-b', name: 'Absent preview B', preview_url: null, artists: [{ name: 'Absent artist' }] }
+    ];
+    wrapped.isMuted = true;
+    wrapped.open(data);
+    wrapped.isMuted = false;
+    wrapped.goToSlide(1);
+  });
+  await page.waitForFunction(() => {
+    return storyEngine.currentTrack?.source === 'generated' && storyEngine.isPlaying
+      && storyEngine.synthVoices.size > 0 && !wrapped.storyAudioPending;
+  });
+  assert.match(await page.locator('#wrapped-soundtrack-index').innerText(), /Instrumental fallback/i);
+  assert.match(await page.locator('#wrapped-soundtrack-title').innerText(), /Generated on this device/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.screenshot({ path: 'test-results/story-instrumental-mobile.png' });
+  await page.evaluate(async () => {
+    const e = (await import('/js/audio-player.js')).soundEngine;
+    e.stop();
+    window.originalInstrumental = e.playInstrumental;
+    e.playInstrumental = async () => ({ status: 'blocked' });
+    wrapped.goToSlide(1);
+  });
+  await page.waitForSelector('#btn-wrapped-audio-retry:not([hidden])');
+  const retryAudio = await page.locator('#btn-wrapped-audio-retry').evaluate(button => ({
+    width: button.clientWidth, contentWidth: button.scrollWidth,
+    height: button.getBoundingClientRect().height
+  }));
+  assert.ok(retryAudio.width + 1 >= retryAudio.contentWidth && retryAudio.height >= 44, JSON.stringify(retryAudio));
+  await page.screenshot({ path: 'test-results/story-audio-retry-mobile.png' });
+  await page.evaluate(async () => { (await import('/js/audio-player.js')).soundEngine.playInstrumental = originalInstrumental; });
+  await page.locator('#btn-wrapped-audio-retry').focus();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => {
+    return storyEngine.isPlaying && storyEngine.currentTrack?.source === 'generated' && !wrapped.storyAudioPending;
+  });
+  assert.equal(await page.locator('#btn-wrapped-audio-retry').isVisible(), false);
+  await page.locator('#btn-wrapped-mute').click();
+  assert.equal(await page.evaluate(async () => (await import('/js/audio-player.js')).soundEngine.synthVoices.size), 0);
+  await page.locator('#btn-wrapped-mute').click();
+  await page.waitForFunction(() => storyEngine.isPlaying && storyEngine.synthVoices.size > 0 && !wrapped.storyAudioPending);
+  await page.keyboard.press('Escape');
+  assert.equal(await page.evaluate(() => storyEngine.synthVoices.size), 0);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  console.log('PASS second/last story fallback, working-preview reuse, real instrumental, browser recovery and mute cleanup');
 
   await page.evaluate(async () => {
     const { soundEngine } = await import('/js/audio-player.js');

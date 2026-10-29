@@ -275,6 +275,24 @@
   font-weight: 500;
 }
 
+.wrapped-soundtrack-cue .wrapped-soundtrack-retry {
+  grid-column: 1 / -1;
+  justify-self: end;
+  width: auto;
+  min-height: 44px;
+  height: auto;
+  padding: 0.5rem 0.8rem;
+  white-space: normal;
+}
+
+.wrapped-soundtrack-cue .wrapped-soundtrack-retry[hidden] {
+  display: none;
+}
+
+.wrapped-soundtrack-cue.is-instrumental > strong {
+  white-space: normal;
+}
+
 .wrapped-data-empty {
   padding: 1rem;
   border: 1px solid rgba(255, 255, 255, 0.22);

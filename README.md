@@ -19,7 +19,7 @@ The main workspace renders eight formats from the same listening data:
 | Retro Handheld | Game Boy-inspired cartridge console with a green-tint dot-matrix LCD |
 | VIP Pass | Festival credential with a listening timetable |
 
-Connected accounts also unlock the Year in Music story and the Taste Dossier. Each story soundtrack is randomly drawn without replacement from up to 50 ranked tracks and is capped at a 30-second preview. The dossier includes Audio DNA, cinema and synesthesia, listening-weather, listening-geography, a period comparison, and a data-provenance ledger.
+Connected accounts also unlock the Year in Music story and the Taste Dossier. Story soundtracks start with random picks from up to 50 ranked tracks. If a preview cannot play, the story tries another ranked track or reuses a working preview; after bounded attempts, it uses a clearly labelled on-device instrumental. Audio keeps the same 30-second listening budget. The dossier includes Audio DNA, cinema and synesthesia, listening-weather, listening-geography, a period comparison, and a data-provenance ledger.
 
 ## Interaction and export
 
@@ -30,8 +30,8 @@ Connected accounts also unlock the Year in Music story and the Taste Dossier. Ea
 - Audio DNA switches its track, artist, metric, release-era, and genre datasets with the selected Spotify time horizon. Windows Spotify did not return are disabled rather than filled with sample data.
 - The selected artifact can be downloaded in 9:16 or 1:1 format, or copied to the clipboard when the browser supports image clipboard access.
 - Wrapped and dossier dialogs close with Escape and return focus to the control that opened them.
-- Each Year in Music story uses a different unique ranked track when enough tracks are available.
-- Stories advance after 10 seconds. Pause/Resume works by keyboard or pointer, holding the story temporarily pauses it, and switching browser tabs pauses the timer. Scrolling never skips stories; the recap remains open for export.
+- Year in Music prefers different ranked previews and labels the actual soundtrack playing. The local instrumental is identified separately, never as a Spotify recording. When the browser blocks audio, Play story audio provides a user-gesture retry. Muting, closing, or changing stories cancels pending playback; concurrent preview lookups are shared.
+- Stories advance after 15 seconds of reading time, with the timer held while a soundtrack is selected. Pause/Resume works by keyboard or pointer, holding the story temporarily pauses it, and switching browser tabs pauses the timer. Scrolling never skips stories; the recap remains open for export.
 - Period Comparison contrasts Spotify's approximate four-week, six-month, and one-year affinity windows without substituting data from another window.
 - If a window request fails, the last loaded archive keeps its original window label and selection. Retry requests the failed window explicitly; exports and private views use the loaded snapshot's window.
 - Stop and switching tracks invalidate delayed media operations. Disconnecting stops playback and clears the previous track's audio dock.
@@ -86,7 +86,7 @@ npm test
 npm run test:browser
 ```
 
-The unit suite checks authentication, preview matching, delayed media races, acoustic calculations, weather failures, request timeouts, rate limits, and deferred comparison loading. The browser suite checks the eight artifact formats, real html2canvas exports and image sizes, failed and rapid window changes, disconnecting during a request or playback, comparison/weather retry, clipboard success/fallback, real Three.js initialization and WebGL fallback, Wrapped pause/navigation, mobile controls, feature-button recovery, and audio playback.
+The unit suite checks authentication, preview matching, soundtrack fallbacks, delayed media races, acoustic calculations, weather failures, request timeouts, rate limits, and deferred comparison loading. The browser suite checks the eight artifact formats, real html2canvas exports and image sizes, failed and rapid window changes, disconnecting during a request or playback, comparison/weather retry, clipboard success/fallback, real Three.js initialization and WebGL fallback, Wrapped pause/navigation, missing story previews, local instrumental playback and keyboard recovery, mobile controls, feature-button recovery, and audio playback.
 
 Browser checks require an installed Google Chrome. Set `BROWSER_PATH` to a Chromium-compatible executable if Chrome is elsewhere. Alternatively install Chromium with `node node_modules/playwright-core/cli.js install chromium` and set `BROWSER_CHANNEL=chromium`. Spotify and Apple responses, artwork, and a short audio waveform are fixtures; export and Three.js libraries use the same versions as the app. Screenshots are written to ignored `test-results/`. A real Spotify account authorization and real-world tempo accuracy still require manual verification.
 

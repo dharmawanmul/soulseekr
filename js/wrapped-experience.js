@@ -6,6 +6,7 @@ import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 import { showToast } from './app.js';
 import { escapeHtml } from './card-renderer.js';
+import { playStorySoundtrack } from './story-soundtrack.js';
 
 const SLIDE_THEMES = [
   { primary: '#ed6a45', secondary: '#d8c9aa', threeColors: [0xed6a45, 0xd8c9aa] },
@@ -303,6 +304,7 @@ export class WrappedExperience {
     this.soundtrackTitle = document.getElementById('wrapped-soundtrack-title');
     this.btnMute = document.getElementById('btn-wrapped-mute');
     this.btnPause = document.getElementById('btn-wrapped-pause');
+    this.btnRetryAudio = document.getElementById('btn-wrapped-audio-retry');
     this.btnClose = document.getElementById('btn-wrapped-close');
 
     // Controls
@@ -323,6 +325,13 @@ export class WrappedExperience {
     this.data = null;
     this.timeRange = 'short_term';
     this.slideTracks = [];
+    this.soundtrackPool = [];
+    this.usedSoundtracks = new Set();
+    this.failedSoundtracks = new Set();
+    this.soundtrackBudgets = new Map();
+    this.storyAudioRequestId = 0;
+    this.storyAudioPending = false;
+    this.lastPlayableSoundtrack = null;
     this.returnFocus = null;
 
     this.onKeyDown = this.handleKeyDown.bind(this);
@@ -334,6 +343,12 @@ export class WrappedExperience {
   }
 
   setupListeners() {
+    this.btnRetryAudio?.addEventListener('click', event => {
+      event.stopPropagation();
+      this.failedSoundtracks.clear();
+      this.soundtrackBudgets.delete(this.currentSlideIndex);
+      this.playSlideAudio();
+    });
     this.btnPause?.addEventListener('click', (e) => {
       e.stopPropagation();
       this.setPauseReason('user', !this.pauseReasons.has('user'));
@@ -417,7 +432,8 @@ export class WrappedExperience {
       const focusable = [...this.modal.querySelectorAll('button, [href], [tabindex]:not([tabindex="-1"])')]
         .filter(element => {
           const slide = element.closest('.wrapped-slide');
-          return !element.disabled && (!slide || slide.classList.contains('is-active'));
+          return !element.disabled && element.getClientRects().length > 0
+            && (!slide || slide.classList.contains('is-active'));
         });
       if (!focusable.length) return;
       const first = focusable[0];
@@ -462,7 +478,10 @@ export class WrappedExperience {
     this.pauseReasons.clear();
     if (document.hidden) this.pauseReasons.add('hidden');
     this.slideTracks = this.selectDistinctSlideTracks(data.topTracks || []);
-    this.preloadSlideTracks();
+    this.usedSoundtracks.clear();
+    this.failedSoundtracks.clear();
+    this.soundtrackBudgets.clear();
+    this.lastPlayableSoundtrack = null;
 
     // Populate Top Bar
     const user = data.user || {};
@@ -519,6 +538,8 @@ export class WrappedExperience {
   }
 
   close() {
+    this.storyAudioRequestId++;
+    this.storyAudioPending = false;
     this.modal.classList.remove('is-open');
     this.modal.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
@@ -549,6 +570,10 @@ export class WrappedExperience {
     }
 
     if (this.isMuted) {
+      this.storyAudioRequestId++;
+      this.storyAudioPending = false;
+      if (this.btnRetryAudio) this.btnRetryAudio.hidden = true;
+      this.setPauseReason('soundtrack', false);
       soundEngine.stop();
       showToast('Wrapped Audio Muted', 'info', 1500);
     } else {
@@ -572,12 +597,12 @@ export class WrappedExperience {
       [pool[index], pool[swapIndex]] = [pool[swapIndex], pool[index]];
     }
 
+    this.soundtrackPool = pool;
     return pool.slice(0, this.totalSlides);
   }
 
   preloadSlideTracks() {
-    if (!Array.isArray(this.slideTracks)) return;
-    this.slideTracks.forEach(async (track) => {
+    [this.slideTracks[this.currentSlideIndex + 1]].forEach(async (track) => {
       if (!track || track.preview_url) return;
       let artist = '';
       if (Array.isArray(track.artists) && track.artists.length > 0) {
@@ -595,49 +620,60 @@ export class WrappedExperience {
     });
   }
 
-  async playSlideAudio(slideIndex = this.currentSlideIndex) {
-    if (!this.data || !this.data.topTracks || !this.data.topTracks.length) return;
-    const storyTrack = this.slideTracks[slideIndex];
+  updateSoundtrackLabel(track, slideIndex, fallback = false) {
     if (this.soundtrackIndex) {
-      this.soundtrackIndex.textContent = storyTrack
-        ? `Story ${slideIndex + 1} soundtrack`
-        : `Story ${slideIndex + 1} soundtrack unavailable`;
+      this.soundtrackIndex.textContent = track?.source === 'generated' ? 'Instrumental fallback'
+        : `Story ${slideIndex + 1} soundtrack${fallback ? ' / alternate' : ''}`;
     }
     if (this.soundtrackTitle) {
-      const artistName = storyTrack?.artists?.[0]?.name || storyTrack?.artistName || '';
-      this.soundtrackTitle.textContent = storyTrack
-        ? `${storyTrack.name}${artistName ? ` / ${artistName}` : ''}`
-        : 'No additional unique track was returned';
+      const artistName = track?.artists?.[0]?.name || track?.artistName || '';
+      this.soundtrackTitle.textContent = track ? `${track.name}${artistName ? ` / ${artistName}` : ''}` : 'Finding a playable soundtrack';
+      this.soundtrackTitle.title = this.soundtrackTitle.textContent;
     }
-    if (this.soundtrackCue) {
-      this.soundtrackCue.classList.toggle('is-unavailable', !storyTrack);
-    }
+    this.soundtrackCue?.classList.remove('is-unavailable');
+    this.soundtrackCue?.classList.toggle('is-instrumental', track?.source === 'generated');
+  }
 
-    // Preload next upcoming slide track preview ahead of time
-    const nextTrack = this.slideTracks[slideIndex + 1];
-    if (nextTrack && !nextTrack.preview_url) {
-      let nextArtist = '';
-      if (Array.isArray(nextTrack.artists) && nextTrack.artists.length > 0) {
-        const first = nextTrack.artists[0];
-        nextArtist = (typeof first === 'object' && first ? first.name : first) || '';
-      } else if (nextTrack.artistName) {
-        nextArtist = nextTrack.artistName;
-      }
-      soundEngine.resolveRealAudioPreview(nextTrack.name, nextArtist, nextTrack.duration_ms).then(url => {
-        if (url) nextTrack.preview_url = url;
-      }).catch(() => {});
-    }
-
+  async playSlideAudio(slideIndex = this.currentSlideIndex) {
+    if (!this.data?.topTracks?.length) return;
+    const requestId = ++this.storyAudioRequestId;
+    const storyTrack = this.slideTracks[slideIndex];
+    this.updateSoundtrackLabel(storyTrack, slideIndex);
+    if (this.btnRetryAudio) this.btnRetryAudio.hidden = true;
     if (this.isMuted) return;
-
-    if (storyTrack) {
-      try {
-        await soundEngine.playTrack(storyTrack, { restart: true });
-      } catch (err) {
-        console.warn('Could not play this story soundtrack:', err);
+    const isCurrent = () => requestId === this.storyAudioRequestId && !this.isMuted
+      && this.modal.classList.contains('is-open') && this.currentSlideIndex === slideIndex;
+    this.storyAudioPending = true;
+    this.setPauseReason('soundtrack', true);
+    if (!this.soundtrackBudgets.has(slideIndex)) this.soundtrackBudgets.set(slideIndex, { remaining: 3 });
+    try {
+      soundEngine.initAudioContext();
+      this.preloadSlideTracks();
+      const result = await playStorySoundtrack({ engine: soundEngine, preferred: storyTrack,
+        tracks: this.soundtrackPool, previous: this.lastPlayableSoundtrack,
+        used: this.usedSoundtracks, failed: this.failedSoundtracks,
+        budget: this.soundtrackBudgets.get(slideIndex), isCurrent,
+        onAttempt: track => this.updateSoundtrackLabel(track, slideIndex, track?.id !== storyTrack?.id) });
+      if (!isCurrent() || result.status === 'cancelled') return;
+      if (result.status === 'playing') {
+        this.slideTracks[slideIndex] = result.track;
+        if (result.track.source !== 'generated') this.lastPlayableSoundtrack = result.track;
+        this.updateSoundtrackLabel(result.track, slideIndex, result.fallback);
+      } else {
+        if (this.soundtrackTitle) this.soundtrackTitle.textContent = 'Tap Play story audio to enable sound';
+        this.soundtrackCue?.classList.add('is-unavailable');
+        if (this.btnRetryAudio) this.btnRetryAudio.hidden = false;
       }
-    } else {
-      soundEngine.stop();
+    } catch (error) {
+      if (!isCurrent()) return;
+      console.warn('Story soundtrack could not start:', error);
+      if (this.soundtrackTitle) this.soundtrackTitle.textContent = 'Tap Play story audio to retry';
+      if (this.btnRetryAudio) this.btnRetryAudio.hidden = false;
+    } finally {
+      if (requestId === this.storyAudioRequestId) {
+        this.storyAudioPending = false;
+        this.setPauseReason('soundtrack', false);
+      }
     }
   }
 
@@ -1094,10 +1130,12 @@ export class WrappedExperience {
     });
   }
 
-  updatePlaybackUi({ isPlaying, isPaused, isLoading, currentTrackId, previewError }) {
-    if (previewError && this.modal.classList.contains('is-open')) {
-      if (this.soundtrackTitle) this.soundtrackTitle.textContent = 'Preview unavailable';
-      this.soundtrackCue?.classList.add('is-unavailable');
+  updatePlaybackUi({ isPlaying, isPaused, isLoading, currentTrackId, previewFailure }) {
+    if (previewFailure && !this.storyAudioPending && !this.isMuted
+        && previewFailure.trackId === this.slideTracks[this.currentSlideIndex]?.id
+        && this.modal.classList.contains('is-open')) {
+      this.failedSoundtracks.add(previewFailure.trackId);
+      this.playSlideAudio();
     }
     if (!this.viewport) return;
 
@@ -1167,7 +1205,6 @@ export class WrappedExperience {
     // Update Progress Bars State
     this.updateProgressBarsState();
 
-    // Each story gets a distinct random pick from the user's top-50 pool.
     this.playSlideAudio(index);
 
     // Start auto-advance progress timer for this slide
@@ -1245,35 +1282,6 @@ export class WrappedExperience {
       }
     };
 
-    const storyTrack = this.slideTracks[this.currentSlideIndex];
-    if (!this.isMuted && storyTrack && soundEngine.isLoading && soundEngine.currentTrackId === storyTrack.id) {
-      let started = false;
-      const onStart = () => {
-        if (started) return;
-        started = true;
-        this.pendingProgressCleanup = null;
-        cleanup();
-        if (this.pauseReasons.size) {
-          this.isPaused = true;
-          return;
-        }
-        this.progressStartTime = performance.now();
-        this.progressAnimId = requestAnimationFrame(animateProgress);
-      };
-      const unsubscribe = soundEngine.onStateChange((state) => {
-        if (state.currentTrackId === storyTrack.id && (state.isPlaying || !state.isLoading)) {
-          onStart();
-        }
-      });
-      const timeout = setTimeout(onStart, 800);
-      const cleanup = () => {
-        clearTimeout(timeout);
-        unsubscribe();
-      };
-      this.pendingProgressCleanup = cleanup;
-      return;
-    }
-
     if (this.pauseReasons.size) {
       this.isPaused = true;
       return;
@@ -1344,10 +1352,6 @@ export class WrappedExperience {
   }
 
   stopProgress() {
-    if (this.pendingProgressCleanup) {
-      this.pendingProgressCleanup();
-      this.pendingProgressCleanup = null;
-    }
     if (this.progressAnimId) {
       cancelAnimationFrame(this.progressAnimId);
       this.progressAnimId = null;
