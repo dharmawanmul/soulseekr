@@ -314,7 +314,7 @@ export class WrappedExperience {
     this.visualizer = null;
     this.currentSlideIndex = 0;
     this.totalSlides = 6;
-    this.slideDurationMs = 10000; // 10s per slide keeps dense story panels readable
+    this.slideDurationMs = 15000; // 15s per slide keeps dense story panels readable and soundtrack immersive
     this.progressStartTime = null;
     this.progressAnimId = null;
     this.isPaused = false;
@@ -334,7 +334,8 @@ export class WrappedExperience {
   }
 
   setupListeners() {
-    this.btnPause?.addEventListener('click', () => {
+    this.btnPause?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.setPauseReason('user', !this.pauseReasons.has('user'));
     });
     // Tap zones
@@ -358,17 +359,40 @@ export class WrappedExperience {
       this.nextSlide();
     });
 
-    this.btnClose?.addEventListener('click', () => {
+    this.btnClose?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.close();
     });
 
-    this.btnMute?.addEventListener('click', () => {
+    this.btnMute?.addEventListener('click', (e) => {
+      e.stopPropagation();
       this.toggleMute();
     });
 
-    // Hold to pause (like Instagram / Spotify stories)
+    // Stage tap navigation (respects interactive buttons, tracks, and inputs)
     const stage = document.querySelector('.wrapped-stage');
     if (stage) {
+      stage.addEventListener('click', (e) => {
+        if (e.defaultPrevented || !stage.contains(e.target)) {
+          return;
+        }
+        const closestInteractive = e.target.closest('button, [role="button"], a, input, select, .btn-recap-action, .track-play-trigger, .top-track-hero, .ladder-item, .wrapped-header-bar, .wrapped-nav-arrow, .wrapped-top-controls, .btn-wrapped-control');
+        if (closestInteractive) {
+          return;
+        }
+        if (this.currentSlideIndex === this.totalSlides - 1) {
+          return;
+        }
+        const rect = stage.getBoundingClientRect();
+        const clickX = e.clientX - rect.left;
+        if (clickX < rect.width * 0.38) {
+          this.prevSlide();
+        } else if (clickX > rect.width * 0.62) {
+          this.nextSlide();
+        }
+      });
+
+      // Hold to pause (like Instagram / Spotify stories)
       stage.addEventListener('pointerdown', (e) => {
         // don't pause if clicking on interactive buttons
         if (e.target.closest('button') || e.target.closest('.ladder-item') || e.target.closest('.top-track-hero')) return;
@@ -438,6 +462,7 @@ export class WrappedExperience {
     this.pauseReasons.clear();
     if (document.hidden) this.pauseReasons.add('hidden');
     this.slideTracks = this.selectDistinctSlideTracks(data.topTracks || []);
+    this.preloadSlideTracks();
 
     // Populate Top Bar
     const user = data.user || {};
@@ -550,6 +575,26 @@ export class WrappedExperience {
     return pool.slice(0, this.totalSlides);
   }
 
+  preloadSlideTracks() {
+    if (!Array.isArray(this.slideTracks)) return;
+    this.slideTracks.forEach(async (track) => {
+      if (!track || track.preview_url) return;
+      let artist = '';
+      if (Array.isArray(track.artists) && track.artists.length > 0) {
+        const first = track.artists[0];
+        artist = (typeof first === 'object' && first ? first.name : first) || '';
+      } else if (track.artistName) {
+        artist = track.artistName;
+      }
+      try {
+        const previewUrl = await soundEngine.resolveRealAudioPreview(track.name, artist, track.duration_ms);
+        if (previewUrl) track.preview_url = previewUrl;
+      } catch (err) {
+        // non-blocking
+      }
+    });
+  }
+
   async playSlideAudio(slideIndex = this.currentSlideIndex) {
     if (!this.data || !this.data.topTracks || !this.data.topTracks.length) return;
     const storyTrack = this.slideTracks[slideIndex];
@@ -566,6 +611,21 @@ export class WrappedExperience {
     }
     if (this.soundtrackCue) {
       this.soundtrackCue.classList.toggle('is-unavailable', !storyTrack);
+    }
+
+    // Preload next upcoming slide track preview ahead of time
+    const nextTrack = this.slideTracks[slideIndex + 1];
+    if (nextTrack && !nextTrack.preview_url) {
+      let nextArtist = '';
+      if (Array.isArray(nextTrack.artists) && nextTrack.artists.length > 0) {
+        const first = nextTrack.artists[0];
+        nextArtist = (typeof first === 'object' && first ? first.name : first) || '';
+      } else if (nextTrack.artistName) {
+        nextArtist = nextTrack.artistName;
+      }
+      soundEngine.resolveRealAudioPreview(nextTrack.name, nextArtist, nextTrack.duration_ms).then(url => {
+        if (url) nextTrack.preview_url = url;
+      }).catch(() => {});
     }
 
     if (this.isMuted) return;
@@ -1021,6 +1081,8 @@ export class WrappedExperience {
     const btnReplay = this.viewport.querySelector('#btn-recap-replay');
     btnReplay?.addEventListener('click', (e) => {
       e.stopPropagation();
+      this.pauseReasons.delete('user');
+      this.pauseReasons.delete('hold');
       this.goToSlide(0);
     });
 
@@ -1072,6 +1134,11 @@ export class WrappedExperience {
     if (index >= this.totalSlides) {
       // Loop or stop at final recap slide
       index = this.totalSlides - 1;
+    }
+
+    if (index === 0) {
+      this.pauseReasons.delete('user');
+      this.pauseReasons.delete('hold');
     }
 
     this.currentSlideIndex = index;
@@ -1148,7 +1215,6 @@ export class WrappedExperience {
 
   startProgress() {
     this.stopProgress();
-    this.progressStartTime = performance.now();
     this.isPaused = false;
     this.updatePauseControl();
 
@@ -1179,10 +1245,40 @@ export class WrappedExperience {
       }
     };
 
+    const storyTrack = this.slideTracks[this.currentSlideIndex];
+    if (!this.isMuted && storyTrack && soundEngine.isLoading && soundEngine.currentTrackId === storyTrack.id) {
+      let started = false;
+      const onStart = () => {
+        if (started) return;
+        started = true;
+        this.pendingProgressCleanup = null;
+        cleanup();
+        if (this.pauseReasons.size) {
+          this.isPaused = true;
+          return;
+        }
+        this.progressStartTime = performance.now();
+        this.progressAnimId = requestAnimationFrame(animateProgress);
+      };
+      const unsubscribe = soundEngine.onStateChange((state) => {
+        if (state.currentTrackId === storyTrack.id && (state.isPlaying || !state.isLoading)) {
+          onStart();
+        }
+      });
+      const timeout = setTimeout(onStart, 800);
+      const cleanup = () => {
+        clearTimeout(timeout);
+        unsubscribe();
+      };
+      this.pendingProgressCleanup = cleanup;
+      return;
+    }
+
     if (this.pauseReasons.size) {
       this.isPaused = true;
       return;
     }
+    this.progressStartTime = performance.now();
     this.progressAnimId = requestAnimationFrame(animateProgress);
   }
 
@@ -1248,6 +1344,10 @@ export class WrappedExperience {
   }
 
   stopProgress() {
+    if (this.pendingProgressCleanup) {
+      this.pendingProgressCleanup();
+      this.pendingProgressCleanup = null;
+    }
     if (this.progressAnimId) {
       cancelAnimationFrame(this.progressAnimId);
       this.progressAnimId = null;

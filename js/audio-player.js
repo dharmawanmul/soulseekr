@@ -32,9 +32,9 @@ export function findMatchingPreview(results, trackName, artistName, durationMs) 
   }) || null;
 }
 
-class SoundEngine {
-  constructor() {
-    this.audioElement = typeof Audio !== 'undefined' ? new Audio() : null;
+export class SoundEngine {
+  constructor(audioElement = typeof Audio !== 'undefined' ? new Audio() : null) {
+    this.audioElement = audioElement;
     if (this.audioElement) {
       this.audioElement.crossOrigin = 'anonymous';
     }
@@ -70,7 +70,7 @@ class SoundEngine {
     });
 
     this.audioElement?.addEventListener?.('pause', () => {
-      if (!this.isStopping && !this.synthInterval && !this.isLoading && this.currentTrackId) {
+      if (this.audioElement.paused && !this.isStopping && !this.synthInterval && !this.isLoading && this.currentTrackId) {
         if (this.isPaused && !this.isPlaying) return;
         this.isPlaying = false;
         this.isPaused = true;
@@ -352,8 +352,6 @@ class SoundEngine {
       }
     }
 
-    this.isLoading = false;
-
     if (previewUrl) {
       try {
         this.initAudioAnalysis();
@@ -363,11 +361,14 @@ class SoundEngine {
         }, { once: true });
         await this.audioElement.play();
         if (requestId !== this.playRequestId) {
-          this.isStopping = true;
-          this.audioElement.pause();
-          this.isStopping = false;
+          if (!this.currentTrackId) {
+            this.isStopping = true;
+            this.audioElement.pause();
+            this.isStopping = false;
+          }
           return;
         }
+        this.isLoading = false;
         this.isPlaying = true;
         this.isPaused = false;
         this.schedulePreviewStop();
@@ -393,6 +394,7 @@ class SoundEngine {
 
   pause() {
     if (!this.currentTrackId || !this.isPlaying) return;
+    this.playRequestId += 1;
 
     this.pausePreviewCountdown();
     this.stopAnalysisLoop();
@@ -416,8 +418,13 @@ class SoundEngine {
       return;
     }
 
+    const requestId = ++this.playRequestId;
+    this.isLoading = true;
+    this.isPaused = false;
+    this.notifyState();
     try {
       if (this.synthSeedName) {
+        this.isLoading = false;
         this.isPlaying = true;
         this.isPaused = false;
         this.startSynthInterval(this.synthSeedName, true);
@@ -425,6 +432,15 @@ class SoundEngine {
       } else {
         this.initAudioAnalysis();
         await this.audioElement.play();
+        if (requestId !== this.playRequestId) {
+          if (!this.currentTrackId) {
+            this.isStopping = true;
+            this.audioElement.pause();
+            this.isStopping = false;
+          }
+          return;
+        }
+        this.isLoading = false;
         this.isPlaying = true;
         this.isPaused = false;
         this.startAnalysisLoop();
@@ -432,7 +448,9 @@ class SoundEngine {
       this.schedulePreviewStop();
       this.notifyState();
     } catch (err) {
+      if (requestId !== this.playRequestId) return;
       console.warn('Could not resume audio preview:', err);
+      this.isLoading = false;
       this.isPlaying = false;
       this.isPaused = true;
       this.stopAnalysisLoop();

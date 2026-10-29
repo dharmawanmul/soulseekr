@@ -1801,12 +1801,14 @@ a:focus-visible,
   font-size: 0.75rem;
 }
 
-.comparison-load-status {
+.comparison-load-status,
+.dossier-recovery-status {
   padding: 1rem;
   margin-bottom: 1rem;
 }
 
-.comparison-load-status .dossier-btn-export {
+.comparison-load-status .dossier-btn-export,
+.dossier-recovery-status .dossier-btn-export {
   justify-self: start;
   width: auto;
   max-width: 100%;

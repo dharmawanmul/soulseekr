@@ -500,6 +500,22 @@
   cursor: pointer;
 }
 
+.dossier-track-item.is-playing,
+.dossier-track-item.active {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+.dossier-track-item.is-playing .dossier-btn-play {
+  background: #10b981;
+  color: #042f2e;
+}
+
+.dossier-track-item.is-paused .dossier-btn-play {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+}
+
 /* --------------------------------------------------------------------------
    Tab 2: Time Machine
    -------------------------------------------------------------------------- */
@@ -1524,6 +1540,190 @@
 
 .dept-icon {
   font-size: 0.85rem;
+}
+
+/* --------------------------------------------------------------------------
+   Department Spotlight Soundtrack Bar (Random Track from Most Liked)
+   -------------------------------------------------------------------------- */
+.dossier-spotlight-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.65rem 1.45rem;
+  background: linear-gradient(90deg, rgba(20, 20, 28, 0.95) 0%, rgba(14, 15, 22, 0.95) 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.dossier-spotlight-left {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.dossier-spotlight-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #38bdf8;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.spotlight-indicator-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.spotlight-divider {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.spotlight-dept-context {
+  color: #ffffff;
+}
+
+.dossier-spotlight-track {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.dossier-spotlight-art {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  flex-shrink: 0;
+}
+
+.dossier-spotlight-art-fallback {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  color: #a1a1aa;
+  font-size: 0.8rem;
+  flex-shrink: 0;
+}
+
+.dossier-spotlight-meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
+.dossier-spotlight-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dossier-spotlight-artist {
+  font-size: 0.7rem;
+  color: #a1a1aa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dossier-spotlight-rank-pill {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.56rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.28);
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.dossier-spotlight-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.dossier-spotlight-play-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 44px;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.14);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.dossier-spotlight-play-btn:hover {
+  background: rgba(56, 189, 248, 0.24);
+  border-color: rgba(56, 189, 248, 0.55);
+}
+
+.dossier-spotlight-play-btn.is-playing,
+.dossier-spotlight-play-btn.active.is-playing {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(16, 185, 129, 0.5);
+  color: #4ade80;
+}
+
+.dossier-spotlight-play-btn.is-paused {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.4);
+  color: #f59e0b;
+}
+
+.dossier-spotlight-dice-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 44px;
+  padding: 0.45rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #d4d4d8;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.dossier-spotlight-dice-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.28);
 }
 
 /* Secondary Department Sub-Navigation Rail */
@@ -2801,6 +3001,25 @@
 }
 
 @media (max-width: 720px) {
+  .dossier-spotlight-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    padding: 0.65rem 0.95rem;
+  }
+  .dossier-spotlight-left {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.45rem;
+    width: 100%;
+  }
+  .dossier-spotlight-track {
+    width: 100%;
+  }
+  .dossier-spotlight-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
   .audio-dna-wrapper,
   .dna-metric-card {
     min-width: 0;
@@ -3023,5 +3242,17 @@
   .weather-timeline-legend {
     flex-wrap: wrap;
     gap: 0.75rem;
+  }
+  .dossier-spotlight-bar {
+    padding: 0.6rem 0.75rem;
+  }
+  .dossier-spotlight-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.45rem;
+  }
+  .dossier-spotlight-play-btn,
+  .dossier-spotlight-dice-btn {
+    justify-content: center;
   }
 }

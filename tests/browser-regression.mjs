@@ -16,9 +16,11 @@ const context = await browser.newContext({ viewport: { width: 1440, height: 1000
 const page = await context.newPage();
 const errors = [];
 const expectedFailedRequests = new Set();
+const expectedAppErrors = new Set();
 page.on('pageerror', error => errors.push(error.message));
 page.on('console', message => {
   if (message.type() === 'error') {
+    if ([...expectedAppErrors].some(prefix => message.text().startsWith(prefix))) return;
     if (message.text().includes('503') && expectedFailedRequests.has(message.location().url)) return;
     errors.push(message.text());
   }
@@ -37,6 +39,8 @@ let sample;
 let phase = 'initial';
 let mediumCalls = 0;
 let comparisonsFail = false;
+let failedRange = null;
+let weatherRequests = 0;
 let requests = [];
 
 await context.route('**/*', async route => {
@@ -51,7 +55,7 @@ await context.route('**/*', async route => {
     if (url.pathname.endsWith('/recently-played')) return route.fulfill({ json: { items: [] } });
     if (url.pathname.endsWith('/top/tracks')) {
       if (range === 'medium_term' && phase === 'race' && ++mediumCalls === 1) await new Promise(resolve => setTimeout(resolve, 600));
-      if (range !== 'short_term' && comparisonsFail) {
+      if (range === failedRange || (range !== 'short_term' && comparisonsFail)) {
         expectedFailedRequests.add(url.href);
         return route.fulfill({ status: 503, json: { error: { message: 'Unavailable fixture' } } });
       }
@@ -59,6 +63,19 @@ await context.route('**/*', async route => {
       return route.fulfill({ json: { items: sample.topTracks.map(track => ({ ...track, name: `${range}: ${track.name}` })) } });
     }
     if (url.pathname.endsWith('/top/artists')) return route.fulfill({ json: { items: sample.topArtists } });
+  }
+  if (url.hostname === 'api.open-meteo.com') {
+    weatherRequests++;
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return route.fulfill({ json: {
+      current: { temperature_2m: 27, apparent_temperature: 28, relative_humidity_2m: 70,
+        surface_pressure: 1010, wind_speed_10m: 8, precipitation: 0, weather_code: 0 },
+      hourly: { temperature_2m: Array(24).fill(27), relative_humidity_2m: Array(24).fill(70), precipitation_probability: Array(24).fill(0) }
+    } });
+  }
+  if (url.hostname === 'accounts.spotify.com') {
+    expectedFailedRequests.add(url.href);
+    return route.fulfill({ status: 503, json: { error: 'server_error' } });
   }
   if (url.hostname === 'itunes.apple.com') return route.fulfill({ json: { results: sample.topTracks.map(track => ({
     trackName: track.name, artistName: track.artists[0].name, trackTimeMillis: track.duration_ms,
@@ -110,11 +127,57 @@ try {
   assert.equal(await page.evaluate(() => document.activeElement.id), 'btn-connect-spotify');
   console.log('PASS sample, eight real card exports, 9:16/1:1/3:4 downloads, gateway keyboard focus');
 
+  await page.evaluate(() => {
+    window.originalClipboard = Object.getOwnPropertyDescriptor(navigator, 'clipboard');
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
+      write: async items => { window.copiedBytes = (await items[0].getType('image/png')).size; }
+    } });
+  });
+  await page.locator('#btn-copy-clip').click();
+  await page.waitForFunction(() => document.querySelector('#export-status').textContent.includes('Artifact copied'));
+  assert.ok(await page.evaluate(() => copiedBytes > 0));
+  expectedAppErrors.add('Clipboard export error:');
+  await page.evaluate(() => { navigator.clipboard.write = async () => { throw new DOMException('Permission denied', 'NotAllowedError'); }; });
+  await page.locator('#btn-copy-clip').click();
+  await page.waitForFunction(() => document.querySelector('#export-status').textContent.includes('This browser could not copy'));
+  const fallbackDownload = page.waitForEvent('download');
+  await page.locator('#export-status button').click();
+  const fallbackImage = await readFile(await (await fallbackDownload).path());
+  assert.equal(fallbackImage.readUInt32BE(16), 1200);
+  assert.equal(fallbackImage.readUInt32BE(20), 1200);
+  expectedAppErrors.delete('Clipboard export error:');
+  await page.evaluate(() => {
+    if (window.originalClipboard) Object.defineProperty(navigator, 'clipboard', originalClipboard);
+    else delete navigator.clipboard;
+  });
+  console.log('PASS clipboard image contract and permission-denied download fallback');
+
   requests = [];
   await setConnected();
   await page.reload({ waitUntil: 'networkidle' });
   await waitForRange('short_term');
   assert.equal(requests.length, 4, 'Main artifact eagerly requested comparisons');
+  await page.locator('[data-style="vinyl"]').click();
+  failedRange = 'medium_term';
+  expectedAppErrors.add('Fetch wrapped error:');
+  await page.locator('[data-range="medium_term"]').click();
+  await page.waitForFunction(() => document.querySelector('#stage-status').textContent.includes('could not refresh'));
+  assert.match(await cardText(), /short_term:/);
+  assert.match(await cardText(), /PAST 4 WEEKS/);
+  assert.doesNotMatch(await cardText(), /LAST 6 MONTHS/);
+  assert.equal(await page.locator('[data-range="short_term"]').getAttribute('aria-checked'), 'true');
+  await page.evaluate(async () => { (await import('/js/wrapped-experience.js')).wrappedExperience.isMuted = true; });
+  await page.locator('#btn-open-wrapped').click();
+  assert.equal(await page.evaluate(async () => (await import('/js/wrapped-experience.js')).wrappedExperience.timeRange), 'short_term');
+  await page.keyboard.press('Escape');
+  failedRange = null;
+  await page.locator('#stage-status button').click();
+  await waitForRange('medium_term');
+  assert.equal(await page.locator('[data-range="medium_term"]').getAttribute('aria-checked'), 'true');
+  expectedAppErrors.delete('Fetch wrapped error:');
+  await setConnected();
+  await page.reload({ waitUntil: 'networkidle' });
+  console.log('PASS failed window preserves correct data/labels/selection and retries the requested window');
   phase = 'race';
   await page.locator('[data-range="medium_term"]').click();
   await page.locator('[data-range="long_term"]').click();
@@ -123,6 +186,10 @@ try {
   assert.match(await cardText(), /long_term:/);
   await page.locator('[data-range="medium_term"]').click();
   await waitForRange('medium_term');
+  await page.locator('[data-range="long_term"]').click();
+  await waitForRange('long_term');
+  assert.match(await cardText(), /ABOUT 1 YEAR/);
+  assert.doesNotMatch(await cardText(), /ALL-TIME/);
   phase = 'initial';
   await setConnected();
   await page.reload({ waitUntil: 'networkidle' });
@@ -158,13 +225,44 @@ try {
   assert.equal(requests.length - beforeRetry, 4);
   await page.locator('[data-sub="comparison"]').click();
   assert.equal(await page.locator('[data-comparison-side]').count(), 2);
+  await page.waitForSelector('.comparison-track-list');
   assert.equal(await page.locator('.comparison-track-list').count(), 2);
   const beforeReopen = requests.length;
   await page.locator('[data-dept="cinema"]').click();
   await page.locator('[data-dept="audiodna"]').click();
   assert.equal(requests.length, beforeReopen);
+
+  await page.evaluate(() => {
+    window.weatherMode = 'denied';
+    window.locationAttempts = 0;
+    Object.defineProperty(navigator.geolocation, 'getCurrentPosition', { configurable: true,
+      value(success, fail) {
+        locationAttempts++;
+        if (weatherMode === 'denied') fail({ code: 1 });
+        else success({ coords: { latitude: -6.2, longitude: 106.8 } });
+      }
+    });
+  });
+  await page.locator('[data-dept="weather"]').click();
+  await page.waitForSelector('#btn-retry-weather');
+  assert.equal(weatherRequests, 0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const weatherRetryFits = await page.locator('#btn-retry-weather').evaluate(button =>
+    button.clientWidth >= button.scrollWidth && button.clientHeight >= button.scrollHeight && button.getBoundingClientRect().height >= 44);
+  assert.equal(weatherRetryFits, true);
+  await page.screenshot({ path: 'test-results/weather-retry-mobile.png' });
+  await page.evaluate(() => { weatherMode = 'success'; });
+  await page.locator('#btn-retry-weather').focus();
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.telemetry-temp');
+  assert.match(await page.locator('.telemetry-temp').innerText(), /27°C/);
+  assert.equal(weatherRequests, 1);
+  assert.equal(await page.evaluate(() => locationAttempts), 2);
+  assert.equal(await page.evaluate(() => document.activeElement.dataset.dept), 'weather');
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.keyboard.press('Escape');
   console.log('PASS lazy Audio DNA loading, partial failure, retry, period comparison, cache reuse');
+  console.log('PASS weather permission denial, mobile retry, keyboard recovery and actual supplied conditions');
 
   await page.evaluate(async () => {
     window.wrapped = (await import('/js/wrapped-experience.js')).wrappedExperience;
@@ -226,6 +324,38 @@ try {
   await page.locator('#np-stop-btn').click();
   assert.equal(await page.evaluate(async () => (await import('/js/audio-player.js')).soundEngine.currentTrackId), null);
   console.log('PASS matched catalog preview, real audio playback, pause/resume/stop');
+  await page.evaluate(async () => {
+    const { soundEngine } = await import('/js/audio-player.js');
+    await soundEngine.playTrack((await import('/js/app.js')).DEFAULT_CURATED_DATA.topTracks[0]);
+  });
+  await page.locator('#btn-logout').click();
+  const loggedOut = await page.evaluate(async () => {
+    const engine = (await import('/js/audio-player.js')).soundEngine;
+    return { track: engine.currentTrackId, playing: engine.isPlaying, paused: engine.audioElement.paused,
+      dock: document.querySelector('#now-playing-bar').classList.contains('active'),
+      name: document.querySelector('#np-track-name').textContent, artwork: document.querySelector('#dock-thumb').getAttribute('src') };
+  });
+  assert.deepEqual(loggedOut, { track: null, playing: false, paused: true, dock: false, name: '', artwork: null });
+  console.log('PASS logout stops playback and clears the previous track dock');
+  await page.evaluate(() => {
+    localStorage.setItem('vibe_access_token', 'expired-fixture');
+    localStorage.setItem('vibe_refresh_token', 'fixture-refresh');
+    localStorage.setItem('vibe_token_expires_at', '1');
+  });
+  await page.locator('#btn-open-wrapped').click();
+  await page.waitForFunction(() => document.querySelector('#stage-status').textContent.includes('could not reconnect'));
+  assert.equal(await page.locator('#wrapped-modal').getAttribute('aria-hidden'), 'true');
+  await page.evaluate(() => { document.querySelector('#stage-status').textContent = ''; });
+  await page.locator('#btn-open-dossier').click();
+  await page.waitForFunction(() => document.querySelector('#stage-status').textContent.includes('could not reconnect'));
+  assert.equal(await page.locator('#dossier-modal').getAttribute('aria-hidden'), 'true');
+  await page.evaluate(() => localStorage.setItem('vibe_token_expires_at', String(Date.now() + 3600000)));
+  await page.locator('#btn-open-wrapped').click();
+  await page.waitForFunction(() => document.querySelector('#stage-status').textContent.includes('history is not ready'));
+  assert.equal(await page.locator('#wrapped-modal').getAttribute('aria-hidden'), 'true');
+  await page.locator('#stage-status button').click();
+  await waitForRange('short_term');
+  console.log('PASS feature-button refresh recovery and no sample-as-connected history');
   assert.deepEqual(errors, [], 'Unexpected browser console/page errors');
   console.log('PASS no browser runtime errors (Spotify/Apple responses and artwork use test fixtures)');
 } finally {

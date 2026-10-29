@@ -40,7 +40,7 @@ export function getTimeRangeLabel(timeRange) {
   switch (timeRange) {
     case 'short_term': return 'PAST 4 WEEKS';
     case 'medium_term': return 'LAST 6 MONTHS';
-    case 'long_term': return 'ALL-TIME ROTATION';
+    case 'long_term': return 'ABOUT 1 YEAR';
     case 'custom': return 'CURATED SELECTION';
     default: return 'RECENT ROTATION';
   }
@@ -53,18 +53,18 @@ export function getIndicator(trackId, playbackState) {
   );
 
   if (!isMatch) {
-    return '<span class="play-hint">▶</span>';
+    return '<span class="track-indicator play-hint">▶</span>';
   }
 
   if (typeof playbackState === 'object' && playbackState.isLoading) {
-    return '<span class="mini-spinner" title="Buffering audio preview..."></span>';
+    return '<span class="track-indicator mini-spinner" title="Buffering audio preview..."></span>';
   }
 
   if (typeof playbackState === 'object' && playbackState.isPaused) {
-    return '<span class="play-hint play-hint-paused" title="Resume audio preview">▶</span>';
+    return '<span class="track-indicator play-hint play-hint-paused" title="Resume audio preview">▶</span>';
   }
 
-  return '<span class="mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>';
+  return '<span class="track-indicator mini-eq"><span class="bar"></span><span class="bar"></span><span class="bar"></span></span>';
 }
 
 export function isTrackActive(trackId, playbackState) {

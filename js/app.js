@@ -8,7 +8,8 @@ import {
   handleAuthCallback, 
   getValidAccessToken, 
   fetchCompleteUserWrapped, 
-  logoutSpotify
+  logoutSpotify,
+  SPOTIFY_TIME_RANGES
 } from './spotify-api.js';
 import { 
   renderVinylCard, 
@@ -386,6 +387,7 @@ function syncEditionControls() {
 
 function enterSampleArchive({ announce = false, preserveStageStatus = false } = {}) {
   dataRequestId += 1;
+  soundEngine.stop();
   state.mode = 'sample';
   state.spotifyToken = null;
   state.timeRange = 'short_term';
@@ -529,15 +531,25 @@ async function loadData() {
     } else {
       updateAuthBadge('SPOTIFY CONNECTED', 'active');
       state.currentData = state.currentData?.provenance?.mode === 'spotify' ? state.currentData : null;
+      if (state.currentData?.provenance?.selectedRange) {
+        state.timeRange = state.currentData.provenance.selectedRange;
+        syncTimeframeControls();
+        persistWorkspace();
+      }
       renderCurrentCard();
       showInlineStatus(elements.stageStatus, {
         tone: 'error',
         title: err.code === 'SPOTIFY_RATE_LIMITED' ? 'Spotify asked us to wait' : 'Spotify could not refresh this window',
         message: err.code === 'SPOTIFY_RATE_LIMITED' ? err.message : state.currentData
-          ? 'The last loaded artifact is still shown. Check your connection and try this window again.'
+          ? `Your ${SPOTIFY_TIME_RANGES[state.timeRange]?.label.toLowerCase() || 'previous'} archive is still shown. Retry to load ${SPOTIFY_TIME_RANGES[requestedRange]?.label.toLowerCase() || 'the requested window'}.`
           : 'No Spotify data was loaded. Check your connection and try again.',
         actionLabel: 'Try again',
-        onAction: loadData
+        onAction: () => {
+          state.timeRange = requestedRange;
+          syncTimeframeControls();
+          persistWorkspace();
+          loadData();
+        }
       });
     }
   }
@@ -650,6 +662,7 @@ async function startSpotifyAuth() {
  */
 function renderCurrentCard() {
   const data = state.currentData;
+  const renderedRange = data?.provenance?.selectedRange || state.timeRange;
   if (!data) {
     elements.cardContainer.innerHTML = `
       <div class="studio-state studio-state-connect" role="status">
@@ -676,31 +689,31 @@ function renderCurrentCard() {
   try {
     switch (state.cardStyle) {
       case 'vinyl':
-        html = renderVinylCard(data, state.timeRange, state.playbackState);
+        html = renderVinylCard(data, renderedRange, state.playbackState);
         break;
       case 'swiss':
-        html = renderSwissCard(data, state.timeRange, state.playbackState);
+        html = renderSwissCard(data, renderedRange, state.playbackState);
         break;
       case 'prism':
-        html = renderPrismCard(data, state.timeRange, state.playbackState);
+        html = renderPrismCard(data, renderedRange, state.playbackState);
         break;
       case 'cassette':
-        html = renderCassetteCard(data, state.timeRange, state.playbackState);
+        html = renderCassetteCard(data, renderedRange, state.playbackState);
         break;
       case 'receipt':
-        html = renderReceiptCard(data, state.timeRange, state.playbackState);
+        html = renderReceiptCard(data, renderedRange, state.playbackState);
         break;
       case 'dap':
-        html = renderDapCard(data, state.timeRange, state.playbackState);
+        html = renderDapCard(data, renderedRange, state.playbackState);
         break;
       case 'gameboy':
-        html = renderGameboyCard(data, state.timeRange, state.playbackState);
+        html = renderGameboyCard(data, renderedRange, state.playbackState);
         break;
       case 'vippass':
-        html = renderVipPassCard(data, state.timeRange, state.playbackState);
+        html = renderVipPassCard(data, renderedRange, state.playbackState);
         break;
       default:
-        html = renderReceiptCard(data, state.timeRange, state.playbackState);
+        html = renderReceiptCard(data, renderedRange, state.playbackState);
         break;
     }
 
@@ -736,15 +749,21 @@ function updateCardPlaybackUI() {
     const track = data.topTracks?.find(t => t.id === trackId);
     const isActive = trackId === ps.trackId && (ps.isPlaying || ps.isPaused || ps.isLoading);
     el.classList.toggle('active', isActive);
+    el.classList.toggle('playing', isActive);
 
     const action = isActive
       ? (ps.isPaused ? 'Resume' : ps.isLoading ? 'Cancel' : 'Pause')
       : 'Play';
     el.setAttribute('aria-label', track ? `${action} preview for ${track.name}` : 'Play track preview');
 
-    const indicator = el.querySelector('.track-indicator');
+    const indicator = el.querySelector('.track-indicator, .mini-eq, .play-hint, .mini-spinner');
     if (indicator) {
-      indicator.innerHTML = getIndicator(trackId, ps);
+      const temp = document.createElement('div');
+      temp.innerHTML = getIndicator(trackId, ps);
+      const nextIndicator = temp.firstElementChild;
+      if (nextIndicator) {
+        indicator.replaceWith(nextIndicator);
+      }
     }
 
     const gbDur = el.querySelector('.gb-track-dur');
@@ -754,26 +773,18 @@ function updateCardPlaybackUI() {
         : formatDuration(track.duration_ms);
     }
 
-    const dapMeta = el.querySelector('.dap-track-meta');
-    if (dapMeta) {
-      let pulse = el.querySelector('.dap-playing-pulse');
-      if (isActive) {
-        if (!pulse) {
-          pulse = document.createElement('span');
-          pulse.className = 'dap-playing-pulse';
-          dapMeta.appendChild(pulse);
-        }
-        pulse.textContent = ps.isPaused ? '❚❚ PAUSED' : '▶ PLAYING';
-      } else if (pulse) {
-        pulse.remove();
-      }
+    const dapRowRight = el.querySelector('.dap-row-right');
+    if (dapRowRight && track) {
+      dapRowRight.innerHTML = isActive
+        ? `<span class="dap-playing-pulse">${ps.isPaused ? '❚❚ PAUSED' : '▶ PLAYING'}</span>`
+        : `<span class="dap-row-time">${formatDuration(track.duration_ms)}</span>`;
     }
   });
 
-  const cassetteReels = elements.cardContainer.querySelector('.cassette-reels-container');
-  if (cassetteReels) {
-    cassetteReels.classList.toggle('is-spinning', Boolean(ps.isPlaying));
-  }
+  const spoolGears = elements.cardContainer.querySelectorAll('.spool-gear');
+  spoolGears.forEach(gear => {
+    gear.classList.toggle('spinning', Boolean(ps.isPlaying));
+  });
 }
 
 /**
@@ -853,6 +864,10 @@ soundEngine.onStateChange(({ isPlaying, isPaused, isLoading, currentTrackId, cur
   } else if (!isPlaying && !isPaused && !isLoading) {
     elements.nowPlayingBar.classList.remove('active');
     elements.nowPlayingBar.classList.remove('is-paused', 'is-loading');
+    elements.npTrackName.textContent = '';
+    elements.npArtistName.textContent = '';
+    elements.dockThumb.removeAttribute('src');
+    elements.dockThumb.hidden = true;
   }
 
   updateCardPlaybackUI();
@@ -875,6 +890,22 @@ soundEngine.onAudioFrame((frame) => {
       }
     }
   }
+
+  // Also update active card and dossier track micro-equalizer bars if live
+  const activeEqs = document.querySelectorAll('#card-display-container .track-play-trigger.active .mini-eq, #card-display-container .track-play-trigger.playing .mini-eq, #dossier-modal .track-play-trigger.active .mini-eq, #dossier-modal .track-play-trigger.playing .mini-eq');
+  activeEqs.forEach(cardEq => {
+    if (frame.isResting) {
+      cardEq.classList.remove('is-live');
+    } else {
+      cardEq.classList.add('is-live');
+      const bars = cardEq.querySelectorAll('.bar');
+      if (bars.length >= 3) {
+        bars[0].style.height = `${Math.max(15, Math.min(100, Math.round(frame.bass * 100)))}%`;
+        bars[1].style.height = `${Math.max(20, Math.min(100, Math.round(frame.mid * 100)))}%`;
+        bars[2].style.height = `${Math.max(15, Math.min(100, Math.round(frame.treble * 100)))}%`;
+      }
+    }
+  });
 
   // 2. Update Titanium DAP Card stereo VU meters and measured specs
   const vuL = document.querySelector('.card-dap .dap-vu-l');
@@ -1019,35 +1050,56 @@ async function runClipboardExport() {
   }
 }
 
-function setupEventListeners() {
-  elements.btnOpenWrapped?.addEventListener('click', async () => {
+async function getConnectedArchive(button, feature) {
+  const requestId = dataRequestId;
+  try {
     const token = state.spotifyToken || (await getValidAccessToken());
+    if (requestId !== dataRequestId) return null;
     if (!token) {
-      triggerLockedButtonFeedback(elements.btnOpenWrapped, 'Connect Spotify to open your Year in Music');
-      return;
+      triggerLockedButtonFeedback(button, `Connect Spotify to open ${feature}`);
+      return null;
     }
     state.spotifyToken = token;
-    const data = state.currentData;
+    if (state.currentData?.provenance?.mode !== 'spotify') {
+      showInlineStatus(elements.stageStatus, {
+        tone: 'error', title: 'Your Spotify history is not ready',
+        message: 'Wait for your history to finish loading, or retry the request. The sample archive has not been used as your account history.',
+        actionLabel: 'Load Spotify history', onAction: loadData
+      });
+      return null;
+    }
+    return state.currentData;
+  } catch (error) {
+    if (requestId !== dataRequestId) return null;
+    showInlineStatus(elements.stageStatus, {
+      tone: 'error', title: 'Spotify could not reconnect',
+      message: error.code === 'SPOTIFY_RATE_LIMITED' ? error.message
+        : 'Your saved connection is still available. Check your connection and try again.',
+      actionLabel: 'Try again', onAction: () => button?.click()
+    });
+    return null;
+  }
+}
+
+function setupEventListeners() {
+  elements.btnOpenWrapped?.addEventListener('click', async () => {
+    const data = await getConnectedArchive(elements.btnOpenWrapped, 'your Year in Music');
+    if (!data) return;
     if (!data?.topTracks?.length) {
       showToast('Spotify returned no ranked tracks for this window. Try another time horizon.', 'warning');
       return;
     }
-    wrappedExperience.open(data, state.timeRange);
+    wrappedExperience.open(data, data.provenance?.selectedRange || state.timeRange);
   });
 
   elements.btnOpenDossier?.addEventListener('click', async () => {
-    const token = state.spotifyToken || (await getValidAccessToken());
-    if (!token) {
-      triggerLockedButtonFeedback(elements.btnOpenDossier, 'Connect Spotify to open your Taste Dossier');
-      return;
-    }
-    state.spotifyToken = token;
-    const data = state.currentData;
+    const data = await getConnectedArchive(elements.btnOpenDossier, 'your Taste Dossier');
+    if (!data) return;
     if (!data?.topTracks?.length && !data?.topArtists?.length) {
       showToast('Spotify returned no listening data for this window. Try another time horizon.', 'warning');
       return;
     }
-    sonicDossier.open(data, state.timeRange);
+    sonicDossier.open(data, data.provenance?.selectedRange || state.timeRange);
   });
 
   elements.npStopBtn?.addEventListener('click', () => {

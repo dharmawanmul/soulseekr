@@ -123,6 +123,8 @@ export class SonicDossierEngine {
     this.comparisonRight = 'medium_term';
 
     this.weatherData = null;
+    this.weatherRequestId = 0;
+    this.isWeatherFetching = false;
     this.activeControllers = {
       barcode: null,
       weatherTimeline: null,
@@ -131,7 +133,9 @@ export class SonicDossierEngine {
 
     this.analytics = null;
     this.returnFocus = null;
+    this.spotlightTrack = null;
     this.onKeyDown = this.handleKeyDown.bind(this);
+    this.unsubscribeSoundState = soundEngine.onStateChange(state => this.updatePlaybackUi(state));
   }
 
   ensureDom() {
@@ -147,13 +151,29 @@ export class SonicDossierEngine {
     }
   }
 
+  pickRandomSpotlightTrack(previousTrackId = null) {
+    const tracks = this.data?.topTracks;
+    if (!Array.isArray(tracks) || tracks.length === 0) return null;
+    if (tracks.length === 1) return tracks[0];
+    const pool = previousTrackId ? tracks.filter(t => t && t.id !== previousTrackId) : tracks;
+    const candidates = pool.length > 0 ? pool : tracks;
+    const randomIndex = Math.floor(Math.random() * candidates.length);
+    return candidates[randomIndex];
+  }
+
   async open(data, timeRange = 'short_term') {
+    if (this.data !== data) {
+      this.weatherRequestId += 1;
+      this.weatherData = null;
+      this.isWeatherFetching = false;
+    }
     this.returnFocus = document.activeElement;
     this.data = data;
     this.timeRange = timeRange;
     this.comparisonLeft = timeRange;
     this.comparisonRight = timeRange === 'short_term' ? 'medium_term' : 'short_term';
     this.analytics = this.computeAnalytics(data, timeRange);
+    this.spotlightTrack = this.pickRandomSpotlightTrack();
 
     this.ensureDom();
     this.modal.classList.add('is-open');
@@ -172,6 +192,10 @@ export class SonicDossierEngine {
 
     if (this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
       audioDna.destroy();
+    }
+
+    if (this.spotlightTrack && soundEngine.isPlaying && soundEngine.currentTrackId === this.spotlightTrack.id) {
+      soundEngine.stop();
     }
 
     this.modal.classList.remove('is-open');
@@ -388,6 +412,93 @@ export class SonicDossierEngine {
     };
   }
 
+  renderSpotlightBar() {
+    const track = this.spotlightTrack;
+    if (!track) return '';
+
+    const deptLabels = {
+      cinema: 'Cinema & Synesthesia',
+      audiodna: 'Audio DNA & Persona',
+      weather: 'Atmosphere & Weather',
+      world: 'Influence Map',
+      sources: 'Method & Sources'
+    };
+    const deptName = deptLabels[this.activeDept] || 'Taste Dossier';
+
+    const rankIndex = this.data?.topTracks ? this.data.topTracks.findIndex(t => t && t.id === track.id) : -1;
+    const rankLabel = rankIndex >= 0 ? `Top #${rankIndex + 1}` : 'Top rotation';
+
+    let artistName = 'Unknown artist';
+    if (Array.isArray(track.artists) && track.artists.length > 0) {
+      artistName = track.artists.map(art => (typeof art === 'object' && art ? art.name : art) || '').filter(Boolean).join(', ');
+    } else if (track.artistName) {
+      artistName = track.artistName;
+    }
+
+    const artUrl = track.album?.images?.[0]?.url || '';
+    const isCurrent = soundEngine.currentTrackId === track.id;
+    const isPlaying = isCurrent && soundEngine.isPlaying;
+    const isPaused = isCurrent && soundEngine.isPaused;
+    const isLoading = isCurrent && soundEngine.isLoading;
+
+    const actionText = isCurrent
+      ? (isLoading ? 'Loading' : isPaused ? 'Resume' : isPlaying ? 'Pause' : 'Play')
+      : 'Play';
+
+    const indicatorClass = isCurrent && isLoading
+      ? 'track-indicator mini-spinner'
+      : isCurrent && isPlaying
+        ? 'track-indicator mini-eq'
+        : isCurrent && isPaused
+          ? 'track-indicator play-hint play-hint-paused'
+          : 'track-indicator play-hint';
+
+    const indicatorContent = isCurrent && isPlaying
+      ? '<span class="bar"></span><span class="bar"></span><span class="bar"></span>'
+      : isCurrent && isLoading
+        ? ''
+        : '▶';
+
+    return `
+      <section class="dossier-spotlight-bar" aria-label="Featured rotation soundtrack">
+        <div class="dossier-spotlight-left">
+          <div class="dossier-spotlight-tag">
+            <span class="spotlight-indicator-dot" aria-hidden="true"></span>
+            <span class="spotlight-label">ROTATION SPOTLIGHT</span>
+            <span class="spotlight-divider" aria-hidden="true">•</span>
+            <span class="spotlight-dept-context">${escapeHtml(deptName)}</span>
+          </div>
+          <div class="dossier-spotlight-track">
+            ${artUrl
+              ? `<img src="${escapeHtml(artUrl)}" class="dossier-spotlight-art" alt="" loading="lazy">`
+              : '<div class="dossier-spotlight-art dossier-spotlight-art-fallback" aria-hidden="true">♪</div>'}
+            <div class="dossier-spotlight-meta">
+              <span class="dossier-spotlight-title">${escapeHtml(track.name || 'Untitled track')}</span>
+              <span class="dossier-spotlight-artist">${escapeHtml(artistName)}</span>
+            </div>
+            <span class="dossier-spotlight-rank-pill">${escapeHtml(rankLabel)}</span>
+          </div>
+        </div>
+        <div class="dossier-spotlight-actions">
+          <button type="button" class="dossier-spotlight-play-btn track-play-trigger ${isCurrent && isPlaying ? 'is-playing active' : ''} ${isCurrent && isPaused ? 'is-paused' : ''} ${isCurrent && isLoading ? 'active' : ''}" data-track-id="${escapeHtml(track.id)}" aria-label="${actionText} preview for ${escapeHtml(track.name || 'track')}">
+            <span class="${indicatorClass}">${indicatorContent}</span>
+            <span class="spotlight-play-text">${actionText}</span>
+          </button>
+          <button type="button" class="dossier-spotlight-dice-btn" id="btn-dossier-shuffle-track" aria-label="Pick another random song from your most liked" title="Roll another random song from your most liked">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="16 3 21 3 21 8"/>
+              <line x1="4" y1="20" x2="21" y2="3"/>
+              <polyline points="21 16 21 21 16 21"/>
+              <line x1="15" y1="15" x2="21" y2="21"/>
+              <line x1="4" y1="4" x2="9" y2="9"/>
+            </svg>
+            <span>Shuffle</span>
+          </button>
+        </div>
+      </section>
+    `;
+  }
+
   // =========================================================================
   // VIEW RENDERER (Department Navigation Architecture)
   // =========================================================================
@@ -456,6 +567,8 @@ export class SonicDossierEngine {
           </button>
         </nav>
 
+        ${this.renderSpotlightBar()}
+
         <p class="dossier-method-note">Interpretive archive. Scores, scenes, and maps are creative readings of your catalog metadata, not Spotify measurements.</p>
 
         <!-- Secondary Sub-Navigation Pill Strip -->
@@ -470,6 +583,12 @@ export class SonicDossierEngine {
     `;
 
     this.attachEventListeners();
+    this.updatePlaybackUi({
+      currentTrackId: soundEngine.currentTrackId,
+      isPlaying: soundEngine.isPlaying,
+      isPaused: soundEngine.isPaused,
+      isLoading: soundEngine.isLoading
+    });
   }
 
   loadComparisons() {
@@ -500,6 +619,26 @@ export class SonicDossierEngine {
       <strong>${escapeHtml(title)}</strong><span>${escapeHtml(message)}</span>
       ${status === 'loading' ? '' : '<button id="btn-retry-comparisons" class="dossier-btn-export" type="button">Retry comparison windows</button>'}
     </div>`;
+  }
+
+  loadWeather() {
+    const requestId = ++this.weatherRequestId;
+    const data = this.data;
+    this.isWeatherFetching = true;
+    fetchLiveWeatherData().catch(() => ({ available: false,
+      reason: 'Location or weather could not be accessed. Check browser permissions and retry.'
+    })).then(weather => {
+      if (requestId !== this.weatherRequestId || this.data !== data) return;
+      this.weatherData = weather;
+      this.isWeatherFetching = false;
+      if (this.isOpen && this.activeDept === 'weather') {
+        const active = document.activeElement;
+        const selector = active?.id ? `#${CSS.escape(active.id)}`
+          : active?.dataset.dept ? `[data-dept="${active.dataset.dept}"]` : '';
+        this.render();
+        if (selector) this.modal.querySelector(selector)?.focus({ preventScroll: true });
+      }
+    });
   }
 
   renderSubNavPillStrip() {
@@ -557,7 +696,7 @@ export class SonicDossierEngine {
       return `
         <div class="dossier-sub-nav">
           <button class="dossier-sub-pill active" data-sub="stormchaser">
-            <span>The Storm Chaser Report (Barometric Vibe Split &amp; 24h Timeline)</span>
+            <span>Current local weather</span>
           </button>
         </div>
       `;
@@ -613,18 +752,13 @@ export class SonicDossierEngine {
     // 3. Atmosphere & Weather
     if (this.activeDept === 'weather') {
       if (!this.weatherData && !this.isWeatherFetching) {
-        this.isWeatherFetching = true;
-        fetchLiveWeatherData().then(w => {
-          this.weatherData = w;
-          this.isWeatherFetching = false;
-          if (this.isOpen && this.activeDept === 'weather') {
-            this.render();
-          }
-        });
-        return `<div class="dossier-card provenance-empty-state" role="status"><strong>Retrieving local weather telemetry...</strong><span>Requesting live atmospheric conditions for your listening location.</span></div>`;
+        this.loadWeather();
+      }
+      if (this.isWeatherFetching) {
+        return `<div class="dossier-card provenance-empty-state dossier-recovery-status" role="status" aria-live="polite"><strong>Loading local weather</strong><span>Your location is sent to Open-Meteo to retrieve current conditions. No Spotify history is sent with this request.</span></div>`;
       }
       if (!this.weatherData?.available) {
-        return `<div class="dossier-card provenance-empty-state" role="status"><strong>Local weather unavailable.</strong><span>Allow location access and keep an internet connection to build this report. No substitute city or simulated forecast is used.</span></div>`;
+        return `<div class="dossier-card provenance-empty-state dossier-recovery-status" role="status" aria-live="polite"><strong>Local weather unavailable</strong><span>${escapeHtml(this.weatherData?.reason || 'Allow location access and check your connection.')}</span><span>Retry requests your location and sends it to Open-Meteo for current weather.</span><button id="btn-retry-weather" class="dossier-btn-export" type="button">Retry local weather</button></div>`;
       }
       const weather = this.weatherData;
       const split = computeBarometricSplit(this.data.topTracks);
@@ -642,10 +776,22 @@ export class SonicDossierEngine {
         return this.renderFestivalTab();
       }
 
+      // Default: Airline Boarding Pass + Interactive Flight Map
+      const passport = resolvePassportMetrics(this.analytics.user, this.data.topArtists, this.data.topTracks);
       return `
-        <div class="dossier-card provenance-empty-state" role="status">
-          <strong>Artist geography is not available.</strong>
-          <span>Spotify's ranked artist response does not include verified hometowns. The passport and flight map stay hidden instead of assigning artists to guessed cities.</span>
+        <div style="display:flex; flex-direction:column; gap:1.5rem;">
+          ${renderBoardingPassHtml(this.analytics.user, passport)}
+
+          <!-- Interactive Flight Map Canvas Card -->
+          <div class="dossier-card flight-map-stage-card">
+            <div class="dossier-card-header">
+              <span class="dossier-card-title">GLOBAL FLIGHT CORRIDORS // MUSICBRAINZ ARTIST ORIGINS</span>
+              <span class="dossier-card-sub">${passport.destinationHubs.length} GLOBAL CAPITALS VISITED</span>
+            </div>
+            <div class="flight-map-canvas-container">
+              <canvas id="flight-map-canvas" class="flight-canvas"></canvas>
+            </div>
+          </div>
         </div>
       `;
     }
@@ -1243,6 +1389,12 @@ export class SonicDossierEngine {
   attachEventListeners() {
     if (!this.modal) return;
     this.cleanupControllers();
+    this.modal.querySelector('#btn-retry-weather')?.addEventListener('click', () => {
+      this.weatherData = null;
+      this.loadWeather();
+      this.render();
+      this.modal.querySelector('[data-dept="weather"]')?.focus({ preventScroll: true });
+    });
     this.modal.querySelector('#btn-retry-comparisons')?.addEventListener('click', () => {
       this.loadComparisons();
       this.render();
@@ -1261,11 +1413,17 @@ export class SonicDossierEngine {
     deptBtns.forEach((btn, index) => {
       btn.onclick = () => {
         const dept = btn.getAttribute('data-dept');
-        if (dept && dept !== this.activeDept) {
-          if (this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
+        if (dept) {
+          if (dept !== this.activeDept && this.activeDept === 'audiodna' && this.activeSub.audiodna === 'explorer') {
             audioDna.destroy();
           }
           this.activeDept = dept;
+          const prevId = this.spotlightTrack?.id;
+          const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
+          this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
+          if (wasPlaying && this.spotlightTrack) {
+            soundEngine.playTrack(this.spotlightTrack);
+          }
           this.render();
         }
       };
@@ -1283,6 +1441,12 @@ export class SonicDossierEngine {
           audioDna.destroy();
         }
         this.activeDept = nextDept;
+        const prevId = this.spotlightTrack?.id;
+        const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
+        this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
+        if (wasPlaying && this.spotlightTrack) {
+          soundEngine.playTrack(this.spotlightTrack);
+        }
         this.render();
         requestAnimationFrame(() => {
           this.modal.querySelector(`.dossier-dept-btn[data-dept="${nextDept}"]`)?.focus();
@@ -1437,8 +1601,18 @@ export class SonicDossierEngine {
         const trId = el.getAttribute('data-track-id');
         const tr = this.data?.topTracks?.find(t => t.id === trId);
         if (tr) {
-          soundEngine.playTrack(tr);
-          showToast(`Playing preview: ${tr.name}`, 'info', 2200);
+          if (soundEngine.currentTrackId === trId) {
+            if (soundEngine.isPlaying) {
+              soundEngine.pause();
+            } else if (soundEngine.isPaused) {
+              soundEngine.resume();
+            } else {
+              soundEngine.playTrack(tr);
+            }
+          } else {
+            soundEngine.playTrack(tr);
+            showToast(`Playing preview: ${tr.name}`, 'info', 2200);
+          }
         }
       };
       const tr = this.data?.topTracks?.find(t => t.id === el.getAttribute('data-track-id'));
@@ -1454,7 +1628,22 @@ export class SonicDossierEngine {
       };
     });
 
-    // 8. General Export Poster Button
+    // 8. Spotlight Bar Shuffle Button
+    const btnShuffle = this.modal.querySelector('#btn-dossier-shuffle-track');
+    if (btnShuffle) {
+      btnShuffle.onclick = (e) => {
+        e.stopPropagation();
+        const prevId = this.spotlightTrack?.id;
+        const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
+        this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
+        if (wasPlaying && this.spotlightTrack) {
+          soundEngine.playTrack(this.spotlightTrack);
+        }
+        this.render();
+      };
+    }
+
+    // 9. General Export Poster Button
     const btnExportCard = this.modal.querySelector('#btn-dossier-export-card');
     if (btnExportCard) {
       btnExportCard.onclick = async () => {
@@ -1473,6 +1662,59 @@ export class SonicDossierEngine {
         }
       };
     }
+  }
+
+  updatePlaybackUi(ps = {}) {
+    if (!this.modal || !this.isOpen) return;
+    const triggers = this.modal.querySelectorAll('.track-play-trigger');
+    triggers.forEach(el => {
+      const trId = el.getAttribute('data-track-id');
+      const isCurrent = trId === ps.currentTrackId;
+      const isPlaying = isCurrent && ps.isPlaying;
+      const isPaused = isCurrent && ps.isPaused;
+      const isLoading = isCurrent && ps.isLoading;
+      el.classList.toggle('active', isCurrent && (isPlaying || isPaused || isLoading));
+      el.classList.toggle('is-playing', isPlaying);
+      el.classList.toggle('is-paused', isPaused);
+      const playBtn = el.querySelector('.dossier-btn-play');
+      if (playBtn) {
+        if (isLoading) {
+          playBtn.textContent = '…';
+          playBtn.title = 'Loading audio preview';
+        } else if (isPlaying) {
+          playBtn.textContent = '❚❚';
+          playBtn.title = 'Pause audio preview';
+        } else if (isPaused) {
+          playBtn.textContent = '▶';
+          playBtn.title = 'Resume audio preview';
+        } else {
+          playBtn.textContent = '▶';
+          playBtn.title = 'Play audio preview';
+        }
+      }
+
+      const spotlightPlayText = el.querySelector('.spotlight-play-text');
+      const indicator = el.querySelector('.track-indicator');
+      if (indicator) {
+        if (isCurrent && isLoading) {
+          indicator.className = 'track-indicator mini-spinner';
+          indicator.innerHTML = '';
+          if (spotlightPlayText) spotlightPlayText.textContent = 'Loading';
+        } else if (isCurrent && isPlaying) {
+          indicator.className = 'track-indicator mini-eq';
+          indicator.innerHTML = '<span class="bar"></span><span class="bar"></span><span class="bar"></span>';
+          if (spotlightPlayText) spotlightPlayText.textContent = 'Pause';
+        } else if (isCurrent && isPaused) {
+          indicator.className = 'track-indicator play-hint play-hint-paused';
+          indicator.innerHTML = '▶';
+          if (spotlightPlayText) spotlightPlayText.textContent = 'Resume';
+        } else {
+          indicator.className = 'track-indicator play-hint';
+          indicator.innerHTML = '▶';
+          if (spotlightPlayText) spotlightPlayText.textContent = 'Play';
+        }
+      }
+    });
   }
 }
 

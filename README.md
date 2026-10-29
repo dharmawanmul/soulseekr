@@ -33,6 +33,9 @@ Connected accounts also unlock the Year in Music story and the Taste Dossier. Ea
 - Each Year in Music story uses a different unique ranked track when enough tracks are available.
 - Stories advance after 10 seconds. Pause/Resume works by keyboard or pointer, holding the story temporarily pauses it, and switching browser tabs pauses the timer. Scrolling never skips stories; the recap remains open for export.
 - Period Comparison contrasts Spotify's approximate four-week, six-month, and one-year affinity windows without substituting data from another window.
+- If a window request fails, the last loaded archive keeps its original window label and selection. Retry requests the failed window explicitly; exports and private views use the loaded snapshot's window.
+- Stop and switching tracks invalidate delayed media operations. Disconnecting stops playback and clears the previous track's audio dock.
+- Weather is requested only in its dossier department. Failed permission or network requests offer a keyboard-accessible retry; the weather request times out after 12 seconds. Location is sent to Open-Meteo without Spotify history, and incomplete responses are reported as unavailable.
 - The selected artifact loads before comparison history. Opening Audio DNA fetches the other windows once, with visible loading, partial-result, and retry states. Spotify requests time out after 12 seconds; rate limits respect `Retry-After` without automatic retry loops.
 - Method & Sources distinguishes direct Spotify fields, local calculations, and creative Soulseekr interpretations.
 - Reduced-motion preferences disable decorative transitions and the card tilt.
@@ -83,7 +86,7 @@ npm test
 npm run test:browser
 ```
 
-The unit suite checks authentication, preview matching, acoustic calculations, request timeouts, rate limits, and deferred comparison loading. The browser suite checks the eight artifact formats, real html2canvas exports and image sizes, rapid window changes, disconnecting during a request, comparison failures/retry, real Three.js initialization and WebGL fallback, Wrapped pause/navigation, mobile controls, and audio playback.
+The unit suite checks authentication, preview matching, delayed media races, acoustic calculations, weather failures, request timeouts, rate limits, and deferred comparison loading. The browser suite checks the eight artifact formats, real html2canvas exports and image sizes, failed and rapid window changes, disconnecting during a request or playback, comparison/weather retry, clipboard success/fallback, real Three.js initialization and WebGL fallback, Wrapped pause/navigation, mobile controls, feature-button recovery, and audio playback.
 
 Browser checks require an installed Google Chrome. Set `BROWSER_PATH` to a Chromium-compatible executable if Chrome is elsewhere. Alternatively install Chromium with `node node_modules/playwright-core/cli.js install chromium` and set `BROWSER_CHANNEL=chromium`. Spotify and Apple responses, artwork, and a short audio waveform are fixtures; export and Three.js libraries use the same versions as the app. Screenshots are written to ignored `test-results/`. A real Spotify account authorization and real-world tempo accuracy still require manual verification.
 

@@ -33,6 +33,8 @@ This is the current implementation status. Completed work is separated from rema
 
 ## Verification
 
+Follow-up reliability fixes: failed window requests preserve the loaded snapshot's labels and selection; delayed Play/Resume completions cannot override newer actions; logout stops audio and clears its dock; weather requests have bounded waits, explicit retry and provider disclosure; long-term artifact labels say about one year. Feature buttons handle refresh failures and never open sample content as connected history. Regression coverage includes each case and clipboard fallback behavior.
+
 ```sh
 npm ci
 npm run check
@@ -51,7 +53,6 @@ Coverage includes invalid/expired OAuth callbacks, offline refresh recovery, log
 | P1 before public release | Real-account Spotify authorization and representative account/device smoke tests. | Fixtures cannot validate dashboard redirects, account permissions, live catalog coverage or device audio policies. |
 | P2 | Calibrate preview tempo against a labelled, diverse audio dataset. | Consistent onsets support an estimate, not proof of musical tempo. Half/double tempo and percussion-poor excerpts remain limitations. |
 | P2 | Safari/Firefox, touch gestures, screen readers and 200% text across dossier views. | Repeatable browser checks currently target Chrome with desktop and mobile viewports. |
-| P2 | Weather retry recovery and location-provider disclosure near the request. | Denied/failed weather results remain cached for the dossier instance. |
 | P2 | Consolidate legacy CSS rules and split large dossier/Audio DNA modules. | Shared tokens are aligned; layered stylesheets and large modules still add maintenance effort. |
 | P2 | Third-party script integrity/self-hosting and storage-key migration. | Runtime CDN resources and legacy `vibe_` token names remain; changes need a compatibility pass. |
 | P3 | Social sharing metadata; install/offline support if product demand warrants it. | Product enhancements rather than prerequisites for the current workflow. |

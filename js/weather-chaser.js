@@ -6,8 +6,9 @@
  */
 
 import { escapeHtml } from './card-renderer.js';
+import { requestJson } from './request.js';
 
-export async function fetchLiveWeatherData() {
+export async function fetchLiveWeatherData({ timeoutMs = 12000 } = {}) {
   return new Promise((resolve) => {
     if (!('geolocation' in navigator)) {
       resolve({ available: false, reason: 'Geolocation is not supported by this browser.' });
@@ -18,7 +19,7 @@ export async function fetchLiveWeatherData() {
       (pos) => {
         const lat = pos.coords.latitude;
         const lon = pos.coords.longitude;
-        queryOpenMeteo(lat, lon, 'Local Telemetry').then(resolve);
+        queryOpenMeteo(lat, lon, 'Local Telemetry', timeoutMs).then(resolve);
       },
       () => {
         resolve({ available: false, reason: 'Location permission was not granted.' });
@@ -28,16 +29,22 @@ export async function fetchLiveWeatherData() {
   });
 }
 
-async function queryOpenMeteo(lat, lon, city) {
+async function queryOpenMeteo(lat, lon, city, timeoutMs) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,surface_pressure,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,precipitation_probability,weather_code&timezone=auto`;
-    const res = await fetch(url);
+    const { response: res, data } = await requestJson(url, {}, timeoutMs);
     if (!res.ok) throw new Error('Weather API error');
-    const data = await res.json();
+    const fields = ['temperature_2m', 'apparent_temperature', 'relative_humidity_2m',
+      'surface_pressure', 'wind_speed_10m', 'precipitation', 'weather_code'];
+    if (!fields.every(field => Number.isFinite(data?.current?.[field]))) {
+      throw new Error('Weather response is missing current conditions');
+    }
     return parseWeatherData(data, city);
   } catch (err) {
     console.warn('Weather telemetry unavailable:', err);
-    return { available: false, reason: 'Live weather could not be retrieved.' };
+    return { available: false, reason: err.code === 'REQUEST_TIMEOUT'
+      ? 'The weather request timed out. Check your connection and retry.'
+      : 'Live weather could not be retrieved. Check your connection and retry.' };
   }
 }
 
