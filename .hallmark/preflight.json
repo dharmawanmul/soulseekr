@@ -1,0 +1,18 @@
+{
+  "scanned": "2026-10-30",
+  "findings": {
+    "fonts": "Bodoni Moda, DM Sans, IBM Plex Mono (index.html:19; DESIGN.md:169)",
+    "palette": "Warm black, bone paper, archive orange; Spotify green only for connection (css/studio-v5.css:7)",
+    "motion": "Short CSS control feedback; immersive story exception (DESIGN.md:202)",
+    "spacing": "Capped 1500px workbench, existing responsive control leaf and stage (DESIGN.md:175)",
+    "framework": "Static HTML and ES modules, no application build step (package.json:8)",
+    "material": "The working eight-edition studio and labelled sample archive; no new imagery or claims"
+  },
+  "preserve": ["Locked DESIGN.md", "Layout", "Eight artifact styles", "IDs and event handlers", "Spotify PKCE", "Audio fallback", "Exports", "Story and dossier"],
+  "introduce": ["Readable shared labels", "Single-line tablet export controls", "Scoped motion and focus polish", "Shared shell color tokens"],
+  "scope": "app",
+  "depth": "polish",
+  "dials": { "energy": 2, "rhythm": 3, "motion": 2 },
+  "cleanBaseline": true,
+  "assetsCreated": false
+}
