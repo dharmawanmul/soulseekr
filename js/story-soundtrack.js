@@ -6,13 +6,16 @@ export const INSTRUMENTAL_TRACK = {
 };
 
 export async function playStorySoundtrack({ engine, preferred, tracks, previous, used, failed,
-  budget, isCurrent, onAttempt }) {
+  budget, isCurrent, onAttempt, preferFresh = false }) {
   const candidates = tracks.filter(track => track?.id && !failed.has(track.id));
   const fresh = candidates.filter(track => !used.has(track.id) && track.id !== preferred?.id);
   fresh.sort((a, b) => Number(Boolean(b.preview_url)) - Number(Boolean(a.preview_url)));
   const reusable = candidates.filter(track => track.preview_url && used.has(track.id));
-  const queue = [preferred, ...fresh.filter(track => track.preview_url), previous,
-    ...reusable, ...fresh.filter(track => !track.preview_url)];
+  const freshReady = fresh.filter(track => track.preview_url);
+  const freshUnresolved = fresh.filter(track => !track.preview_url);
+  const queue = preferFresh
+    ? [preferred, ...freshReady, ...freshUnresolved, previous, ...reusable]
+    : [preferred, ...freshReady, previous, ...reusable, ...freshUnresolved];
   const attempted = new Set();
   for (const track of queue) {
     if (!isCurrent()) return { status: 'cancelled' };

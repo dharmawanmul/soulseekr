@@ -332,6 +332,7 @@ export class WrappedExperience {
     this.storyAudioRequestId = 0;
     this.storyAudioPending = false;
     this.lastPlayableSoundtrack = null;
+    this.pickedSlideTrackIds = new Set();
     this.returnFocus = null;
 
     this.onKeyDown = this.handleKeyDown.bind(this);
@@ -472,6 +473,9 @@ export class WrappedExperience {
 
   open(data, timeRange = 'short_term') {
     if (!Array.isArray(data?.topTracks) || data.topTracks.length === 0) return;
+    if (this.data !== data) {
+      this.pickedSlideTrackIds.clear();
+    }
     this.returnFocus = document.activeElement;
     this.data = data;
     this.timeRange = timeRange;
@@ -584,26 +588,58 @@ export class WrappedExperience {
 
   selectDistinctSlideTracks(tracks) {
     const seen = new Set();
-    const pool = tracks.slice(0, 50).filter(track => {
+    const uniquePool = (tracks || []).slice(0, 50).filter(track => {
       const key = track?.id || `${track?.name || ''}:${track?.artists?.[0]?.name || ''}`;
       if (!key || seen.has(key)) return false;
       seen.add(key);
       return true;
     });
 
-    // Shuffle the user's full top-50 pool once per opening, then assign without replacement.
-    for (let index = pool.length - 1; index > 0; index -= 1) {
-      const swapIndex = Math.floor(Math.random() * (index + 1));
-      [pool[index], pool[swapIndex]] = [pool[swapIndex], pool[index]];
+    if (uniquePool.length === 0) {
+      this.soundtrackPool = [];
+      return [];
     }
 
-    this.soundtrackPool = pool;
-    return pool.slice(0, this.totalSlides);
+    if (!this.pickedSlideTrackIds) {
+      this.pickedSlideTrackIds = new Set();
+    }
+
+    // Filter candidate tracks that have not been picked yet
+    let unpicked = uniquePool.filter(track => track?.id && !this.pickedSlideTrackIds.has(track.id));
+    if (unpicked.length < this.totalSlides) {
+      // When unpicked candidate tracks are fewer than the slides needed, reset the picked history
+      this.pickedSlideTrackIds.clear();
+      unpicked = uniquePool.slice();
+    }
+
+    // Shuffle candidate pool
+    for (let index = unpicked.length - 1; index > 0; index -= 1) {
+      const swapIndex = Math.floor(Math.random() * (index + 1));
+      [unpicked[index], unpicked[swapIndex]] = [unpicked[swapIndex], unpicked[index]];
+    }
+
+    const selected = unpicked.slice(0, this.totalSlides);
+    selected.forEach(track => {
+      if (track?.id) this.pickedSlideTrackIds.add(track.id);
+    });
+
+    // Fresh candidates that have not been picked come before remaining pool in soundtrackPool
+    const remainingUnpicked = unpicked.slice(this.totalSlides);
+    const otherPool = uniquePool.filter(track => !selected.some(s => s.id === track.id) && !remainingUnpicked.some(r => r.id === track.id));
+    this.soundtrackPool = [...selected, ...remainingUnpicked, ...otherPool];
+    return selected;
   }
 
   preloadSlideTracks() {
-    [this.slideTracks[this.currentSlideIndex + 1]].forEach(async (track) => {
-      if (!track || track.preview_url) return;
+    const candidatesToPreload = [
+      this.slideTracks[this.currentSlideIndex + 1],
+      this.slideTracks[this.currentSlideIndex + 2],
+      ...this.soundtrackPool.slice(0, 8)
+    ].filter(Boolean);
+    const seen = new Set();
+    candidatesToPreload.forEach(async (track) => {
+      if (!track?.id || track.preview_url || seen.has(track.id)) return;
+      seen.add(track.id);
       let artist = '';
       if (Array.isArray(track.artists) && track.artists.length > 0) {
         const first = track.artists[0];
@@ -645,19 +681,26 @@ export class WrappedExperience {
       && this.modal.classList.contains('is-open') && this.currentSlideIndex === slideIndex;
     this.storyAudioPending = true;
     this.setPauseReason('soundtrack', true);
-    if (!this.soundtrackBudgets.has(slideIndex)) this.soundtrackBudgets.set(slideIndex, { remaining: 3 });
+    if (!this.soundtrackBudgets.has(slideIndex)) {
+      this.soundtrackBudgets.set(slideIndex, {
+        remaining: Math.max(6, Math.min(10, this.soundtrackPool.length || 6))
+      });
+    }
     try {
       soundEngine.initAudioContext();
       this.preloadSlideTracks();
       const result = await playStorySoundtrack({ engine: soundEngine, preferred: storyTrack,
         tracks: this.soundtrackPool, previous: this.lastPlayableSoundtrack,
         used: this.usedSoundtracks, failed: this.failedSoundtracks,
-        budget: this.soundtrackBudgets.get(slideIndex), isCurrent,
+        budget: this.soundtrackBudgets.get(slideIndex), isCurrent, preferFresh: true,
         onAttempt: track => this.updateSoundtrackLabel(track, slideIndex, track?.id !== storyTrack?.id) });
       if (!isCurrent() || result.status === 'cancelled') return;
       if (result.status === 'playing') {
         this.slideTracks[slideIndex] = result.track;
-        if (result.track.source !== 'generated') this.lastPlayableSoundtrack = result.track;
+        if (result.track.source !== 'generated') {
+          this.lastPlayableSoundtrack = result.track;
+          this.pickedSlideTrackIds?.add(result.track.id);
+        }
         this.updateSoundtrackLabel(result.track, slideIndex, result.fallback);
       } else {
         if (this.soundtrackTitle) this.soundtrackTitle.textContent = 'Tap Play story audio to enable sound';
@@ -1119,6 +1162,8 @@ export class WrappedExperience {
       e.stopPropagation();
       this.pauseReasons.delete('user');
       this.pauseReasons.delete('hold');
+      this.soundtrackBudgets.clear();
+      this.slideTracks = this.selectDistinctSlideTracks(this.data?.topTracks || []);
       this.goToSlide(0);
     });
 

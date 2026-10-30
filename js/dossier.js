@@ -134,6 +134,7 @@ export class SonicDossierEngine {
     this.analytics = null;
     this.returnFocus = null;
     this.spotlightTrack = null;
+    this.usedSpotlightTrackIds = new Set();
     this.onKeyDown = this.handleKeyDown.bind(this);
     this.unsubscribeSoundState = soundEngine.onStateChange(state => this.updatePlaybackUi(state));
   }
@@ -155,10 +156,53 @@ export class SonicDossierEngine {
     const tracks = this.data?.topTracks;
     if (!Array.isArray(tracks) || tracks.length === 0) return null;
     if (tracks.length === 1) return tracks[0];
-    const pool = previousTrackId ? tracks.filter(t => t && t.id !== previousTrackId) : tracks;
-    const candidates = pool.length > 0 ? pool : tracks;
-    const randomIndex = Math.floor(Math.random() * candidates.length);
-    return candidates[randomIndex];
+
+    if (!this.usedSpotlightTrackIds) {
+      this.usedSpotlightTrackIds = new Set();
+    }
+
+    // Filter candidate tracks that have not been picked yet
+    let pool = tracks.filter(t => t?.id && !this.usedSpotlightTrackIds.has(t.id));
+    if (previousTrackId) {
+      pool = pool.filter(t => t.id !== previousTrackId);
+    }
+
+    // If all candidate tracks have been picked, reset the picked history but avoid previousTrackId
+    if (pool.length === 0) {
+      this.usedSpotlightTrackIds.clear();
+      const resetPool = previousTrackId ? tracks.filter(t => t?.id && t.id !== previousTrackId) : tracks;
+      pool = resetPool.length > 0 ? resetPool : tracks;
+    }
+
+    const randomIndex = Math.floor(Math.random() * pool.length);
+    const chosen = pool[randomIndex] || tracks[0];
+    if (chosen?.id) {
+      this.usedSpotlightTrackIds.add(chosen.id);
+    }
+    return chosen;
+  }
+
+  async playSpotlightWithFallback(initialTrack) {
+    if (!initialTrack?.id) return;
+    let track = initialTrack;
+    const maxAttempts = Math.min(5, this.data?.topTracks?.length || 1);
+    for (let i = 0; i < maxAttempts; i++) {
+      const result = await soundEngine.playTrack(track);
+      if (result?.status === 'playing') {
+        showToast(`Playing preview: ${track.name}`, 'info', 2200);
+        return;
+      }
+      if (result?.status === 'cancelled' || result?.status === 'blocked') {
+        return;
+      }
+      // If preview unavailable, fetch another unpicked track from the user's top tracks
+      const next = this.pickRandomSpotlightTrack(track.id);
+      if (!next || next.id === track.id) break;
+      track = next;
+      this.spotlightTrack = next;
+      this.render();
+    }
+    showToast('Preview unavailable for chosen tracks', 'info', 2200);
   }
 
   async open(data, timeRange = 'short_term') {
@@ -166,6 +210,7 @@ export class SonicDossierEngine {
       this.weatherRequestId += 1;
       this.weatherData = null;
       this.isWeatherFetching = false;
+      this.usedSpotlightTrackIds?.clear();
     }
     this.returnFocus = document.activeElement;
     this.data = data;
@@ -1422,7 +1467,7 @@ export class SonicDossierEngine {
           const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
           this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
           if (wasPlaying && this.spotlightTrack) {
-            soundEngine.playTrack(this.spotlightTrack);
+            this.playSpotlightWithFallback(this.spotlightTrack);
           }
           this.render();
         }
@@ -1445,7 +1490,7 @@ export class SonicDossierEngine {
         const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
         this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
         if (wasPlaying && this.spotlightTrack) {
-          soundEngine.playTrack(this.spotlightTrack);
+          this.playSpotlightWithFallback(this.spotlightTrack);
         }
         this.render();
         requestAnimationFrame(() => {
@@ -1596,6 +1641,7 @@ export class SonicDossierEngine {
     // 7. Track audio play triggers
     const trackTriggers = this.modal.querySelectorAll('.track-play-trigger');
     trackTriggers.forEach(el => {
+      const isSpotlight = Boolean(el.closest('.dossier-spotlight-bar'));
       const playTrack = (e) => {
         e.stopPropagation();
         const trId = el.getAttribute('data-track-id');
@@ -1606,9 +1652,13 @@ export class SonicDossierEngine {
               soundEngine.pause();
             } else if (soundEngine.isPaused) {
               soundEngine.resume();
+            } else if (isSpotlight) {
+              this.playSpotlightWithFallback(tr);
             } else {
               soundEngine.playTrack(tr);
             }
+          } else if (isSpotlight) {
+            this.playSpotlightWithFallback(tr);
           } else {
             soundEngine.playTrack(tr);
             showToast(`Playing preview: ${tr.name}`, 'info', 2200);
@@ -1637,7 +1687,7 @@ export class SonicDossierEngine {
         const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
         this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
         if (wasPlaying && this.spotlightTrack) {
-          soundEngine.playTrack(this.spotlightTrack);
+          this.playSpotlightWithFallback(this.spotlightTrack);
         }
         this.render();
       };
