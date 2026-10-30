@@ -24,6 +24,7 @@ import {
   formatDuration
 } from './card-renderer.js';
 import { soundEngine } from './audio-player.js';
+import { updateDapPlayback, updateDapAudioFrame } from './dap-playback.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 import { wrappedExperience } from './wrapped-experience.js';
 import { sonicDossier } from './dossier.js';
@@ -719,6 +720,7 @@ function renderCurrentCard() {
 
     elements.cardContainer.innerHTML = html;
     attachTrackListeners();
+    updateCardPlaybackUI();
   } catch (err) {
     console.error('Card rendering error:', err);
     elements.cardContainer.innerHTML = `
@@ -742,6 +744,7 @@ function updateCardPlaybackUI() {
   const triggers = elements.cardContainer.querySelectorAll('.track-play-trigger');
   const ps = state.playbackState;
   const data = state.currentData;
+  updateDapPlayback(elements.cardContainer.querySelector('.card-dap'), soundEngine, data, data?.provenance?.selectedRange || state.timeRange);
   if (!triggers.length || !data) return;
 
   triggers.forEach(el => {
@@ -776,7 +779,7 @@ function updateCardPlaybackUI() {
     const dapRowRight = el.querySelector('.dap-row-right');
     if (dapRowRight && track) {
       dapRowRight.innerHTML = isActive
-        ? `<span class="dap-playing-pulse">${ps.isPaused ? '❚❚ PAUSED' : '▶ PLAYING'}</span>`
+        ? `<span class="dap-playing-pulse">${ps.isLoading ? 'LOADING' : ps.isPaused ? '❚❚ PAUSED' : '▶ PLAYING'}</span>`
         : `<span class="dap-row-time">${formatDuration(track.duration_ms)}</span>`;
     }
   });
@@ -907,33 +910,7 @@ soundEngine.onAudioFrame((frame) => {
     }
   });
 
-  // 2. Update Titanium DAP Card stereo VU meters and measured specs
-  const vuL = document.querySelector('.card-dap .dap-vu-l');
-  const vuR = document.querySelector('.card-dap .dap-vu-r');
-  if (vuL && vuR) {
-    if (frame.isResting) {
-      vuL.classList.remove('is-live');
-      vuR.classList.remove('is-live');
-    } else {
-      vuL.classList.add('is-live');
-      vuR.classList.add('is-live');
-      const leftLevel = Math.max(8, Math.min(98, Math.round(frame.bass * 100)));
-      const rightLevel = Math.max(8, Math.min(98, Math.round((frame.mid * 0.7 + frame.treble * 0.3) * 100)));
-      vuL.style.width = `${leftLevel}%`;
-      vuR.style.width = `${rightLevel}%`;
-    }
-  }
-
-  const specsEl = document.querySelector('.card-dap .dap-audio-specs');
-  if (frame.bpm && soundEngine.currentTrackId === state.currentData?.topTracks?.[0]?.id) {
-    if (specsEl && specsEl.dataset.measuredBpm !== String(frame.bpm)) {
-      specsEl.dataset.measuredBpm = String(frame.bpm);
-      specsEl.innerHTML = `<span>ESTIMATED PREVIEW TEMPO</span><span>•</span><span>${frame.bpm} BPM</span>`;
-    }
-  } else if (specsEl?.dataset.measuredBpm) {
-    delete specsEl.dataset.measuredBpm;
-    specsEl.textContent = 'SPOTIFY CATALOG METADATA';
-  }
+  updateDapAudioFrame(elements.cardContainer.querySelector('.card-dap'), soundEngine, frame);
 });
 
 /**

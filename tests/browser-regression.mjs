@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, mkdir } from 'node:fs/promises';
 import { chromium } from 'playwright-core';
 import { createStaticServer } from '../scripts/server.mjs';
+import { checkDapPlayback } from './dap-playback-scenarios.mjs';
 
 const server = createStaticServer();
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -113,6 +114,7 @@ try {
     });
     assert.ok(exported.width > 0 && exported.height > 0 && exported.bytes > 5000, `Empty ${style} export`);
   }
+  await checkDapPlayback(page);
   for (const [button, width, height] of [['story', 1080, 1920], ['square', 1200, 1200], ['poster', 1200, 1600]]) {
     const downloadPromise = page.waitForEvent('download');
     await page.locator(`#btn-export-${button}`).click();

@@ -42,6 +42,7 @@ Connected accounts also unlock the Year in Music story and the Taste Dossier. St
 - The selected artifact loads before comparison history. Opening Audio DNA fetches the other windows once, with visible loading, partial-result, and retry states. Spotify requests time out after 12 seconds; rate limits respect `Retry-After` without automatic retry loops.
 - Method & Sources distinguishes direct Spotify fields, local calculations, and creative Soulseekr interpretations.
 - Reduced-motion preferences disable decorative transitions and the card tilt.
+- Titanium DAP follows the shared preview player, including tracks started in Retro Handheld or another format. Its hero shows the current track, artist, artwork and playback state without restarting audio when formats change. Channel A/L and B/R measure the preview's actual stereo RMS levels on a -60 to 0 dBFS display scale; mono plays equally on both channels. Silence, pause, buffering and stop leave the meters at zero. Unsupported analysis is labelled instead of simulated.
 
 Spotify top items are affinity rankings, not exact stream counts. Spotify does not provide total listening minutes through the endpoints used here, so Soulseekr does not present an invented total. The provenance ledger records the endpoint, window, retrieval time, record count, and limitations for each connected archive.
 
@@ -115,6 +116,7 @@ The GitHub Pages workflow runs syntax, unit and browser checks before deployment
 |   |-- card-renderer.js      Artifact templates
 |   |-- audio-player.js       Preview lookup and playback
 |   |-- audio-analysis.js     Frequency bands, RMS and preview tempo estimates
+|   |-- dap-playback.js       Shared-player metadata and stereo meter UI
 |   |-- request.js            Request deadlines and Retry-After parsing
 |   |-- exporter.js           Canvas export and clipboard output
 |   |-- wrapped-experience.js Year in Music controller

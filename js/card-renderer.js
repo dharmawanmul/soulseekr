@@ -507,9 +507,7 @@ export function renderDapCard(data, timeRange, playbackState) {
 
           <!-- Hero Playing Track Meta -->
           <div class="dap-hero-track">
-            ${topCover
-              ? `<img src="${escapeHtml(topCover)}" class="dap-album-art" alt="Album cover">`
-              : ''}
+            <img ${topCover ? `src="${escapeHtml(topCover)}"` : 'hidden'} class="dap-album-art" alt="Album cover">
             <div class="dap-track-meta">
               <span class="dap-track-rank">TOP FREQUENCY • ${rangeLabel.toUpperCase()}</span>
               <h3 class="dap-track-title">${escapeHtml(topSong?.name || '')}</h3>
@@ -521,18 +519,19 @@ export function renderDapCard(data, timeRange, playbackState) {
             </div>
           </div>
 
-          <!-- Stereo VU Peak Level Meters -->
+          <!-- Stereo preview RMS level meters -->
           <div class="dap-vu-meters">
             <div class="dap-vu-channel">
               <span class="dap-vu-tag">L</span>
-              <div class="dap-vu-bar"><div class="dap-vu-level dap-vu-l"></div></div>
+              <div class="dap-vu-bar" role="meter" aria-label="Left preview channel A" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="No active signal"><div class="dap-vu-level dap-vu-l"></div></div>
               <span class="dap-vu-db">CHANNEL A</span>
             </div>
             <div class="dap-vu-channel">
               <span class="dap-vu-tag">R</span>
-              <div class="dap-vu-bar"><div class="dap-vu-level dap-vu-r"></div></div>
+              <div class="dap-vu-bar" role="meter" aria-label="Right preview channel B" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="No active signal"><div class="dap-vu-level dap-vu-r"></div></div>
               <span class="dap-vu-db">CHANNEL B</span>
             </div>
+            <span class="dap-meter-status">PLAY A PREVIEW FOR LIVE L/R</span>
           </div>
 
           <!-- Top Tracks Playlist -->

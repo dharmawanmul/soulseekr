@@ -15,6 +15,12 @@ export function rmsLevel(samples) {
   return Math.min(1, Math.sqrt(power));
 }
 
+// A -60 dBFS floor keeps quiet detail visible without moving during silence.
+export function previewMeterLevel(rms) {
+  if (!Number.isFinite(rms) || rms <= 0) return 0;
+  return Math.max(0, Math.min(1, (20 * Math.log10(rms) + 60) / 60));
+}
+
 // A consistency gate for preview onsets, not a full-song tempo measurement.
 export class PreviewTempoEstimator {
   constructor() { this.reset(); }

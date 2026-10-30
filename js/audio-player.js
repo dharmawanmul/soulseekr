@@ -6,6 +6,11 @@ import { bandLevel, rmsLevel, PreviewTempoEstimator } from './audio-analysis.js'
 import { INSTRUMENTAL_TRACK } from './story-soundtrack.js';
 import { requestJson } from './request.js';
 
+const RESTING_AUDIO_FRAME = Object.freeze({
+  bass: 0, mid: 0, treble: 0, overall: 0, left: 0, right: 0,
+  stereoAvailable: false, bpm: null, isResting: true, isBuffering: false
+});
+
 function normalizeCatalogText(value) {
   return String(value || '').normalize('NFKD').replace(/\p{M}/gu, '')
     .toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim().replace(/\s+/g, ' ');
@@ -56,6 +61,10 @@ export class SoundEngine {
     this.analyserNode = null;
     this.frequencyData = null;
     this.timeDomainData = null;
+    this.stereoAnalysers = null;
+    this.stereoTimeData = null;
+    this.isBuffering = false;
+    this.lastAudioFrame = { ...RESTING_AUDIO_FRAME, trackId: null };
     this.analysisAnimId = null;
     this.onAudioFrameCallbacks = [];
     this.trackAcoustics = new Map();
@@ -82,6 +91,14 @@ export class SoundEngine {
 
     this.audioElement?.addEventListener?.('ended', () => {
       this.stop();
+    });
+
+    this.audioElement?.addEventListener?.('waiting', () => {
+      this.isBuffering = true;
+      this.emitAudioFrame({ ...RESTING_AUDIO_FRAME, isBuffering: true });
+    });
+    this.audioElement?.addEventListener?.('playing', () => {
+      this.isBuffering = false;
     });
 
     this.audioElement?.addEventListener?.('pause', () => {
@@ -194,6 +211,36 @@ export class SoundEngine {
     } catch (err) {
       console.warn('Web Audio analysis connection skipped:', err);
     }
+    this.initStereoAnalysis();
+  }
+
+  initStereoAnalysis() {
+    if (!this.analyserNode || this.stereoAnalysers) return;
+    let input;
+    let splitter;
+    try {
+      // Upmix mono like the speakers do, then measure each channel separately.
+      // This analysis-only branch never reconnects to the audible output.
+      input = this.audioContext.createGain();
+      input.channelCount = 2;
+      input.channelCountMode = 'explicit';
+      input.channelInterpretation = 'speakers';
+      splitter = this.audioContext.createChannelSplitter(2);
+      const analysers = [0, 1].map(channel => {
+        const analyser = this.audioContext.createAnalyser();
+        analyser.fftSize = 1024;
+        splitter.connect(analyser, channel);
+        return analyser;
+      });
+      input.connect(splitter);
+      this.analyserNode.connect(input);
+      this.stereoAnalysers = analysers;
+      this.stereoTimeData = analysers.map(node => new Float32Array(node.fftSize));
+    } catch (err) {
+      input?.disconnect();
+      splitter?.disconnect();
+      console.warn('Stereo preview analysis unavailable:', err);
+    }
   }
 
   startAnalysisLoop() {
@@ -216,19 +263,13 @@ export class SoundEngine {
       cancelAnimationFrame(this.analysisAnimId);
       this.analysisAnimId = null;
     }
-    this.emitAudioFrame({
-      bass: 0,
-      mid: 0,
-      treble: 0,
-      overall: 0,
-      bpm: this.measuredBpm,
-      isResting: true
-    });
+    this.emitAudioFrame({ ...RESTING_AUDIO_FRAME, bpm: this.measuredBpm });
   }
 
   analyzeCurrentFrame() {
-    if (!this.analyserNode || !this.frequencyData) {
-      this.emitAudioFrame({ bass: 0, mid: 0, treble: 0, overall: 0, bpm: null, isResting: true });
+    if (!this.isPlaying || this.isBuffering || this.audioContext?.state !== 'running'
+        || !this.analyserNode || !this.frequencyData) {
+      this.emitAudioFrame({ ...RESTING_AUDIO_FRAME, isBuffering: this.isBuffering });
       return;
     }
 
@@ -241,6 +282,10 @@ export class SoundEngine {
     const mid = bandLevel(this.frequencyData, sampleRate, fftSize, 181, 4000);
     const treble = bandLevel(this.frequencyData, sampleRate, fftSize, 4001, 16000);
     const rms = rmsLevel(this.timeDomainData);
+    const stereo = this.stereoAnalysers?.map((node, channel) => {
+      node.getFloatTimeDomainData(this.stereoTimeData[channel]);
+      return rmsLevel(this.stereoTimeData[channel]);
+    });
     this.measuredBpm = this.tempoEstimator.update(bass, performance.now());
     const levelPercent = Math.round(rms * 100);
     if (this.currentTrackId) {
@@ -257,6 +302,10 @@ export class SoundEngine {
       mid,
       treble,
       overall: rms,
+      left: stereo?.[0] ?? 0,
+      right: stereo?.[1] ?? 0,
+      stereoAvailable: Boolean(stereo),
+      isResting: false,
       bpm: this.measuredBpm,
       levelPercent
     });
@@ -270,9 +319,10 @@ export class SoundEngine {
   }
 
   emitAudioFrame(frame) {
+    this.lastAudioFrame = { ...RESTING_AUDIO_FRAME, ...frame, trackId: this.currentTrackId };
     for (let i = 0; i < this.onAudioFrameCallbacks.length; i++) {
       try {
-        this.onAudioFrameCallbacks[i](frame);
+        this.onAudioFrameCallbacks[i](this.lastAudioFrame);
       } catch (err) {
         // Safe callback execution
       }
@@ -605,6 +655,7 @@ export class SoundEngine {
   }
 
   stop(shouldNotify = true) {
+    this.isBuffering = false;
     this.lastPlaybackFailure = null;
     this.silentPlaybackFailure = false;
     this.previewError = '';

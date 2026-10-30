@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { bandLevel, rmsLevel, PreviewTempoEstimator } from '../js/audio-analysis.js';
-import { soundEngine } from '../js/audio-player.js';
+import { bandLevel, rmsLevel, previewMeterLevel, PreviewTempoEstimator } from '../js/audio-analysis.js';
+import { SoundEngine, soundEngine } from '../js/audio-player.js';
 
 test('frequency bands select bass by Hz at different device sample rates', () => {
   for (const sampleRate of [44100, 48000]) {
@@ -55,5 +55,76 @@ test('unavailable audio analysis emits resting values, not simulated measurement
   assert.equal(frame.bpm, null);
   assert.equal(frame.overall, 0);
   assert.equal(frame.isResting, true);
+  assert.equal(frame.left, 0);
+  assert.equal(frame.right, 0);
+  assert.equal(frame.stereoAvailable, false);
   unsubscribe();
+});
+
+test('preview meters use a bounded dBFS scale with no minimum fake activity', () => {
+  for (const value of [0, -1, NaN, Infinity, 0.00001, 0.001]) assert.equal(previewMeterLevel(value), 0);
+  assert.equal(previewMeterLevel(0.01), 1 / 3);
+  assert.equal(previewMeterLevel(0.1), 2 / 3);
+  assert.equal(previewMeterLevel(1), 1);
+  assert.equal(previewMeterLevel(2), 1);
+});
+
+test('channel frames measure distinct waveforms and reset on pause, buffering and unavailable context', () => {
+  const engine = new SoundEngine(null);
+  engine.audioContext = { sampleRate: 48000, state: 'running' };
+  engine.analyserNode = { fftSize: 2048, getByteFrequencyData: data => data.fill(0),
+    getFloatTimeDomainData: data => data.set([0.25, -0.25]) };
+  engine.frequencyData = new Uint8Array(1024);
+  engine.timeDomainData = new Float32Array(2);
+  engine.stereoAnalysers = [0.5, 0.125].map(amplitude => ({
+    getFloatTimeDomainData: data => data.set([amplitude, -amplitude])
+  }));
+  engine.stereoTimeData = [new Float32Array(2), new Float32Array(2)];
+  engine.isPlaying = true;
+  engine.currentTrackId = 'different-stereo';
+  engine.analyzeCurrentFrame();
+  assert.equal(engine.lastAudioFrame.left, 0.5);
+  assert.equal(engine.lastAudioFrame.right, 0.125);
+  assert.equal(engine.lastAudioFrame.stereoAvailable, true);
+  assert.equal(engine.lastAudioFrame.trackId, 'different-stereo');
+  engine.stopAnalysisLoop();
+  assert.equal(engine.lastAudioFrame.left, 0);
+  assert.equal(engine.lastAudioFrame.right, 0);
+  assert.equal(engine.lastAudioFrame.isResting, true);
+  engine.isBuffering = true;
+  engine.analyzeCurrentFrame();
+  assert.equal(engine.lastAudioFrame.isBuffering, true);
+  assert.equal(engine.lastAudioFrame.left, 0);
+  engine.isBuffering = false;
+  engine.audioContext.state = 'suspended';
+  engine.analyzeCurrentFrame();
+  assert.equal(engine.lastAudioFrame.left, 0);
+  assert.equal(engine.lastAudioFrame.right, 0);
+});
+
+test('stereo analysis upmixes mono before splitting without adding an audible output or duplicate nodes', () => {
+  const engine = new SoundEngine(null);
+  const connections = [];
+  const node = name => ({ name, fftSize: 1024, connect: (target, output) => connections.push([name, target.name, output]) });
+  const input = node('stereo-input');
+  const splitter = node('splitter');
+  let analyserCount = 0;
+  engine.analyserNode = node('main-analyser');
+  engine.audioContext = {
+    destination: node('audible-output'),
+    createGain: () => input,
+    createChannelSplitter: channels => { assert.equal(channels, 2); return splitter; },
+    createAnalyser: () => node(`channel-${analyserCount++}`)
+  };
+  engine.initStereoAnalysis();
+  assert.equal(input.channelCount, 2);
+  assert.equal(input.channelCountMode, 'explicit');
+  assert.equal(input.channelInterpretation, 'speakers');
+  assert.deepEqual(connections, [
+    ['splitter', 'channel-0', 0], ['splitter', 'channel-1', 1],
+    ['stereo-input', 'splitter', undefined], ['main-analyser', 'stereo-input', undefined]
+  ]);
+  engine.initStereoAnalysis();
+  assert.equal(connections.length, 4);
+  assert.equal(analyserCount, 2);
 });
