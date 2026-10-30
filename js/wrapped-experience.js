@@ -332,6 +332,8 @@ export class WrappedExperience {
     this.storyAudioRequestId = 0;
     this.storyAudioPending = false;
     this.lastPlayableSoundtrack = null;
+    this.lastSoundtrackSlideIndex = null;
+    this.playedSlideTracks = new Map();
     this.pickedSlideTrackIds = new Set();
     this.returnFocus = null;
 
@@ -486,6 +488,8 @@ export class WrappedExperience {
     this.failedSoundtracks.clear();
     this.soundtrackBudgets.clear();
     this.lastPlayableSoundtrack = null;
+    this.lastSoundtrackSlideIndex = null;
+    this.playedSlideTracks.clear();
 
     // Populate Top Bar
     const user = data.user || {};
@@ -634,7 +638,8 @@ export class WrappedExperience {
     const candidatesToPreload = [
       this.slideTracks[this.currentSlideIndex + 1],
       this.slideTracks[this.currentSlideIndex + 2],
-      ...this.soundtrackPool.slice(0, 8)
+      ...this.soundtrackPool.filter(track => !this.usedSoundtracks.has(track.id)
+        && !this.failedSoundtracks.has(track.id)).slice(0, 3)
     ].filter(Boolean);
     const seen = new Set();
     candidatesToPreload.forEach(async (track) => {
@@ -683,22 +688,26 @@ export class WrappedExperience {
     this.setPauseReason('soundtrack', true);
     if (!this.soundtrackBudgets.has(slideIndex)) {
       this.soundtrackBudgets.set(slideIndex, {
-        remaining: Math.max(6, Math.min(10, this.soundtrackPool.length || 6))
+        remaining: this.soundtrackPool.length + 1
       });
     }
     try {
       soundEngine.initAudioContext();
       this.preloadSlideTracks();
       const result = await playStorySoundtrack({ engine: soundEngine, preferred: storyTrack,
-        tracks: this.soundtrackPool, previous: this.lastPlayableSoundtrack,
+        tracks: this.soundtrackPool,
+        previous: this.lastSoundtrackSlideIndex === slideIndex ? null : this.lastPlayableSoundtrack,
         used: this.usedSoundtracks, failed: this.failedSoundtracks,
-        budget: this.soundtrackBudgets.get(slideIndex), isCurrent, preferFresh: true,
+        budget: this.soundtrackBudgets.get(slideIndex), isCurrent,
+        reusePreferred: this.playedSlideTracks.get(slideIndex)?.id === storyTrack?.id,
         onAttempt: track => this.updateSoundtrackLabel(track, slideIndex, track?.id !== storyTrack?.id) });
       if (!isCurrent() || result.status === 'cancelled') return;
       if (result.status === 'playing') {
         this.slideTracks[slideIndex] = result.track;
         if (result.track.source !== 'generated') {
           this.lastPlayableSoundtrack = result.track;
+          this.lastSoundtrackSlideIndex = slideIndex;
+          this.playedSlideTracks.set(slideIndex, result.track);
           this.pickedSlideTrackIds?.add(result.track.id);
         }
         this.updateSoundtrackLabel(result.track, slideIndex, result.fallback);
@@ -1163,6 +1172,7 @@ export class WrappedExperience {
       this.pauseReasons.delete('user');
       this.pauseReasons.delete('hold');
       this.soundtrackBudgets.clear();
+      this.playedSlideTracks.clear();
       this.slideTracks = this.selectDistinctSlideTracks(this.data?.topTracks || []);
       this.goToSlide(0);
     });

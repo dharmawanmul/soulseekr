@@ -11,6 +11,7 @@ import { matchDirector, renderCriterionPosterHtml, renderSynesthesiaHtml, Synest
 import { fetchLiveWeatherData, computeBarometricSplit, renderWeatherChaserHtml, WeatherTimelineController } from './weather-chaser.js';
 import { resolvePassportMetrics, renderBoardingPassHtml, FlightMapController, computeSubconsciousMind, renderSubconsciousMindHtml } from './world-passport.js';
 import { SPOTIFY_TIME_RANGES, loadComparisonRanges } from './spotify-api.js';
+import { playStorySoundtrack } from './story-soundtrack.js';
 
 const COMPARISON_LIMIT = 20;
 
@@ -135,6 +136,12 @@ export class SonicDossierEngine {
     this.returnFocus = null;
     this.spotlightTrack = null;
     this.usedSpotlightTrackIds = new Set();
+    this.pickedSpotlightTrackIds = new Set();
+    this.failedSpotlightTrackIds = new Set();
+    this.spotlightRequestId = 0;
+    this.spotlightAudioPending = false;
+    this.lastPlayableSpotlightTrack = null;
+    this.previousSpotlightTrack = null;
     this.onKeyDown = this.handleKeyDown.bind(this);
     this.unsubscribeSoundState = soundEngine.onStateChange(state => this.updatePlaybackUi(state));
   }
@@ -153,64 +160,97 @@ export class SonicDossierEngine {
   }
 
   pickRandomSpotlightTrack(previousTrackId = null) {
-    const tracks = this.data?.topTracks;
-    if (!Array.isArray(tracks) || tracks.length === 0) return null;
-    if (tracks.length === 1) return tracks[0];
-
-    if (!this.usedSpotlightTrackIds) {
-      this.usedSpotlightTrackIds = new Set();
-    }
-
-    // Filter candidate tracks that have not been picked yet
-    let pool = tracks.filter(t => t?.id && !this.usedSpotlightTrackIds.has(t.id));
-    if (previousTrackId) {
-      pool = pool.filter(t => t.id !== previousTrackId);
-    }
-
-    // If all candidate tracks have been picked, reset the picked history but avoid previousTrackId
-    if (pool.length === 0) {
-      this.usedSpotlightTrackIds.clear();
-      const resetPool = previousTrackId ? tracks.filter(t => t?.id && t.id !== previousTrackId) : tracks;
-      pool = resetPool.length > 0 ? resetPool : tracks;
-    }
-
-    const randomIndex = Math.floor(Math.random() * pool.length);
-    const chosen = pool[randomIndex] || tracks[0];
-    if (chosen?.id) {
-      this.usedSpotlightTrackIds.add(chosen.id);
-    }
+    const tracks = (this.data?.topTracks || []).slice(0, 50).filter(track => track?.id);
+    if (!tracks.length) return null;
+    const different = tracks.filter(track => track.id !== previousTrackId);
+    const eligible = different.filter(track => !this.failedSpotlightTrackIds.has(track.id));
+    const fresh = eligible.filter(track => !this.usedSpotlightTrackIds.has(track.id));
+    const unpicked = fresh.filter(track => !this.pickedSpotlightTrackIds.has(track.id));
+    const pool = unpicked.length ? unpicked : fresh.length ? fresh : eligible.length ? eligible
+      : different.length ? different : tracks;
+    const chosen = pool[Math.floor(Math.random() * pool.length)];
+    this.pickedSpotlightTrackIds.add(chosen.id);
     return chosen;
   }
 
-  async playSpotlightWithFallback(initialTrack) {
-    if (!initialTrack?.id) return;
-    let track = initialTrack;
-    const maxAttempts = Math.min(5, this.data?.topTracks?.length || 1);
-    for (let i = 0; i < maxAttempts; i++) {
-      const result = await soundEngine.playTrack(track);
-      if (result?.status === 'playing') {
-        showToast(`Playing preview: ${track.name}`, 'info', 2200);
-        return;
-      }
-      if (result?.status === 'cancelled' || result?.status === 'blocked') {
-        return;
-      }
-      // If preview unavailable, fetch another unpicked track from the user's top tracks
-      const next = this.pickRandomSpotlightTrack(track.id);
-      if (!next || next.id === track.id) break;
-      track = next;
-      this.spotlightTrack = next;
-      this.render();
+  cancelSpotlightPlayback() {
+    const ownsAudio = this.spotlightAudioPending || soundEngine.currentTrackId === this.spotlightTrack?.id;
+    this.spotlightRequestId++;
+    this.spotlightAudioPending = false;
+    if (ownsAudio) soundEngine.stop();
+  }
+
+  rotateSpotlight() {
+    const previous = this.lastPlayableSpotlightTrack || this.spotlightTrack;
+    const continueAudio = this.spotlightAudioPending || (soundEngine.currentTrackId === this.spotlightTrack?.id
+      && (soundEngine.isPlaying || soundEngine.isLoading));
+    this.cancelSpotlightPlayback();
+    this.previousSpotlightTrack = previous;
+    this.spotlightTrack = this.pickRandomSpotlightTrack(previous?.id);
+    if (continueAudio && this.spotlightTrack) this.playSpotlightWithFallback(this.spotlightTrack);
+  }
+
+  updateSpotlightTrack(track) {
+    this.spotlightTrack = track;
+    const bar = this.modal?.querySelector('.dossier-spotlight-bar');
+    if (!bar) return;
+    const template = document.createElement('template');
+    template.innerHTML = this.renderSpotlightBar();
+    bar.querySelector('.dossier-spotlight-left')?.replaceWith(template.content.querySelector('.dossier-spotlight-left'));
+    const button = bar.querySelector('.dossier-spotlight-play-btn');
+    if (button) {
+      button.dataset.trackId = track.id;
+      button.setAttribute('aria-label', `Play preview for ${track.name}`);
     }
-    showToast('Preview unavailable for chosen tracks', 'info', 2200);
+    this.updatePlaybackUi();
+  }
+
+  async playSpotlightWithFallback(initialTrack, { retry = false } = {}) {
+    if (!initialTrack?.id) return;
+    this.cancelSpotlightPlayback();
+    const requestId = ++this.spotlightRequestId;
+    const data = this.data;
+    const isCurrent = () => this.isOpen && requestId === this.spotlightRequestId && this.data === data;
+    if (!isCurrent()) return;
+    if (retry) this.failedSpotlightTrackIds.clear();
+    this.spotlightAudioPending = true;
+    try {
+      soundEngine.initAudioContext();
+      const result = await playStorySoundtrack({ engine: soundEngine, preferred: initialTrack,
+        tracks: (data?.topTracks || []).slice(0, 50), previous: this.previousSpotlightTrack,
+        used: this.usedSpotlightTrackIds, failed: this.failedSpotlightTrackIds,
+        budget: { remaining: (data?.topTracks?.length || 0) + 1 }, isCurrent,
+        reusePreferred: this.lastPlayableSpotlightTrack?.id === initialTrack.id,
+        allowInstrumental: false, onAttempt: track => this.updateSpotlightTrack(track) });
+      if (!isCurrent() || result.status === 'cancelled') return;
+      if (result.status === 'playing') {
+        this.lastPlayableSpotlightTrack = result.track;
+        this.pickedSpotlightTrackIds.add(result.track.id);
+        this.updateSpotlightTrack(result.track);
+      } else {
+        showToast(result.status === 'blocked' ? 'Your browser paused audio. Tap Play to enable the preview.'
+          : 'No different playable preview was found in your top tracks.', 'info', 3500);
+      }
+    } catch (error) {
+      if (isCurrent()) showToast('Audio could not start. Tap Play to try again.', 'info', 3500);
+    } finally {
+      if (requestId === this.spotlightRequestId) {
+        this.spotlightAudioPending = false;
+        this.updatePlaybackUi();
+      }
+    }
   }
 
   async open(data, timeRange = 'short_term') {
+    this.cancelSpotlightPlayback();
     if (this.data !== data) {
       this.weatherRequestId += 1;
       this.weatherData = null;
       this.isWeatherFetching = false;
       this.usedSpotlightTrackIds?.clear();
+      this.pickedSpotlightTrackIds.clear();
+      this.failedSpotlightTrackIds.clear();
+      this.lastPlayableSpotlightTrack = null;
     }
     this.returnFocus = document.activeElement;
     this.data = data;
@@ -218,7 +258,8 @@ export class SonicDossierEngine {
     this.comparisonLeft = timeRange;
     this.comparisonRight = timeRange === 'short_term' ? 'medium_term' : 'short_term';
     this.analytics = this.computeAnalytics(data, timeRange);
-    this.spotlightTrack = this.pickRandomSpotlightTrack();
+    this.previousSpotlightTrack = this.lastPlayableSpotlightTrack;
+    this.spotlightTrack = this.pickRandomSpotlightTrack(this.previousSpotlightTrack?.id);
 
     this.ensureDom();
     this.modal.classList.add('is-open');
@@ -239,9 +280,7 @@ export class SonicDossierEngine {
       audioDna.destroy();
     }
 
-    if (this.spotlightTrack && soundEngine.isPlaying && soundEngine.currentTrackId === this.spotlightTrack.id) {
-      soundEngine.stop();
-    }
+    this.cancelSpotlightPlayback();
 
     this.modal.classList.remove('is-open');
     this.modal.setAttribute('aria-hidden', 'true');
