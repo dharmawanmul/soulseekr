@@ -32,28 +32,152 @@ test('an unavailable soundtrack falls back to another verified ranked track', as
   assert.equal(f.instrumental(), 0);
 });
 
-test('a previously working preview can be reused when no fresh ready track exists', async () => {
+test('unresolved fresh tracks are tried before the previous story song', async () => {
   const f = fixture();
   f.options.previous = track('previous', true);
   f.options.tracks.push(f.options.previous);
   f.options.used.add('previous');
   f.engine.playTrack = async value => {
     f.attempted.push(value.id);
-    return { status: value.id === 'previous' ? 'playing' : 'unavailable' };
+    return { status: value.id === 'other' ? 'playing' : 'unavailable' };
   };
   const result = await playStorySoundtrack(f.options);
-  assert.equal(result.track.id, 'previous');
-  assert.deepEqual(f.attempted, ['missing', 'previous']);
+  assert.equal(result.track.id, 'other');
+  assert.deepEqual(f.attempted, ['missing', 'other']);
 });
 
-test('missing previews use a labelled local instrumental with bounded attempts', async () => {
+test('a local instrumental is used only after all eligible real candidates fail', async () => {
   const f = fixture();
   f.options.tracks.push(track('third'), track('fourth'), track('fifth'));
+  f.options.budget.remaining = 5;
   const result = await playStorySoundtrack(f.options);
-  assert.equal(f.attempted.length, 3);
+  assert.equal(f.attempted.length, 5);
   assert.equal(f.instrumental(), 1);
   assert.equal(result.track.source, 'generated');
   assert.equal(result.track.name, 'Soulseekr instrumental');
+});
+
+test('a depleted search budget never selects an instrumental while candidates remain', async () => {
+  const f = fixture();
+  f.options.budget.remaining = 1;
+  assert.equal((await playStorySoundtrack(f.options)).status, 'unavailable');
+  assert.equal(f.instrumental(), 0);
+});
+
+test('fallback cannot consume the same song again on its originally assigned story', async () => {
+  const f = fixture();
+  const tracks = Array.from({ length: 8 }, (_, index) => track(`song-${index}`, true));
+  f.options.tracks = tracks;
+  f.engine.playTrack = async value => {
+    f.attempted.push(value.id);
+    return { status: value.id === 'missing' ? 'unavailable' : 'playing' };
+  };
+  const played = [];
+  for (let index = 0; index < 6; index++) {
+    f.options.preferred = index === 0 ? track('missing') : tracks[index - 1];
+    f.options.previous = played.length ? tracks.find(value => value.id === played.at(-1)) : null;
+    f.options.budget = { remaining: 9 };
+    const result = await playStorySoundtrack(f.options);
+    played.push(result.track.id);
+  }
+  assert.equal(new Set(played).size, 6);
+  assert.equal(f.instrumental(), 0);
+});
+
+test('a small playable pool cycles least-recent songs but never the previous song', async () => {
+  const f = fixture();
+  f.options.tracks = [track('a', true), track('b', true), track('c', true)];
+  f.options.used = new Set(['a', 'b', 'c']);
+  f.options.previous = f.options.tracks[2];
+  f.engine.playTrack = async value => ({ status: 'playing' });
+  const played = [];
+  for (let index = 0; index < 6; index++) {
+    f.options.preferred = null;
+    f.options.budget = { remaining: 3 };
+    const result = await playStorySoundtrack(f.options);
+    assert.notEqual(result.track.id, f.options.previous.id);
+    played.push(result.track.id);
+    f.options.previous = result.track;
+  }
+  assert.deepEqual(played, ['a', 'b', 'c', 'a', 'b', 'c']);
+  assert.equal(f.instrumental(), 0);
+});
+
+test('a playable song beyond the old ten-track limit is found before using an instrumental', async () => {
+  const f = fixture();
+  f.options.tracks = Array.from({ length: 20 }, (_, index) => track(`candidate-${index}`));
+  f.options.preferred = null;
+  f.options.budget.remaining = 20;
+  f.engine.playTrack = async value => {
+    f.attempted.push(value.id);
+    return { status: value.id === 'candidate-17' ? 'playing' : 'unavailable' };
+  };
+  assert.equal((await playStorySoundtrack(f.options)).track.id, 'candidate-17');
+  assert.equal(f.instrumental(), 0);
+});
+
+test('Dossier can exhaust real previews without ever generating instrumental audio', async () => {
+  const f = fixture();
+  f.options.allowInstrumental = false;
+  assert.equal((await playStorySoundtrack(f.options)).status, 'unavailable');
+  assert.equal(f.instrumental(), 0);
+});
+
+test('revisiting the same story can keep its own assignment, not another story song', async () => {
+  const f = fixture();
+  f.options.preferred = track('own', true);
+  f.options.used.add('own');
+  f.options.reusePreferred = true;
+  f.engine.playTrack = async value => { f.attempted.push(value.id); return { status: 'playing' }; };
+  assert.equal((await playStorySoundtrack(f.options)).track.id, 'own');
+  f.options.previous = track('own');
+  assert.notEqual((await playStorySoundtrack(f.options)).track.id, 'own');
+});
+
+test('preview discovery runs at most three lookups ahead and plays only matched audio', async () => {
+  const f = fixture();
+  f.options.tracks = Array.from({ length: 12 }, (_, index) => track(`candidate-${index}`));
+  f.options.preferred = null;
+  f.options.budget.remaining = 12;
+  let active = 0;
+  let maxActive = 0;
+  f.engine.resolveRealAudioPreview = async name => {
+    active++;
+    maxActive = Math.max(maxActive, active);
+    await new Promise(resolve => setImmediate(resolve));
+    active--;
+    return name === 'candidate-11' ? 'https://audio.example/verified' : null;
+  };
+  f.engine.playTrack = async value => { f.attempted.push(value.id); return { status: 'playing' }; };
+  assert.equal((await playStorySoundtrack(f.options)).track.id, 'candidate-11');
+  assert.ok(maxActive <= 3);
+  assert.deepEqual(f.attempted, ['candidate-11']);
+  assert.equal(f.instrumental(), 0);
+});
+
+test('duplicate track entries retain a supplied preview and are attempted only once', async () => {
+  const f = fixture();
+  f.options.preferred = track('duplicate');
+  f.options.tracks = [track('duplicate'), track('duplicate', true)];
+  f.engine.playTrack = async value => {
+    f.attempted.push(value.id);
+    assert.ok(value.preview_url);
+    return { status: 'playing' };
+  };
+  assert.equal((await playStorySoundtrack(f.options)).track.id, 'duplicate');
+  assert.deepEqual(f.attempted, ['duplicate']);
+});
+
+test('cancelling catalog discovery does not play, fail, or consume a song', async () => {
+  const f = fixture();
+  let current = true;
+  f.options.isCurrent = () => current;
+  f.engine.resolveRealAudioPreview = async () => { current = false; return 'https://audio.example/found'; };
+  assert.equal((await playStorySoundtrack(f.options)).status, 'cancelled');
+  assert.equal(f.options.used.size, 0);
+  assert.equal(f.options.failed.size, 0);
+  assert.deepEqual(f.attempted, []);
+  assert.equal(f.instrumental(), 0);
 });
 
 test('mute, navigation or closing during a failed lookup cancels the fallback chain', async () => {

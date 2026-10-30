@@ -6,13 +6,13 @@ export const INSTRUMENTAL_TRACK = {
 };
 
 export function soundtrackCandidates({ preferred, tracks, previous, used, failed, reusePreferred = false }) {
-  const seen = new Set();
-  const candidates = [preferred, ...tracks].filter(track => {
+  const byId = new Map();
+  for (const track of [preferred, ...tracks]) {
     if (!track?.id || track.source === 'generated' || track.id === previous?.id
-        || seen.has(track.id) || failed.has(track.id)) return false;
-    seen.add(track.id);
-    return true;
-  });
+        || failed.has(track.id)) continue;
+    if (!byId.has(track.id) || (!byId.get(track.id).preview_url && track.preview_url)) byId.set(track.id, track);
+  }
+  const candidates = [...byId.values()];
   const ownPreferred = candidates.find(track => track.id === preferred?.id
     && (reusePreferred || !used.has(track.id)));
   const fresh = candidates.filter(track => !used.has(track.id) && track !== ownPreferred);

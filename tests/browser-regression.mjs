@@ -322,7 +322,7 @@ try {
     w.isMuted = true;
     w.open(data);
     w.slideTracks[1] = missing;
-    w.soundtrackPool = [missing, good];
+    w.soundtrackPool = [missing, good, { ...good, id: 'different-recap-preview' }];
     w.isMuted = false;
     w.goToSlide(1);
   });
@@ -337,7 +337,7 @@ try {
     wrapped.goToSlide(5);
   });
   await page.waitForFunction(() => {
-    return storyEngine.currentTrackId === 'working-story-preview' && storyEngine.isPlaying && !wrapped.storyAudioPending;
+    return storyEngine.currentTrackId === 'different-recap-preview' && storyEngine.isPlaying && !wrapped.storyAudioPending;
   });
   await page.keyboard.press('Escape');
 
@@ -388,7 +388,244 @@ try {
   await page.keyboard.press('Escape');
   assert.equal(await page.evaluate(() => storyEngine.synthVoices.size), 0);
   await page.setViewportSize({ width: 1440, height: 1000 });
-  console.log('PASS second/last story fallback, working-preview reuse, real instrumental, browser recovery and mute cleanup');
+  console.log('PASS distinct second/last story fallbacks, last-resort instrumental, browser recovery and mute cleanup');
+
+  await page.evaluate(async () => {
+    const data = structuredClone((await import('/js/app.js')).DEFAULT_CURATED_DATA);
+    const missing = { ...data.topTracks[0], id: 'missing-rotation', name: 'Missing rotation fixture',
+      artists: [{ name: 'Missing artist' }], preview_url: null };
+    const available = Array.from({ length: 8 }, (_, index) => ({ ...data.topTracks[0],
+      id: `rotation-${index}`, name: `Rotation song ${index}`, preview_url: 'https://audio.example.test/preview.wav' }));
+    data.topTracks = [missing, ...available];
+    window.rotationData = data;
+    wrapped.isMuted = true;
+    wrapped.open(data);
+    wrapped.soundtrackPool = data.topTracks;
+    wrapped.slideTracks = [missing, ...available.slice(0, 5)];
+    wrapped.isMuted = false;
+  });
+  const storySongs = [];
+  for (let index = 0; index < 6; index++) {
+    await page.evaluate(index => { wrapped.goToSlide(index); wrapped.setPauseReason('user', true); }, index);
+    await page.waitForFunction(() => !wrapped.storyAudioPending && storyEngine.isPlaying);
+    const song = await page.evaluate(() => storyEngine.currentTrack);
+    assert.notEqual(song.source, 'generated');
+    storySongs.push(song.id);
+    assert.match(await page.locator('#wrapped-soundtrack-title').innerText(), new RegExp(song.name));
+  }
+  assert.equal(new Set(storySongs).size, 6);
+  await page.keyboard.press('Escape');
+  console.log('PASS six distinct story songs despite fallback consuming later planned tracks');
+
+  await page.evaluate(async () => {
+    window.rotationDossier = (await import('/js/dossier.js')).sonicDossier;
+    rotationDossier.activeDept = 'sources';
+    await rotationDossier.open(rotationData);
+    rotationDossier.updateSpotlightTrack(rotationData.topTracks[1]);
+  });
+  await page.locator('.dossier-spotlight-play-btn').click();
+  await page.waitForFunction(() => !rotationDossier.spotlightAudioPending && storyEngine.isPlaying);
+  const firstSpotlight = await page.evaluate(() => storyEngine.currentTrackId);
+  await page.evaluate(() => {
+    window.originalSpotlightPick = rotationDossier.pickRandomSpotlightTrack;
+    rotationDossier.pickRandomSpotlightTrack = () => rotationData.topTracks[0];
+  });
+  await page.locator('#dossier-modal [data-dept="cinema"]').click();
+  await page.waitForFunction(() => !rotationDossier.spotlightAudioPending && storyEngine.isPlaying);
+  const nextSpotlight = await page.evaluate(() => storyEngine.currentTrackId);
+  assert.notEqual(firstSpotlight, nextSpotlight);
+  assert.equal(await page.evaluate(() => storyEngine.currentTrack.source), undefined);
+  assert.equal(await page.locator('.dossier-spotlight-title').innerText(),
+    await page.evaluate(() => storyEngine.currentTrack.name));
+  await page.evaluate(() => storyEngine.reportPreviewUnavailable({ silent: true }));
+  await page.waitForFunction(() => !rotationDossier.spotlightAudioPending && storyEngine.isPlaying);
+  const recoveredSpotlight = await page.evaluate(() => storyEngine.currentTrackId);
+  assert.notEqual(recoveredSpotlight, nextSpotlight);
+  assert.notEqual(recoveredSpotlight, firstSpotlight);
+  await page.locator('#dossier-modal [data-sub="synesthesia"]').click();
+  await page.waitForFunction(() => !rotationDossier.spotlightAudioPending && storyEngine.isPlaying);
+  const subviewSpotlight = await page.evaluate(() => storyEngine.currentTrackId);
+  assert.notEqual(subviewSpotlight, recoveredSpotlight);
+  await page.locator('#btn-dossier-shuffle-track').click();
+  await page.waitForFunction(() => !rotationDossier.spotlightAudioPending && storyEngine.isPlaying);
+  assert.notEqual(await page.evaluate(() => storyEngine.currentTrackId), subviewSpotlight);
+  await page.evaluate(() => { rotationDossier.pickRandomSpotlightTrack = originalSpotlightPick; });
+  await page.locator('.dossier-spotlight-play-btn').click();
+  assert.equal(await page.evaluate(() => storyEngine.isPaused), true);
+  await page.locator('#dossier-modal [data-dept="sources"]').click();
+  assert.equal(await page.evaluate(() => storyEngine.currentTrackId), null);
+  assert.equal(await page.evaluate(() => rotationDossier.spotlightAudioPending), false);
+  await page.keyboard.press('Escape');
+  console.log('PASS Dossier distinct department/subview/shuffle fallbacks, late media recovery, labels and pause');
+
+  await page.evaluate(async () => {
+    const data = structuredClone(rotationData);
+    data.topTracks = data.topTracks.slice(0, 2);
+    await rotationDossier.open(data);
+    rotationDossier.updateSpotlightTrack(data.topTracks[0]);
+    window.originalRotationResolver = storyEngine.resolveRealAudioPreview;
+    storyEngine.resolveRealAudioPreview = () => new Promise(resolve => { window.finishRotationLookup = resolve; });
+    window.pendingDossierAudio = rotationDossier.playSpotlightWithFallback(data.topTracks[0]);
+  });
+  await page.waitForFunction(() => Boolean(window.finishRotationLookup));
+  assert.match(await page.locator('.dossier-spotlight-play-btn').getAttribute('aria-label'), /Cancel/);
+  await page.keyboard.press('Escape');
+  await page.evaluate(async () => {
+    storyEngine.resolveRealAudioPreview = originalRotationResolver;
+    finishRotationLookup('https://audio.example.test/preview.wav');
+    await pendingDossierAudio;
+  });
+  assert.equal(await page.evaluate(() => storyEngine.currentTrackId), null);
+  assert.equal(await page.evaluate(() => storyEngine.isPlaying), false);
+  console.log('PASS closing Dossier cancels pending fallback without a late audio restart');
+
+  await page.evaluate(async () => {
+    const data = structuredClone(rotationData);
+    data.topTracks = data.topTracks.slice(0, 2);
+    await rotationDossier.open(data);
+    rotationDossier.updateSpotlightTrack(data.topTracks[0]);
+    window.finishRotationLookup = null;
+    storyEngine.resolveRealAudioPreview = () => new Promise(resolve => { window.finishRotationLookup = resolve; });
+    window.pendingDossierAudio = rotationDossier.playSpotlightWithFallback(data.topTracks[0]);
+    rotationDossier.pickRandomSpotlightTrack = () => data.topTracks[1];
+  });
+  await page.waitForFunction(() => Boolean(window.finishRotationLookup));
+  await page.locator('#btn-dossier-shuffle-track').click();
+  await page.waitForFunction(() => !rotationDossier.spotlightAudioPending && storyEngine.isPlaying);
+  const replacement = await page.evaluate(() => storyEngine.currentTrackId);
+  await page.evaluate(async () => {
+    storyEngine.resolveRealAudioPreview = originalRotationResolver;
+    rotationDossier.pickRandomSpotlightTrack = originalSpotlightPick;
+    finishRotationLookup('https://audio.example.test/preview.wav');
+    await pendingDossierAudio;
+  });
+  assert.equal(await page.evaluate(() => storyEngine.currentTrackId), replacement);
+  assert.equal(await page.evaluate(() => rotationDossier.spotlightTrack.id), replacement);
+  assert.equal(await page.evaluate(() => storyEngine.isPlaying), true);
+  await page.keyboard.press('Escape');
+  console.log('PASS shuffling during Dossier lookup cannot overwrite the newer playing song');
+
+  await page.evaluate(async () => {
+    const data = structuredClone(rotationData);
+    rotationDossier.activeDept = 'audiodna';
+    rotationDossier.activeSub.audiodna = 'overview';
+    await rotationDossier.open(data);
+    rotationDossier.updateSpotlightTrack(data.topTracks[1]);
+    await rotationDossier.playSpotlightWithFallback(data.topTracks[1]);
+  });
+  await page.waitForFunction(() => storyEngine.isPlaying && storyEngine.audioElement.readyState >= 3);
+  const matchingDossierRow = page.locator('.dossier-track-item[data-track-id="rotation-0"]');
+  const beforeRowPause = await page.evaluate(() => storyEngine.playRequestId);
+  await matchingDossierRow.click();
+  assert.equal(await page.evaluate(() => storyEngine.isPaused), true);
+  assert.equal(await page.evaluate(() => storyEngine.playRequestId), beforeRowPause + 1);
+  const pausedBudget = await page.evaluate(() => storyEngine.previewRemainingMs);
+  await matchingDossierRow.click();
+  await page.waitForFunction(() => storyEngine.isPlaying);
+  assert.equal(await page.evaluate(() => storyEngine.playRequestId), beforeRowPause + 2);
+  assert.equal(await page.evaluate(() => storyEngine.previewRemainingMs), pausedBudget);
+  await page.locator('.dossier-spotlight-play-btn').click();
+  assert.equal(await page.evaluate(() => storyEngine.isPaused), true);
+  await matchingDossierRow.click();
+  await page.waitForFunction(() => storyEngine.isPlaying);
+  assert.equal(await page.evaluate(() => storyEngine.currentTrackId), 'rotation-0');
+  await page.keyboard.press('Escape');
+  console.log('PASS Dossier spotlight/list controls pause and resume the same preview without restarting');
+
+  await page.evaluate(() => {
+    wrapped.isMuted = true;
+    wrapped.open(rotationData);
+    wrapped.slideTracks[1] = rotationData.topTracks[0];
+    wrapped.soundtrackPool = rotationData.topTracks;
+    wrapped.goToSlide(1);
+    wrapped.setPauseReason('user', true);
+    window.finishManualStoryLookup = null;
+    storyEngine.resolveRealAudioPreview = () => new Promise(resolve => { window.finishManualStoryLookup = resolve; });
+    wrapped.isMuted = false;
+    window.pendingAutomaticStoryAudio = wrapped.playSlideAudio(1);
+  });
+  await page.waitForFunction(() => Boolean(window.finishManualStoryLookup));
+  await page.locator('.wrapped-slide.is-active .ladder-item[data-track-id="rotation-0"]').click();
+  await page.waitForFunction(() => storyEngine.isPlaying && storyEngine.currentTrackId === 'rotation-0'
+    && wrapped.playedSlideTracks.get(1)?.id === 'rotation-0');
+  assert.equal(await page.evaluate(() => wrapped.storyAudioPending), false);
+  assert.equal(await page.evaluate(() => wrapped.pauseReasons.has('soundtrack')), false);
+  assert.equal(await page.evaluate(() => wrapped.pauseReasons.has('user')), true);
+  await page.evaluate(async () => {
+    storyEngine.resolveRealAudioPreview = originalRotationResolver;
+    finishManualStoryLookup('https://audio.example.test/preview.wav');
+    await pendingAutomaticStoryAudio;
+  });
+  assert.equal(await page.evaluate(() => storyEngine.currentTrackId), 'rotation-0');
+  assert.equal(await page.evaluate(() => wrapped.slideTracks[1].id), 'rotation-0');
+  assert.equal(await page.evaluate(() => wrapped.failedSoundtracks.has(rotationData.topTracks[0].id)), false);
+  assert.match(await page.locator('#wrapped-soundtrack-title').innerText(), /Rotation song 0/);
+  await page.locator('#wrapped-nav-next').click();
+  await page.waitForFunction(() => storyEngine.isPlaying && !wrapped.storyAudioPending);
+  assert.notEqual(await page.evaluate(() => storyEngine.currentTrackId), 'rotation-0');
+  assert.equal(await page.evaluate(() => wrapped.previousStorySoundtrack.id), 'rotation-0');
+  await page.keyboard.press('Escape');
+  console.log('PASS manual story playback owns audio over stale lookups and preserves pause/rotation history');
+
+  const metadataPayload = '<img src="/unexpected-metadata-image.png" onerror="window.storyMetadataExecuted = true">';
+  await page.evaluate(async payload => {
+    const data = structuredClone((await import('/js/app.js')).DEFAULT_CURATED_DATA);
+    const unsafeImage = 'javascript:window.storyMetadataExecuted=true';
+    data.user.display_name = payload;
+    data.user.images = [{ url: unsafeImage }];
+    data.topTracks = data.topTracks.map((track, index) => ({ ...track,
+      id: index === 0 ? 'track" data-story-injected="yes' : track.id,
+      name: payload, artists: [{ name: payload }], album: { ...track.album, images: [{ url: unsafeImage }] }
+    }));
+    data.topAlbums = Array.from({ length: 3 }, (_, index) => ({ id: `unsafe-album-${index}`,
+      name: payload, artistName: payload, releaseYear: payload, images: [{ url: unsafeImage }] }));
+    data.topGenres = [{ name: payload, percentage: '0"><img onerror="window.storyMetadataExecuted=true">' }];
+    data.stats.dominantGenre = payload;
+    wrapped.isMuted = true;
+    wrapped.open(data);
+    wrapped.goToSlide(1);
+    wrapped.setPauseReason('user', true);
+  }, metadataPayload);
+  assert.equal(await page.locator('.top-track-name').textContent(), metadataPayload);
+  assert.equal(await page.locator('.top-track-artist').textContent(), metadataPayload);
+  assert.equal(await page.locator('.ladder-title').first().textContent(), metadataPayload);
+  assert.equal(await page.locator('.album-mini-title').first().textContent(), metadataPayload);
+  assert.equal(await page.locator('.album-mini-artist').first().textContent(), metadataPayload);
+  assert.equal(await page.locator('.genre-bar-header > span').first().textContent(), metadataPayload);
+  assert.equal(await page.locator('.genre-bar-pct').textContent(), 'Unavailable');
+  assert.equal(await page.locator('.genre-bar-fill').evaluate(element => element.style.width), '0%');
+  assert.equal(await page.locator('#wrapped-slides-viewport [onerror], #wrapped-slides-viewport [data-story-injected]').count(), 0);
+  assert.equal(await page.locator('#wrapped-slides-viewport img').count(), 0);
+  assert.equal(await page.locator('#wrapped-user-avatar').isVisible(), false);
+  assert.equal(await page.evaluate(() => window.storyMetadataExecuted === true), false);
+  await page.keyboard.press('Escape');
+  console.log('PASS story track/artist/album/profile/genre metadata remains inert text and unsafe image URLs are rejected');
+
+  await page.route('https://broken-art.example.test/**', route => route.fulfill({ contentType: 'image/png', body: 'invalid image bytes' }));
+  await page.evaluate(async () => {
+    const data = structuredClone((await import('/js/app.js')).DEFAULT_CURATED_DATA);
+    data.topTracks = data.topTracks.map((track, index) => ({ ...track, album: { ...track.album,
+      images: index === 0 ? [{ url: 'https://broken-art.example.test/cover.png' }] : [] } }));
+    data.topAlbums = [{ name: 'Missing artwork album', artistName: 'Fixture artist', images: [] },
+      { name: 'Failed artwork album', artistName: 'Fixture artist', images: [{ url: 'https://broken-art.example.test/album.png' }] }];
+    data.user.images = [{ url: 'https://broken-art.example.test/avatar.png' }];
+    wrapped.isMuted = true;
+    wrapped.open(data);
+    wrapped.goToSlide(1);
+    wrapped.setPauseReason('user', true);
+  });
+  await page.waitForFunction(() => document.querySelector('.top-track-art.story-artwork-placeholder')
+    && document.querySelector('.album-mini-art.story-artwork-placeholder')
+    && document.querySelector('#wrapped-user-avatar').hidden);
+  assert.equal(await page.locator('.ladder-thumb.story-artwork-placeholder').count(), 4);
+  assert.equal(await page.locator('#wrapped-slides-viewport img[src=""], #wrapped-slides-viewport img:not([src])').count(), 0);
+  assert.equal(await page.evaluate(() => [...wrapped.viewport.querySelectorAll('img')].some(image => image.complete && !image.naturalWidth)), false);
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+  await page.screenshot({ path: 'test-results/story-artwork-fallback-mobile.png' });
+  await page.keyboard.press('Escape');
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  console.log('PASS missing and failed artwork keeps story layout without broken-image boxes');
 
   await page.evaluate(async () => {
     const { soundEngine } = await import('/js/audio-player.js');

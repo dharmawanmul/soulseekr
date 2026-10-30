@@ -173,11 +173,12 @@ export class SonicDossierEngine {
     return chosen;
   }
 
-  cancelSpotlightPlayback() {
-    const ownsAudio = this.spotlightAudioPending || soundEngine.currentTrackId === this.spotlightTrack?.id;
+  cancelSpotlightPlayback({ stop = true } = {}) {
+    const ownsAudio = this.spotlightAudioPending
+      || (this.isOpen && soundEngine.currentTrackId === this.spotlightTrack?.id);
     this.spotlightRequestId++;
     this.spotlightAudioPending = false;
-    if (ownsAudio) soundEngine.stop();
+    if (ownsAudio && stop) soundEngine.stop();
   }
 
   rotateSpotlight() {
@@ -523,13 +524,13 @@ export class SonicDossierEngine {
     const isCurrent = soundEngine.currentTrackId === track.id;
     const isPlaying = isCurrent && soundEngine.isPlaying;
     const isPaused = isCurrent && soundEngine.isPaused;
-    const isLoading = isCurrent && soundEngine.isLoading;
+    const isLoading = this.spotlightAudioPending || (isCurrent && soundEngine.isLoading);
 
-    const actionText = isCurrent
+    const actionText = isLoading ? 'Loading' : isCurrent
       ? (isLoading ? 'Loading' : isPaused ? 'Resume' : isPlaying ? 'Pause' : 'Play')
       : 'Play';
 
-    const indicatorClass = isCurrent && isLoading
+    const indicatorClass = isLoading
       ? 'track-indicator mini-spinner'
       : isCurrent && isPlaying
         ? 'track-indicator mini-eq'
@@ -537,7 +538,7 @@ export class SonicDossierEngine {
           ? 'track-indicator play-hint play-hint-paused'
           : 'track-indicator play-hint';
 
-    const indicatorContent = isCurrent && isPlaying
+    const indicatorContent = isLoading ? '' : isCurrent && isPlaying
       ? '<span class="bar"></span><span class="bar"></span><span class="bar"></span>'
       : isCurrent && isLoading
         ? ''
@@ -1502,12 +1503,7 @@ export class SonicDossierEngine {
             audioDna.destroy();
           }
           this.activeDept = dept;
-          const prevId = this.spotlightTrack?.id;
-          const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
-          this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
-          if (wasPlaying && this.spotlightTrack) {
-            this.playSpotlightWithFallback(this.spotlightTrack);
-          }
+          this.rotateSpotlight();
           this.render();
         }
       };
@@ -1525,12 +1521,7 @@ export class SonicDossierEngine {
           audioDna.destroy();
         }
         this.activeDept = nextDept;
-        const prevId = this.spotlightTrack?.id;
-        const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
-        this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
-        if (wasPlaying && this.spotlightTrack) {
-          this.playSpotlightWithFallback(this.spotlightTrack);
-        }
+        this.rotateSpotlight();
         this.render();
         requestAnimationFrame(() => {
           this.modal.querySelector(`.dossier-dept-btn[data-dept="${nextDept}"]`)?.focus();
@@ -1548,6 +1539,7 @@ export class SonicDossierEngine {
             audioDna.destroy();
           }
           this.activeSub[this.activeDept] = sub;
+          this.rotateSpotlight();
           this.render();
         }
       };
@@ -1686,18 +1678,24 @@ export class SonicDossierEngine {
         const trId = el.getAttribute('data-track-id');
         const tr = this.data?.topTracks?.find(t => t.id === trId);
         if (tr) {
+          if (isSpotlight && this.spotlightAudioPending) {
+            this.cancelSpotlightPlayback();
+            this.updatePlaybackUi();
+            return;
+          }
+          if (!isSpotlight) this.cancelSpotlightPlayback({ stop: soundEngine.currentTrackId !== trId });
           if (soundEngine.currentTrackId === trId) {
             if (soundEngine.isPlaying) {
               soundEngine.pause();
             } else if (soundEngine.isPaused) {
               soundEngine.resume();
             } else if (isSpotlight) {
-              this.playSpotlightWithFallback(tr);
+              this.playSpotlightWithFallback(tr, { retry: true });
             } else {
               soundEngine.playTrack(tr);
             }
           } else if (isSpotlight) {
-            this.playSpotlightWithFallback(tr);
+            this.playSpotlightWithFallback(tr, { retry: true });
           } else {
             soundEngine.playTrack(tr);
             showToast(`Playing preview: ${tr.name}`, 'info', 2200);
@@ -1722,12 +1720,7 @@ export class SonicDossierEngine {
     if (btnShuffle) {
       btnShuffle.onclick = (e) => {
         e.stopPropagation();
-        const prevId = this.spotlightTrack?.id;
-        const wasPlaying = soundEngine.isPlaying && soundEngine.currentTrackId === prevId;
-        this.spotlightTrack = this.pickRandomSpotlightTrack(prevId);
-        if (wasPlaying && this.spotlightTrack) {
-          this.playSpotlightWithFallback(this.spotlightTrack);
-        }
+        this.rotateSpotlight();
         this.render();
       };
     }
@@ -1753,16 +1746,25 @@ export class SonicDossierEngine {
     }
   }
 
-  updatePlaybackUi(ps = {}) {
+  updatePlaybackUi(ps = soundEngine) {
     if (!this.modal || !this.isOpen) return;
+    if (ps.previewFailure && !this.spotlightAudioPending
+        && ps.previewFailure.trackId === this.spotlightTrack?.id) {
+      this.failedSpotlightTrackIds.add(ps.previewFailure.trackId);
+      this.playSpotlightWithFallback(this.spotlightTrack);
+    }
     const triggers = this.modal.querySelectorAll('.track-play-trigger');
     triggers.forEach(el => {
       const trId = el.getAttribute('data-track-id');
       const isCurrent = trId === ps.currentTrackId;
       const isPlaying = isCurrent && ps.isPlaying;
       const isPaused = isCurrent && ps.isPaused;
-      const isLoading = isCurrent && ps.isLoading;
-      el.classList.toggle('active', isCurrent && (isPlaying || isPaused || isLoading));
+      const isLoading = (isCurrent && ps.isLoading)
+        || (this.spotlightAudioPending && Boolean(el.closest('.dossier-spotlight-bar')));
+      const track = this.data?.topTracks?.find(value => value.id === trId);
+      const action = isLoading ? 'Cancel' : isPlaying ? 'Pause' : isPaused ? 'Resume' : 'Play';
+      el.setAttribute('aria-label', `${action} preview for ${track?.name || 'track'}`);
+      el.classList.toggle('active', isLoading || (isCurrent && (isPlaying || isPaused)));
       el.classList.toggle('is-playing', isPlaying);
       el.classList.toggle('is-paused', isPaused);
       const playBtn = el.querySelector('.dossier-btn-play');
@@ -1785,7 +1787,7 @@ export class SonicDossierEngine {
       const spotlightPlayText = el.querySelector('.spotlight-play-text');
       const indicator = el.querySelector('.track-indicator');
       if (indicator) {
-        if (isCurrent && isLoading) {
+        if (isLoading) {
           indicator.className = 'track-indicator mini-spinner';
           indicator.innerHTML = '';
           if (spotlightPlayText) spotlightPlayText.textContent = 'Loading';

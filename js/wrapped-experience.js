@@ -5,8 +5,9 @@
 import { soundEngine } from './audio-player.js';
 import { exportCardAsImage, downloadDataUrl, copyCardToClipboard } from './exporter.js';
 import { showToast } from './app.js';
-import { escapeHtml } from './card-renderer.js';
+import { escapeHtml, getTrackArtistNames } from './card-renderer.js';
 import { playStorySoundtrack } from './story-soundtrack.js';
+import { storyArtwork, storyImageSource, storyPercentage, attachStoryArtworkFallbacks } from './story-content.js';
 
 const SLIDE_THEMES = [
   { primary: '#ed6a45', secondary: '#d8c9aa', threeColors: [0xed6a45, 0xd8c9aa] },
@@ -328,11 +329,10 @@ export class WrappedExperience {
     this.soundtrackPool = [];
     this.usedSoundtracks = new Set();
     this.failedSoundtracks = new Set();
-    this.soundtrackBudgets = new Map();
     this.storyAudioRequestId = 0;
     this.storyAudioPending = false;
     this.lastPlayableSoundtrack = null;
-    this.lastSoundtrackSlideIndex = null;
+    this.previousStorySoundtrack = null;
     this.playedSlideTracks = new Map();
     this.pickedSlideTrackIds = new Set();
     this.returnFocus = null;
@@ -346,10 +346,15 @@ export class WrappedExperience {
   }
 
   setupListeners() {
+    this.userAvatar?.addEventListener('error', () => {
+      if (this.userAvatar.complete && !this.userAvatar.naturalWidth) {
+        this.userAvatar.hidden = true;
+        this.userAvatar.removeAttribute('src');
+      }
+    });
     this.btnRetryAudio?.addEventListener('click', event => {
       event.stopPropagation();
       this.failedSoundtracks.clear();
-      this.soundtrackBudgets.delete(this.currentSlideIndex);
       this.playSlideAudio();
     });
     this.btnPause?.addEventListener('click', (e) => {
@@ -486,16 +491,15 @@ export class WrappedExperience {
     this.slideTracks = this.selectDistinctSlideTracks(data.topTracks || []);
     this.usedSoundtracks.clear();
     this.failedSoundtracks.clear();
-    this.soundtrackBudgets.clear();
     this.lastPlayableSoundtrack = null;
-    this.lastSoundtrackSlideIndex = null;
+    this.previousStorySoundtrack = null;
     this.playedSlideTracks.clear();
 
     // Populate Top Bar
     const user = data.user || {};
     if (this.userName) this.userName.textContent = user.display_name || user.id || '';
     if (this.userAvatar) {
-      const avatarUrl = user.images && user.images[0]?.url;
+      const avatarUrl = storyImageSource(user.images?.[0]?.url);
       if (avatarUrl) {
         this.userAvatar.hidden = false;
         this.userAvatar.src = avatarUrl;
@@ -634,33 +638,6 @@ export class WrappedExperience {
     return selected;
   }
 
-  preloadSlideTracks() {
-    const candidatesToPreload = [
-      this.slideTracks[this.currentSlideIndex + 1],
-      this.slideTracks[this.currentSlideIndex + 2],
-      ...this.soundtrackPool.filter(track => !this.usedSoundtracks.has(track.id)
-        && !this.failedSoundtracks.has(track.id)).slice(0, 3)
-    ].filter(Boolean);
-    const seen = new Set();
-    candidatesToPreload.forEach(async (track) => {
-      if (!track?.id || track.preview_url || seen.has(track.id)) return;
-      seen.add(track.id);
-      let artist = '';
-      if (Array.isArray(track.artists) && track.artists.length > 0) {
-        const first = track.artists[0];
-        artist = (typeof first === 'object' && first ? first.name : first) || '';
-      } else if (track.artistName) {
-        artist = track.artistName;
-      }
-      try {
-        const previewUrl = await soundEngine.resolveRealAudioPreview(track.name, artist, track.duration_ms);
-        if (previewUrl) track.preview_url = previewUrl;
-      } catch (err) {
-        // non-blocking
-      }
-    });
-  }
-
   updateSoundtrackLabel(track, slideIndex, fallback = false) {
     if (this.soundtrackIndex) {
       this.soundtrackIndex.textContent = track?.source === 'generated' ? 'Instrumental fallback'
@@ -686,30 +663,18 @@ export class WrappedExperience {
       && this.modal.classList.contains('is-open') && this.currentSlideIndex === slideIndex;
     this.storyAudioPending = true;
     this.setPauseReason('soundtrack', true);
-    if (!this.soundtrackBudgets.has(slideIndex)) {
-      this.soundtrackBudgets.set(slideIndex, {
-        remaining: this.soundtrackPool.length + 1
-      });
-    }
     try {
       soundEngine.initAudioContext();
-      this.preloadSlideTracks();
       const result = await playStorySoundtrack({ engine: soundEngine, preferred: storyTrack,
         tracks: this.soundtrackPool,
-        previous: this.lastSoundtrackSlideIndex === slideIndex ? null : this.lastPlayableSoundtrack,
+        previous: this.previousStorySoundtrack,
         used: this.usedSoundtracks, failed: this.failedSoundtracks,
-        budget: this.soundtrackBudgets.get(slideIndex), isCurrent,
+        budget: { remaining: this.soundtrackPool.length + 1 }, isCurrent,
         reusePreferred: this.playedSlideTracks.get(slideIndex)?.id === storyTrack?.id,
         onAttempt: track => this.updateSoundtrackLabel(track, slideIndex, track?.id !== storyTrack?.id) });
       if (!isCurrent() || result.status === 'cancelled') return;
       if (result.status === 'playing') {
-        this.slideTracks[slideIndex] = result.track;
-        if (result.track.source !== 'generated') {
-          this.lastPlayableSoundtrack = result.track;
-          this.lastSoundtrackSlideIndex = slideIndex;
-          this.playedSlideTracks.set(slideIndex, result.track);
-          this.pickedSlideTrackIds?.add(result.track.id);
-        }
+        this.rememberStorySoundtrack(result.track, slideIndex);
         this.updateSoundtrackLabel(result.track, slideIndex, result.fallback);
       } else {
         if (this.soundtrackTitle) this.soundtrackTitle.textContent = 'Tap Play story audio to enable sound';
@@ -726,6 +691,30 @@ export class WrappedExperience {
         this.storyAudioPending = false;
         this.setPauseReason('soundtrack', false);
       }
+    }
+  }
+
+  rememberStorySoundtrack(track, slideIndex) {
+    this.slideTracks[slideIndex] = track;
+    if (track.source === 'generated') return;
+    this.lastPlayableSoundtrack = track;
+    this.playedSlideTracks.set(slideIndex, track);
+    this.pickedSlideTrackIds.add(track.id);
+    this.usedSoundtracks.delete(track.id);
+    this.usedSoundtracks.add(track.id);
+  }
+
+  async playManualTrack(track) {
+    const requestId = ++this.storyAudioRequestId;
+    const slideIndex = this.currentSlideIndex;
+    this.storyAudioPending = false;
+    if (this.btnRetryAudio) this.btnRetryAudio.hidden = true;
+    this.setPauseReason('soundtrack', false);
+    this.updateSoundtrackLabel(track, slideIndex);
+    await soundEngine.playTrack(track);
+    if (requestId !== this.storyAudioRequestId || !this.modal.classList.contains('is-open')) return;
+    if (soundEngine.currentTrackId === track.id && (soundEngine.isPlaying || soundEngine.isPaused)) {
+      this.rememberStorySoundtrack(track, slideIndex);
     }
   }
 
@@ -768,11 +757,11 @@ export class WrappedExperience {
 
     const topTrack = tracks[0];
     const topAlbum = albums[0] || null;
-    const userImg = data.user?.images?.[0]?.url || '';
+    const userImg = storyImageSource(data.user?.images?.[0]?.url);
     const profileName = data.user?.display_name || data.user?.id || '';
     const userInitial = profileName.trim().charAt(0).toUpperCase();
     const avatarMarkup = userImg
-      ? `<img class="prologue-avatar-img" src="${escapeHtml(userImg)}" alt="Spotify profile">`
+      ? storyArtwork(userImg, 'prologue-avatar-img')
       : userInitial ? `<span class="prologue-avatar-img avatar-initial" aria-hidden="true">${escapeHtml(userInitial)}</span>` : '';
     const rankedTrackMinutes = Number.isFinite(Number(stats.rankedTrackMinutes))
       ? Number(stats.rankedTrackMinutes)
@@ -838,15 +827,15 @@ export class WrappedExperience {
         </div>
 
         <!-- #1 Hero Track Card -->
-        <div class="top-track-hero" id="wrapped-hero-track-btn" data-track-id="${topTrack.id || ''}">
+        <div class="top-track-hero" id="wrapped-hero-track-btn" data-track-id="${escapeHtml(topTrack.id || '')}">
           <div class="top-track-vinyl-wrapper">
-            <img class="top-track-art" src="${topTrack.album?.images?.[0]?.url || ''}" alt="Cover">
+            ${storyArtwork(topTrack.album?.images?.[0]?.url, 'top-track-art')}
             <div class="top-track-vinyl"></div>
           </div>
           <div class="top-track-info">
             <span class="top-track-badge">01 / Highest affinity</span>
-            <span class="top-track-name">${topTrack.name}</span>
-            <span class="top-track-artist">${Array.isArray(topTrack.artists) ? topTrack.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (topTrack.artistName || 'Unknown Artist')}</span>
+            <span class="top-track-name">${escapeHtml(topTrack.name)}</span>
+            <span class="top-track-artist">${escapeHtml(getTrackArtistNames(topTrack))}</span>
             <span class="top-track-play-btn">Play preview</span>
           </div>
         </div>
@@ -854,12 +843,12 @@ export class WrappedExperience {
         <!-- Tracks #2 - #5 Ladder -->
         <div class="tracks-ladder">
           ${tracks.slice(1, 5).map((track, i) => `
-            <div class="ladder-item track-play-trigger" data-track-id="${track.id || ''}">
+            <div class="ladder-item track-play-trigger" data-track-id="${escapeHtml(track.id || '')}">
               <span class="ladder-rank">0${i + 2}</span>
-              <img class="ladder-thumb" src="${track.album?.images?.[0]?.url || ''}" alt="art">
+              ${storyArtwork(track.album?.images?.[0]?.url, 'ladder-thumb')}
               <div class="ladder-meta">
-                <span class="ladder-title">${track.name}</span>
-                <span class="ladder-artist">${Array.isArray(track.artists) ? track.artists.map(a => (a && typeof a === 'object' ? a.name : a) || '').filter(Boolean).join(', ') : (track.artistName || 'Unknown Artist')}</span>
+                <span class="ladder-title">${escapeHtml(track.name)}</span>
+                <span class="ladder-artist">${escapeHtml(getTrackArtistNames(track))}</span>
               </div>
               <span class="ladder-play-state" aria-hidden="true">▶</span>
             </div>
@@ -881,10 +870,10 @@ export class WrappedExperience {
 
         <!-- #1 Hero Album Card -->
         <div class="album-hero">
-          ${topAlbum?.images?.[0]?.url ? `<img class="album-hero-bg" src="${escapeHtml(topAlbum.images[0].url)}" alt="Album">` : ''}
+          ${topAlbum ? storyArtwork(topAlbum.images?.[0]?.url, 'album-hero-bg') : ''}
           <div class="album-hero-scrim"></div>
           <div class="album-hero-content">
-            <span class="album-crown-tag">${topAlbum ? `01 / Album${topAlbum.releaseYear ? ` / ${topAlbum.releaseYear}` : ''}` : 'Album data unavailable'}</span>
+            <span class="album-crown-tag">${topAlbum ? `01 / Album${topAlbum.releaseYear ? ` / ${escapeHtml(String(topAlbum.releaseYear))}` : ''}` : 'Album data unavailable'}</span>
             ${topAlbum ? `<span class="album-hero-name">${escapeHtml(topAlbum.name)}</span><span class="album-hero-artist">${escapeHtml(topAlbum.artistName || topAlbum.artists?.[0]?.name || '')}</span>` : ''}
           </div>
         </div>
@@ -893,10 +882,10 @@ export class WrappedExperience {
         <div class="album-grid">
           ${albums.slice(1, 5).map(album => `
             <div class="album-mini-card">
-              <img class="album-mini-art" src="${album.images?.[0]?.url || ''}" alt="Cover">
+              ${storyArtwork(album.images?.[0]?.url, 'album-mini-art')}
               <div class="album-mini-info">
-                <span class="album-mini-title">${album.name}</span>
-                <span class="album-mini-artist">${album.artistName || album.artists?.[0]?.name || ''}</span>
+                <span class="album-mini-title">${escapeHtml(album.name)}</span>
+                <span class="album-mini-artist">${escapeHtml(album.artistName || album.artists?.[0]?.name || '')}</span>
               </div>
             </div>
           `).join('')}
@@ -985,29 +974,32 @@ export class WrappedExperience {
         </div>
 
         <div class="genres-stack">
-          ${genres.length ? genres.slice(0, 5).map(genre => `
+          ${genres.length ? genres.slice(0, 5).map(genre => {
+            const percentage = storyPercentage(genre.percentage);
+            return `
             <div class="genre-bar-item">
               <div class="genre-bar-header">
-                <span>${genre.name}</span>
-                <span class="genre-bar-pct">${genre.percentage}%</span>
+                <span>${escapeHtml(genre.name)}</span>
+                <span class="genre-bar-pct">${percentage === null ? 'Unavailable' : `${percentage}%`}</span>
               </div>
               <div class="genre-bar-track">
-                <div class="genre-bar-fill" style="width: ${genre.percentage}%"></div>
+                <div class="genre-bar-fill" style="width: ${percentage ?? 0}%"></div>
               </div>
             </div>
-          `).join('') : genreFallbackArtists.length ? `
+          `;
+          }).join('') : genreFallbackArtists.length ? `
             <div class="genre-data-note" role="status">
               Genre metadata is unavailable for this window. No genre labels were inferred.
             </div>
             <ol class="genre-artist-fallback">
               ${genreFallbackArtists.map((artist, index) => {
-                const imageUrl = artist?.images?.find(image => image?.url)?.url || '';
+                const imageUrl = storyImageSource(artist?.images?.find(image => image?.url)?.url);
                 const initial = (artist?.name || 'Artist').trim().charAt(0).toUpperCase();
                 return `
                   <li>
                     <span class="genre-artist-rank">${String(index + 1).padStart(2, '0')}</span>
                     ${imageUrl
-                      ? `<img src="${escapeHtml(imageUrl)}" alt="" class="genre-artist-image">`
+                      ? storyArtwork(imageUrl, 'genre-artist-image')
                       : `<span class="genre-artist-image genre-artist-initial" aria-hidden="true">${escapeHtml(initial)}</span>`}
                     <strong>${escapeHtml(artist?.name || 'Unknown artist')}</strong>
                     <span class="genre-artist-source">Spotify rank</span>
@@ -1048,7 +1040,7 @@ export class WrappedExperience {
 
           <div style="display:flex; align-items:center; gap:0.75rem;">
             ${userImg
-              ? `<img class="recap-avatar" src="${escapeHtml(userImg)}" alt="Spotify profile">`
+              ? storyArtwork(userImg, 'recap-avatar')
               : `<span class="recap-avatar avatar-initial" aria-hidden="true">${escapeHtml(userInitial)}</span>`}
             <div>
               <div style="font-size:0.95rem; font-weight:800; color:#fff;">${escapeHtml(profileName || 'Spotify archive')}</div>
@@ -1098,12 +1090,14 @@ export class WrappedExperience {
       </div>
     `;
 
+    attachStoryArtworkFallbacks(this.viewport);
+
     // Attach track play listener on Hero #1 Track
     const heroBtn = this.viewport.querySelector('#wrapped-hero-track-btn');
     if (heroBtn) {
       const playHero = (e) => {
         e.stopPropagation();
-        soundEngine.playTrack(topTrack);
+        this.playManualTrack(topTrack);
       };
       heroBtn.setAttribute('role', 'button');
       heroBtn.setAttribute('tabindex', '0');
@@ -1124,7 +1118,7 @@ export class WrappedExperience {
         e.stopPropagation();
         const trId = el.getAttribute('data-track-id');
         const tr = tracks.find(t => t.id === trId);
-        if (tr) soundEngine.playTrack(tr);
+        if (tr) this.playManualTrack(tr);
       };
       const tr = tracks.find(t => t.id === el.getAttribute('data-track-id'));
       el.setAttribute('role', 'button');
@@ -1171,7 +1165,6 @@ export class WrappedExperience {
       e.stopPropagation();
       this.pauseReasons.delete('user');
       this.pauseReasons.delete('hold');
-      this.soundtrackBudgets.clear();
       this.playedSlideTracks.clear();
       this.slideTracks = this.selectDistinctSlideTracks(this.data?.topTracks || []);
       this.goToSlide(0);
@@ -1234,6 +1227,7 @@ export class WrappedExperience {
       this.pauseReasons.delete('hold');
     }
 
+    if (index !== this.currentSlideIndex) this.previousStorySoundtrack = this.lastPlayableSoundtrack;
     this.currentSlideIndex = index;
 
     // Update Three.js scene palette

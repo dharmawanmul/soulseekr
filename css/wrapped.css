@@ -613,6 +613,17 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
 }
 
+.story-artwork-placeholder {
+  display: block;
+  flex-shrink: 0;
+  background: var(--muted);
+}
+
+.top-track-art.story-artwork-placeholder {
+  background: transparent;
+  box-shadow: none;
+}
+
 .top-track-vinyl {
   position: absolute;
   top: 4px;
